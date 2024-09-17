@@ -17,7 +17,6 @@ DCB dcb;
 #define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
 
 
-
 int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = { 0 };
 
 DWORD WINAPI SoundThread(LPVOID lpParam) {
@@ -76,7 +75,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current;
     QueryPerformanceCounter(&start);  // Get the starting time
 
-    uint8_t localVRAM[VIDEORAM_SIZE]= { 0 };
+    uint8_t localVRAM[VIDEORAM_SIZE] = { 0 };
     double elapsed_system_timer = 0;
     double elapsed_blink_tics = 0;
     double elapsed_frame_tics = 0;
@@ -97,7 +96,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             elapsed_blink_tics = elapsedTime;  // Reset the tick counter for 2Hz
         }
 
-        if (elapsedTime - elapsed_frame_tics >= 16'666){
+        if (elapsedTime - elapsed_frame_tics >= 16'666) {
             if (1) {
 // http://www.techhelpmanual.com/114-video_modes.html
 // http://www.techhelpmanual.com/89-video_memory_layouts.html
@@ -105,16 +104,13 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                 port3DA = 1;
                 static uint8_t v = 0;
                 if (v != videomode) {
-                    printf("videomode %x\n", videomode);
+                    printf("videomode %x %x\n", videomode, v);
                     v = videomode;
-                    vram_offset = 0;
-                    if (videomode == 0x13) {
-                        mfb_set_pallete_array(vga_palette, 0, 255);
-                    }
+                    //vram_offset = 0;
                 }
 
 
-                memcpy(localVRAM, VIDEORAM+ 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
+                memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
                 uint8_t *vidramptr = localVRAM;
                 const uint8_t cols = videomode <= 1 ? 40 : 80;
                 for (uint16_t y = 0; y < 400; y++)
@@ -127,7 +123,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             for (uint8_t column = 0; column < cols; column++) {
                                 // Access vidram and font data once per character
                                 uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2];  // Character code
-                                uint8_t glyph_row = font_8x8[charcode * 8 + y_mod_8];              // Glyph row from font
+                                uint8_t glyph_row = font_8x8[charcode * 8 +
+                                                             y_mod_8];              // Glyph row from font
                                 uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1];  // Color attribute
 
                                 // Calculate screen position
@@ -170,16 +167,18 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                 const uint16_t column_offset = y_div_16 * (cols * 2) + column * 2;
                                 uint8_t charcode = vidramptr[column_offset];  // Character code
                                 uint8_t color = vidramptr[column_offset + 1]; // Color attribute
-                                uint8_t glyph_row = font_8x16[charcode * 16 + y_mod_16];              // Glyph row from font
+                                uint8_t glyph_row = font_8x16[charcode * 16 +
+                                                              y_mod_16];              // Glyph row from font
 
                                 // Calculate screen position
                                 uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column);
 
                                 // Cursor blinking check
-                                uint8_t cursor_active = cursor_blink_state && y_div_16 == CURSOR_Y && column == CURSOR_X &&
-                                                        (cursor_start > cursor_end ? !(y_mod_16 >= cursor_end << 1 &&
-                                                                                       y_mod_16 <= cursor_start << 1) :
-                                                         y_mod_16 >= cursor_start << 1 && y_mod_16 <= cursor_end << 1);
+                                uint8_t cursor_active =
+                                        cursor_blink_state && y_div_16 == CURSOR_Y && column == CURSOR_X &&
+                                        (cursor_start > cursor_end ? !(y_mod_16 >= cursor_end << 1 &&
+                                                                       y_mod_16 <= cursor_start << 1) :
+                                         y_mod_16 >= cursor_start << 1 && y_mod_16 <= cursor_end << 1);
 
                                 // Unrolled bit loop: Write 8 pixels with scaling (2x horizontally)
                                 for (uint8_t bit = 0; bit < 8; bit++) {
@@ -202,7 +201,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         case 0x05: {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             uint8_t *cga_row = &vidramptr[((((y / 2) >> 1) * 80) +
-                                                          (((y / 2) & 1) * 8192))];  // Precompute CGA row pointer
+                                                           (((y / 2) & 1) * 8192))];  // Precompute CGA row pointer
                             uint8_t *current_cga_palette = (uint8_t *) cga_gfxpal[cga_colorset][cga_intensity];
 
                             for (int x = 0; x < 320; x += 4) {
@@ -210,14 +209,18 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
                                 // Extract all four 2-bit pixels from the CGA byte
                                 // and write each pixel twice for horizontal scaling
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 6) & 3 ? current_cga_palette[(cga_byte >> 6) & 3]
-                                                                            : cga_foreground_color];
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 4) & 3 ? current_cga_palette[(cga_byte >> 4) & 3]
-                                                                            : cga_foreground_color];
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 2) & 3 ? current_cga_palette[(cga_byte >> 2) & 3]
-                                                                            : cga_foreground_color];
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 0) & 3 ? current_cga_palette[(cga_byte >> 0) & 3]
-                                                                            : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 6) & 3 ? current_cga_palette[
+                                        (cga_byte >> 6) & 3]
+                                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 4) & 3 ? current_cga_palette[
+                                        (cga_byte >> 4) & 3]
+                                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 2) & 3 ? current_cga_palette[
+                                        (cga_byte >> 2) & 3]
+                                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 0) & 3 ? current_cga_palette[
+                                        (cga_byte >> 0) & 3]
+                                                                                        : cga_foreground_color];
                             }
                             break;
                         }
@@ -244,11 +247,17 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         case 0x8:
                         case 0x74: /* 160x200x16    */
                         case 0x76: /* cga composite / tandy */ {
-                            uint32_t * palette;
+                            uint32_t *palette;
                             switch (videomode) {
-                                case 0x08: palette = tga_palette; break;
-                                case 0x74: palette = cga_composite_palette[1+cga_intensity]; break;
-                                case 0x76: palette = cga_composite_palette[cga_intensity + cga_colorset]; break;
+                                case 0x08:
+                                    palette = tga_palette;
+                                    break;
+                                case 0x74:
+                                    palette = cga_composite_palette[1 + cga_intensity];
+                                    break;
+                                case 0x76:
+                                    palette = cga_composite_palette[cga_intensity + cga_colorset];
+                                    break;
 
                             }
 
@@ -291,11 +300,55 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
+                        case 0x0D: /* EGA */  {
+                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            vidramptr = VIDEORAM + vram_offset;
+                            for (int x = 0; x < 320; x++) {
+                                uint32_t divy = y >> 1;
+                                uint32_t vidptr = divy * 40 + (x >> 3);
+                                int x1 = 7 - (x & 7);
+                                uint32_t color = (vidramptr[vidptr] >> x1) & 1;
+                                color |= (((vidramptr[vga_plane_size + vidptr] >> x1) & 1) << 1);
+                                color |= (((vidramptr[vga_plane_size * 2 + vidptr] >> x1) & 1) << 2);
+                                color |= (((vidramptr[vga_plane_size * 3 + vidptr] >> x1) & 1) << 3);
+                                *pixels++ = vga_palette[color];
+                                *pixels++ = vga_palette[color];
+                            }
+                            break;
+                        }
+                        case 0x0E: /* EGA mode 0xE */  {
+                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            vidramptr = VIDEORAM + vram_offset;
+                            for (int x = 0; x < 640; x++) {
+                                uint32_t vidptr = (y >> 1) * 80 + (x >> 3);
+                                int bit = 7 - (x & 7);
+                                uint32_t color = (vidramptr[vidptr] >> bit) & 1 |
+                                                 (((vidramptr[vga_plane_size + vidptr] >> bit) & 1) << 1) |
+                                                 (((vidramptr[vga_plane_size * 2 + vidptr] >> bit) & 1) << 2) |
+                                                 (((vidramptr[vga_plane_size * 3 + vidptr] >> bit) & 1) << 3);
+                                *pixels++ = vga_palette[color];
+                            }
+                            break;
+                        }
                         case 0x13 : {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
-                            for (int x = 0; x < 640; x++) {
-                                *pixels++ = vga_palette[VIDEORAM[(x >> 1) + (y >> 1) * 320]];
+                            if (vga_planar_mode) {
+                                for (int x = 0; x < 320; x++) {
+                                    uint32_t ptr = x + (y >> 1) * 320;
+                                    ptr = (ptr >> 2) + (x & 3) * vga_plane_size;
+                                    ptr += vram_offset;
+                                    uint32_t color = vga_palette[VIDEORAM[ptr]];
+                                    *pixels++ = color;
+                                    *pixels++ = color;
+                                }
+                            } else {
+                                for (int x = 0; x < 320; x++) {
+                                    uint32_t color = vga_palette[VIDEORAM[x + (y >> 1) * 320]];
+                                    *pixels++ = color;
+                                    *pixels++ = color;
+                                }
                             }
+
                             break;
                         }
 
@@ -306,7 +359,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             for (uint8_t column = 0; column < cols; column++) {
                                 // Access vidram and font data once per character
                                 uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2];  // Character code
-                                uint8_t glyph_row = font_8x16[charcode * 16 + y_mod_8];              // Glyph row from font
+                                uint8_t glyph_row = font_8x16[charcode * 16 +
+                                                              y_mod_8];              // Glyph row from font
                                 uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1];  // Color attribute
 
                                 // Calculate screen position
@@ -363,8 +417,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             } else if (videomode >= 0x74) {
                 videomode = old_vm;
             }
-            vram_offset += 0x10;
-//            log_debug = !log_debug;
+            log_debug = !log_debug;
         }
     }
     switch (wParam) {
@@ -698,7 +751,7 @@ HANDLE hThread;
 DWORD WINAPI MessageHandler(LPVOID lpParam);
 
 // Initialize the message queue
-void InitQueue(MessageQueue* q) {
+void InitQueue(MessageQueue *q) {
     q->front = 0;
     q->rear = 0;
     q->count = 0;
@@ -708,12 +761,12 @@ void InitQueue(MessageQueue* q) {
 }
 
 // Destroy the message queue
-void DestroyQueue(MessageQueue* q) {
+void DestroyQueue(MessageQueue *q) {
     DeleteCriticalSection(&q->cs);
 }
 
 // Add a message to the queue
-void Enqueue(MessageQueue* q, uint16_t message) {
+void Enqueue(MessageQueue *q, uint16_t message) {
     EnterCriticalSection(&q->cs);
 
     // Wait if the queue is full
@@ -732,7 +785,7 @@ void Enqueue(MessageQueue* q, uint16_t message) {
 }
 
 // Remove a message from the queue
-uint16_t Dequeue(MessageQueue* q) {
+uint16_t Dequeue(MessageQueue *q) {
     EnterCriticalSection(&q->cs);
 
     // Wait if the queue is empty
@@ -754,14 +807,14 @@ uint16_t Dequeue(MessageQueue* q) {
 
 // Thread function to handle the message queue
 DWORD WINAPI MessageHandler(LPVOID lpParam) {
-    MessageQueue* q = (MessageQueue*)lpParam;
+    MessageQueue *q = (MessageQueue *) lpParam;
 
     while (1) {
         uint16_t message = Dequeue(q);
 
         // Process the message (just print it for now)
 //        printf("Message received: %u\n", message);
-        if(hComm != NULL && !WriteFile(hComm, &message, 2, &bytesWritten, NULL)) {
+        if (hComm != NULL && !WriteFile(hComm, &message, 2, &bytesWritten, NULL)) {
 //            printf("!!!! Error in writing to serial port\n");
         }
         // Exit the thread if we receive a special "exit" message
@@ -792,10 +845,18 @@ extern "C" void adlib_write(uint16_t reg, uint8_t value) {
 }
 extern "C" void cms_write(uint16_t reg, uint8_t val) {
     switch (reg - 0x220) {
-        case 0: Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0000); break;
-        case 1: Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0010); break;
-        case 2: Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0001); break;
-        case 3: Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0011); break;
+        case 0:
+            Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0000);
+            break;
+        case 1:
+            Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0010);
+            break;
+        case 2:
+            Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0001);
+            break;
+        case 3:
+            Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0011);
+            break;
 
     }
 }
@@ -821,7 +882,7 @@ int main(int argc, char **argv) {
     if (!sound_thread)
         return 1;*/
 
-    if(hComm == NULL) {
+    if (hComm == NULL) {
         // Open the serial port
         hComm = CreateFile("\\\\.\\COM7",
                            GENERIC_WRITE | GENERIC_READ,
@@ -832,7 +893,7 @@ int main(int argc, char **argv) {
                            NULL);
 
 
-        if(hComm == INVALID_HANDLE_VALUE) {
+        if (hComm == INVALID_HANDLE_VALUE) {
             printf("!!!! Error in opening serial port\n");
         }
         // Initialize the DCB structure
@@ -842,7 +903,7 @@ int main(int argc, char **argv) {
         Sleep(10);
         // Get the current state
         BOOL fSuccess = GetCommState(hComm, &dcb);
-        if(!fSuccess) {
+        if (!fSuccess) {
             // Handle the error
             printf("!!!! Error in getting current serial port state\n");
             CloseHandle(hComm);
@@ -858,7 +919,7 @@ int main(int argc, char **argv) {
 
 
         fSuccess = SetCommState(hComm, &dcb);
-        if(!fSuccess) {
+        if (!fSuccess) {
             // Handle the error
             printf("!!!! Error in setting serial port state\n");
             CloseHandle(hComm);
@@ -873,7 +934,7 @@ int main(int argc, char **argv) {
         timeouts.WriteTotalTimeoutMultiplier = 1;
         Sleep(10);
         fSuccess = SetCommTimeouts(hComm, &timeouts);
-        if(!fSuccess) {
+        if (!fSuccess) {
             // Handle the error
             printf("!!!! Error in setting timeouts\n");
             CloseHandle(hComm);

@@ -100,12 +100,12 @@ void portout(uint16_t portnum, uint16_t value) {
                     break;
                 case 0x0D: // Start address (LSB)
                     vram_offset = (uint32_t) vram_offset << 8 | (uint32_t) value;
-                    //printf("vram offset %04X\n", vram_offset);
+                    printf("vram offset %04X\n", vram_offset);
                     break;
             }
 
-//            if ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F))
-//                printf("CRT %x %x\n", crt_controller_idx, value);
+            if ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F))
+                printf("CRT %x %x\n", crt_controller_idx, value);
 
             crt_controller[crt_controller_idx] = value;
 

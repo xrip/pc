@@ -206,6 +206,7 @@ void intcall86(uint8_t intnum) {
                     CPU_BH = 0;
                     return;
                 case 0x00:
+        printf("INT 10h CPU_AH: 0x%x CPU_AL: 0x%x\r\n", CPU_AH, CPU_AL);
                     videomode = CPU_AL & 0x7F;
 
                     RAM[0x449] = CPU_AL;
@@ -216,6 +217,7 @@ void intcall86(uint8_t intnum) {
                     if ((CPU_AL & 0x80) == 0x00) {
                         memset(VIDEORAM, 0x1, VIDEORAM_SIZE);
                     }
+                    vga_plane_offset = 0;
                     // http://www.techhelpmanual.com/114-video_modes.html
                     // http://www.techhelpmanual.com/89-video_memory_layouts.html
                     // char tmp[40];

@@ -1,7 +1,11 @@
 #include "emulator/emulator.h"
 
 uint8_t vga_register;
-static uint8_t color_index = 0, read_color_index = 0;
+static uint8_t color_index = 0, read_color_index = 0, sequencer_register = 0, graphics_control_register = 0;
+uint32_t vga_plane_offset = 0;
+uint8_t vga_planar_mode = 0;
+uint8_t vga_sequencer[5];
+uint8_t vga_graphics_control[9];
 
 uint32_t vga_palette[256] = {
         rgb (0, 0, 0),
@@ -263,8 +267,9 @@ uint32_t vga_palette[256] = {
 };
 
 void vga_portout(uint16_t portnum, uint16_t value) {
-    if (portnum != 0x3c8 && portnum != 0x3c9)
-        printf("vga_portout %x %x\n", portnum, value);
+//    if (portnum != 0x3c8 && portnum != 0x3c9)
+//        printf("vga_portout %x %x\n", portnum, value);
+
     switch (portnum) {
         case 0x3C0: {
             static uint8_t data_mode = 0; // 0 -- address, 1 -- data
@@ -287,6 +292,27 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             data_mode ^= 1;
             break;
         }
+        case 0x3C4:
+            sequencer_register = value & 0xff;
+            break;
+        case 0x3C5: {
+            if (sequencer_register == 2) {
+                switch (value & 0b1111) {
+                    case 1: vga_plane_offset = 0; break;
+                    case 2: vga_plane_offset = vga_plane_size * 1; break;
+                    case 4: vga_plane_offset = vga_plane_size * 2; break;
+                    case 8: vga_plane_offset = vga_plane_size * 3; break;
+                }
+
+//                printf("vga_plane_offset %x\n",vga_plane_offset);
+            }
+            if (sequencer_register == 4) {
+                vga_planar_mode = value & 6;
+            }
+
+            vga_sequencer[sequencer_register] = value & 0xff;
+            break;
+        }
         case 0x3C7:
             read_color_index = value & 0xff;
             break;
@@ -302,13 +328,35 @@ void vga_portout(uint16_t portnum, uint16_t value) {
                 vga_palette[color_index++] = rgb(RGB[0], RGB[1], RGB[2]);
                 rgb_index = 0;
             }
-
+            break;
+        }
+        case 0x3CE: { // Graphics 1 and 2 Address Register
+            /*
+             * The Graphics 1 and 2 Address Register selects which register
+                will appear at port 3cfh. The index number of the desired regis
+                ter is written OUT to port 3ceh.
+                Index Register
+                0 Set/Reset
+                1 Enable Set/Reset
+                2 Color Compare
+                3 Data Rotate
+                4 Read Map Select
+                5 Mode Register
+                6 Miscellaneous
+                7 Color Don't Care
+                8 Bit Mask
+             */
+            graphics_control_register = value & 8;
+        }
+        case 0x3CF: { // Graphics 1 and 2 Address Register
+            vga_graphics_control[graphics_control_register] = value & 0xff;
         }
     }
+
 }
 
 uint16_t vga_portin(uint16_t portnum) {
-    printf("vga_portin %x\n", portnum);
+    //printf("vga_portin %x\n", portnum);
 
     switch (portnum) {
         case 0x3C8:
@@ -316,8 +364,8 @@ uint16_t vga_portin(uint16_t portnum) {
         case 0x3C9: {
             static uint8_t rgb_index = 0;
             switch (rgb_index++) {
-                case 0: return ((vga_palette[read_color_index] >> 18))  & 63;
-                case 1: return ((vga_palette[read_color_index] >> 10))  & 63;
+                case 0: return ((vga_palette[read_color_index] >> 18)) & 63;
+                case 1: return ((vga_palette[read_color_index] >> 10)) & 63;
                 case 2: rgb_index = 0; return ((vga_palette[read_color_index++] >> 2)) & 63;
             }
         }
