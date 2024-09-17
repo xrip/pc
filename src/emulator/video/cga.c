@@ -108,12 +108,17 @@ void cga_portout(uint16_t portnum, uint16_t value) {
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
         case 0x3D8: // Mode control register:
+        // 0x13 -- 640 dot mode -- 0b10011
             if (videomode >= 0xd) return;
             color_burst = (value >> 2) & 1;
             // the unofficial Mode 5 palette, accessed by disabling ColorBurst
             if (videomode == 4 || videomode == 5 && color_burst) {
 //                printf("colorburst!!\n");
                 cga_colorset = 2;
+            }
+            if (videomode == 3 && value == 0x1b) {
+                videomode = 0x0a;
+
             }
 
             if ((value & 0x0f) == 0b0001) {

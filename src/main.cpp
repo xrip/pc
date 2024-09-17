@@ -286,20 +286,17 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
-                        case 0x0A: /* tandy 640x200 4 color */ {
-                            // (cga_byte >> 0) & 3
-                            printf("HEEELP!!\n");
-                            uint8_t *pixels = (uint8_t *) &SCREEN[y][0];
-                            uint8_t *tga_row = vidramptr + (((y / 2) & 3) * 8192) + ((y / 8) * 160);
-                            for (int x = 640; x--;) {
+                        case 0x0a: /* tandy 640x200 16 color */ {
+                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            uint8_t *tga_row = VIDEORAM + ((y / 2) * 320);
+                            for (int x = 320; x--;) {
                                 uint8_t tga_byte = *tga_row++;
-                                *pixels++ = (tga_byte >> 6) & 3;
-                                *pixels++ = (tga_byte >> 4) & 3;
-                                *pixels++ = (tga_byte >> 2) & 3;
-                                *pixels++ = (tga_byte >> 0) & 3;
+                                *pixels++ = tga_palette[(tga_byte >> 4) & 15];
+                                *pixels++ = tga_palette[tga_byte & 15];
                             }
                             break;
                         }
+
                         case 0x0D: /* EGA */  {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             vidramptr = VIDEORAM + vram_offset;
