@@ -1,7 +1,6 @@
 #include "emulator.h"
 
-//uint8_t portram[0x400];
-uint8_t crt_controller_idx, crt_controller[18];
+uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
@@ -63,9 +62,19 @@ void portout(uint16_t portnum, uint16_t value) {
             }
 
             return adlib_write(adlib_register, value);
-
+// EGA/VGA
+        case 0x3C0:
+        case 0x3C4:
+        case 0x3C5:
+        case 0x3C6:
+        case 0x3C7:
+        case 0x3C8:
+        case 0x3C9:
+            return vga_portout(portnum, value);
 // https://stanislavs.org/helppc/6845.html
 // https://bitsavers.trailing-edge.com/components/motorola/_dataSheets/6845.pdf
+// https://www.theoddys.com/acorn/the_6845_crtc/the_6845_crtc.html
+// MC6845 CRTC
         case 0x3D4:
             crt_controller_idx = value & 31;
             break;
@@ -90,8 +99,8 @@ void portout(uint16_t portnum, uint16_t value) {
                     vram_offset = value;
                     break;
                 case 0x0D: // Start address (LSB)
-                    vram_offset = (uint32_t)vram_offset << 8 | (uint32_t)value;
-//                    printf("vram offset %04X\n", vram_offset);
+                    vram_offset = (uint32_t) vram_offset << 8 | (uint32_t) value;
+                    //printf("vram offset %04X\n", vram_offset);
                     break;
             }
 
@@ -112,7 +121,7 @@ uint16_t portin(uint16_t portnum) {
     switch (portnum) {
         case 0x20:
         case 0x21: //i8259
-            return (in8259(portnum));
+            return in8259(portnum);
         case 0x40:
         case 0x41:
         case 0x42:
@@ -127,7 +136,8 @@ uint16_t portin(uint16_t portnum) {
         case 0x64:
             return port64;
 
-        case 0x388: // adlib
+// Alib
+        case 0x388:
         case 0x389:
             if (!adlibregmem[4])
                 adlibstatus = 0;
@@ -151,12 +161,10 @@ uint16_t portin(uint16_t portnum) {
 
 
 void portout16(uint16_t portnum, uint16_t value) {
-//    printf(">> port16 %x %x\n", portnum, value);
     portout(portnum, (uint8_t) value);
     portout(portnum + 1, (uint8_t) (value >> 8));
 }
 
 uint16_t portin16(uint16_t portnum) {
-//    printf("<< port16 %x %x\n", portnum, portram[portnum]);
     return portin(portnum) | portin(portnum + 1) >> 8;
 }

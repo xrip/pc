@@ -1,4 +1,4 @@
-#include "emulator.h"
+#include "../emulator.h"
 
 uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0;
 uint8_t port3DA;
@@ -139,7 +139,7 @@ void cga_portout(uint16_t portnum, uint16_t value) {
 }
 
 uint16_t cga_portin(uint16_t portnum) {
-    port3DA ^= 1;
-    if (!(port3DA & 1)) port3DA ^= 8;
+//    port3DA ^= 1;
+//    if (!(port3DA & 1)) port3DA ^= 8;
     return port3DA;
 }

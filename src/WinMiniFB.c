@@ -131,27 +131,17 @@ int mfb_open(const char *title, int width, int height, int scale) {
     return 1;
 }
 
-void mfb_set_pallete(const uint32_t *new_palette, uint8_t start, uint8_t count) {
-    RGBQUAD *palette = &s_bitmapInfo->bmiColors[0];
-    // for (int i = 0; i < 256; ++i)
-    // {
-    //     RGBQUAD rgb = {0};
-    //     rgb.rgbRed =  ~i;
-    //     rgb.rgbGreen =  ~i;
-    //     rgb.rgbBlue =  ~i;
-    //     palette[i] = rgb;
-    // }
+void mfb_set_pallete_array(const uint32_t *new_palette, uint8_t start, uint8_t count) {
+    uint32_t * palette = (uint32_t *) &s_bitmapInfo->bmiColors[0];
     for (int i = start; i < start+count; i++) {
-        uint32_t *ptr = (uint32_t *) &palette[i];
-        *ptr = new_palette[i-start];
-//            *ptr++ = ((i & 0x03) << 2) * 16;
-//            *ptr++ = ((i & 0xe0) >> 4) * 16;
-//            *ptr = ((i & 0x1C) >> 1) * 16;
+        palette[i] = new_palette[i-start];
     }
-
 }
 
-
+void mfb_set_pallete(const uint8_t color_index, const uint32_t color) {
+    uint32_t * palette = (uint32_t *) &s_bitmapInfo->bmiColors[0];
+    palette[color_index] = color;
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int mfb_update(void *buffer, int fps_limit) {

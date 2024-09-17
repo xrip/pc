@@ -10,6 +10,7 @@ extern "C" {
 #define VIDEORAM_SIZE (256 << 10)
 #define RAM_SIZE (640 * 1024)
 #define SOUND_FREQUENCY 44100
+#define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
 
 extern uint8_t log_debug;
 
@@ -57,6 +58,9 @@ extern uint32_t cga_composite_palette[3][16];
 extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking;
 extern uint16_t cga_portin(uint16_t portnum);
 extern void cga_portout(uint16_t portnum, uint16_t value);
+
+// EGA/VGA
+extern void vga_portout(uint16_t portnum, uint16_t value);
 
 // Memory
 extern void writew86(uint32_t addr32, uint16_t value);
