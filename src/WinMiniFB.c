@@ -103,7 +103,7 @@ int mfb_open(const char *title, int width, int height, int scale) {
 
     s_bitmapInfo = (BITMAPINFO *) malloc(sizeof(BITMAPINFO) + sizeof(RGBQUAD) * 256);
     s_bitmapInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    s_bitmapInfo->bmiHeader.biBitCount = 8;
+    s_bitmapInfo->bmiHeader.biBitCount = 32;
     s_bitmapInfo->bmiHeader.biPlanes = 1;
     s_bitmapInfo->bmiHeader.biWidth = width;
     s_bitmapInfo->bmiHeader.biHeight = -height;

@@ -1,6 +1,7 @@
 #include "emulator/emulator.h"
 
 uint8_t vga_register;
+static uint8_t color_index = 0, read_color_index = 0;
 
 uint32_t vga_palette[256] = {
         rgb (0, 0, 0),
@@ -262,7 +263,8 @@ uint32_t vga_palette[256] = {
 };
 
 void vga_portout(uint16_t portnum, uint16_t value) {
-    printf("vga_portout %x %x\n", portnum, value);
+    if (portnum != 0x3c8 && portnum != 0x3c9)
+        printf("vga_portout %x %x\n", portnum, value);
     switch (portnum) {
         case 0x3C0: {
             static uint8_t data_mode = 0; // 0 -- address, 1 -- data
@@ -281,8 +283,43 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             } else {
                 vga_register = value & 0b1111;
             }
-            data_mode ^= 1;
-        }
 
+            data_mode ^= 1;
+            break;
+        }
+        case 0x3C7:
+            read_color_index = value & 0xff;
+            break;
+        case 0x3C8: //color index register (write operations)
+            color_index = value & 0xff;
+            break;
+        case 0x3C9: { //RGB data register
+            static uint8_t RGB[3] = { 0, 0, 0 };
+            static uint8_t rgb_index = 0;
+
+            RGB[rgb_index++] = value << 2;
+            if (rgb_index == 3) {
+                vga_palette[color_index++] = rgb(RGB[0], RGB[1], RGB[2]);
+                rgb_index = 0;
+            }
+
+        }
+    }
+}
+
+uint16_t vga_portin(uint16_t portnum) {
+    printf("vga_portin %x\n", portnum);
+
+    switch (portnum) {
+        case 0x3C8:
+            return read_color_index;
+        case 0x3C9: {
+            static uint8_t rgb_index = 0;
+            switch (rgb_index++) {
+                case 0: return ((vga_palette[read_color_index] >> 18))  & 63;
+                case 1: return ((vga_palette[read_color_index] >> 10))  & 63;
+                case 2: rgb_index = 0; return ((vga_palette[read_color_index++] >> 2)) & 63;
+            }
+        }
     }
 }

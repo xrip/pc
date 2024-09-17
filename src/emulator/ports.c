@@ -147,6 +147,13 @@ uint16_t portin(uint16_t portnum) {
             adlibstatus = adlibstatus + (adlibregmem[4] & 1) * 0x40 + (adlibregmem[4] & 2) * 0x10;
             return adlibstatus;
 
+        case 0x3C1:
+        case 0x3C2:
+        case 0x3C7:
+        case 0x3C8:
+        case 0x3C9:
+            return vga_portin(portnum);
+
         case 0x3D4:
             return crt_controller_idx;
         case 0x3D5:
@@ -155,7 +162,7 @@ uint16_t portin(uint16_t portnum) {
             return cga_portin(portnum);
 
         default:
-            return 0xFF;
+            return 0x00;
     }
 }
 

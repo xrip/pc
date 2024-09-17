@@ -61,7 +61,7 @@ extern void cga_portout(uint16_t portnum, uint16_t value);
 
 // EGA/VGA
 extern void vga_portout(uint16_t portnum, uint16_t value);
-
+extern uint16_t vga_portin(uint16_t portnum);
 // Memory
 extern void writew86(uint32_t addr32, uint16_t value);
 
