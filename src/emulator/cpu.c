@@ -206,7 +206,9 @@ void intcall86(uint8_t intnum) {
                     CPU_BH = 0;
                     return;
                 case 0x00:
-//        printf("INT 10h CPU_AH: 0x%x CPU_AL: 0x%x\r\n", CPU_AH, CPU_AL);
+                    // http://www.techhelpmanual.com/114-video_modes.html
+                    // http://www.techhelpmanual.com/89-video_memory_layouts.html
+
                     videomode = CPU_AL & 0x7F;
 
                     RAM[0x449] = CPU_AL;
@@ -219,13 +221,6 @@ void intcall86(uint8_t intnum) {
                     }
                     vga_plane_offset = 0;
                     vga_planar_mode = 0;
-                    // http://www.techhelpmanual.com/114-video_modes.html
-                    // http://www.techhelpmanual.com/89-video_memory_layouts.html
-                    // char tmp[40];
-                    // snprintf(tmp, 40, "VBIOS: Mode AH=0x%x (videomode: 0x%x)", CPU_AX, videomode);
-                    // logMsg(tmp);
-                    // Установить видеорежим
-                    //printf("VBIOS: Mode AH=0x%x (videomode: 0x%x)\n", CPU_AX, videomode);
                     break;
                 case 0x1A: //get display combination code (ps, vga/mcga)
                     CPU_AL = 0x1A;
@@ -1871,7 +1866,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x54: /* 54 PUSH eSP */
-                push(CPU_SP - 2);
+                push(CPU_SP);
                 break;
 
             case 0x55: /* 55 PUSH eBP */
@@ -2477,7 +2472,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x9C: /* 9C PUSHF */
-                push(makeflagsword() | 0x0800);
+                push(makeflagsword() | 0xF800);
                 break;
 
             case 0x9D: /* 9D POPF */
