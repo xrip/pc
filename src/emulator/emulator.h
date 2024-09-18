@@ -110,6 +110,11 @@ extern uint8_t speakerenabled;
 extern uint8_t in8253(uint16_t portnum);
 extern void out8253(uint16_t portnum, uint8_t value);
 
+// Mouse
+extern void mouse_portout(uint16_t portnum, uint8_t value);
+extern uint8_t mouse_portin(uint16_t portnum);
+extern void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel);
+
 
 extern void tandy_write(uint16_t reg, uint8_t value);
 extern void adlib_write(uint16_t reg, uint8_t value);

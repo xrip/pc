@@ -17,12 +17,19 @@ static int s_scale = 1;
 static HDC s_hdc;
 static void *s_buffer;
 BITMAPINFO *s_bitmapInfo;
-static char key_status[512] = { 0 };
+static char key_status[512] = {0};
+RECT rect = {0};
+
+POINT lastPos = {0, 0};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 extern void HandleInput(WPARAM wParam, BOOL isKeyDown);
+
+extern void HandleMouse(int x, int y, int buttons);
+
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     LRESULT res = 0;
+    POINT currentPos;
 
     switch (message) {
         case WM_PAINT: {
@@ -39,6 +46,41 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
             break;
         }
 
+        case WM_MOUSEMOVE:
+            if (GetCapture() != hWnd) {
+                // SetCapture(hWnd);
+                ShowCursor(FALSE);
+                // SetCursorPos(GetSystemMetrics(SM_CXSCREEN) / 2, GetSystemMetrics(SM_CYSCREEN) / 2);
+                // GetCursorPos(&lastPos);
+            }
+             if (GetFocus() != hWnd) {
+                 SetFocus(hWnd);
+             }
+            GetCursorPos(&currentPos);
+            HandleMouse(currentPos.x, currentPos.y, 0);
+            break;
+        case WM_LBUTTONDOWN:
+            GetCursorPos(&currentPos);
+            HandleMouse(currentPos.x, currentPos.y, 0b10);
+
+            break;
+
+        case WM_LBUTTONUP:
+            GetCursorPos(&currentPos);
+            HandleMouse(currentPos.x, currentPos.y, 0b00);
+
+            break;
+        case WM_RBUTTONDOWN:
+            GetCursorPos(&currentPos);
+            HandleMouse(currentPos.x, currentPos.y, 0b1);
+
+            break;
+        case WM_RBUTTONUP:
+            GetCursorPos(&currentPos);
+            HandleMouse(currentPos.x, currentPos.y, 0b0);
+
+            break;
+
         case WM_KEYDOWN:
         case WM_KEYUP:
         case WM_SYSKEYDOWN:
@@ -46,8 +88,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
             HandleInput(wParam, !(lParam >> 31 & 1));
             key_status[wParam] = !(lParam >> 31 & 1);
 
-/*            if ((wParam & 0xFF) == 27)
-                s_close = 1;*/
+            if ((wParam & 0xFF) == 27 && GetCapture() == hWnd) {
+                // ShowCursor(TRUE);
+                // ReleaseCapture();
+            }
+            /*            if ((wParam & 0xFF) == 27)
+                            s_close = 1;*/
 
             break;
         }
@@ -67,8 +113,6 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int mfb_open(const char *title, int width, int height, int scale) {
-    RECT rect = { 0 };
-
     s_wc.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
     s_wc.lpfnWndProc = WndProc;
     s_wc.hCursor = LoadCursor(0, IDC_ARROW);
@@ -91,8 +135,8 @@ int mfb_open(const char *title, int width, int height, int scale) {
     s_wnd = CreateWindowEx(0,
                            title, title,
                            WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
-                           -1920 + (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2,
-                           320 + (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2,
+                           (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2,
+                           (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2,
                            rect.right, rect.bottom,
                            0, 0, 0, 0);
 
@@ -115,14 +159,14 @@ int mfb_open(const char *title, int width, int height, int scale) {
     s_bitmapInfo->bmiHeader.biClrImportant = 1;
 
 
-/*
-    s_bitmapInfo->bmiHeader.biBitCount = 16;
-    s_bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
+    /*
+        s_bitmapInfo->bmiHeader.biBitCount = 16;
+        s_bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
 
-    ((DWORD *)s_bitmapInfo->bmiColors)[0] = 0xF800;
-    ((DWORD *)s_bitmapInfo->bmiColors)[1] = 0x07E0;
-    ((DWORD *)s_bitmapInfo->bmiColors)[2] = 0x001F;
-*/
+        ((DWORD *)s_bitmapInfo->bmiColors)[0] = 0xF800;
+        ((DWORD *)s_bitmapInfo->bmiColors)[1] = 0x07E0;
+        ((DWORD *)s_bitmapInfo->bmiColors)[2] = 0x001F;
+    */
     // ((DWORD *)s_bitmapInfo->bmiColors)[0] = 0x001F;
     // ((DWORD *)s_bitmapInfo->bmiColors)[1] = 0x001F;
     // ((DWORD *)s_bitmapInfo->bmiColors)[2] = 0x001F;
@@ -132,16 +176,17 @@ int mfb_open(const char *title, int width, int height, int scale) {
 }
 
 void mfb_set_pallete_array(const uint32_t *new_palette, uint8_t start, uint8_t count) {
-    uint32_t * palette = (uint32_t *) &s_bitmapInfo->bmiColors[0];
-    for (int i = start; i < start+count; i++) {
-        palette[i] = new_palette[i-start];
+    uint32_t *palette = (uint32_t *) &s_bitmapInfo->bmiColors[0];
+    for (int i = start; i < start + count; i++) {
+        palette[i] = new_palette[i - start];
     }
 }
 
 void mfb_set_pallete(const uint8_t color_index, const uint32_t color) {
-    uint32_t * palette = (uint32_t *) &s_bitmapInfo->bmiColors[0];
+    uint32_t *palette = (uint32_t *) &s_bitmapInfo->bmiColors[0];
     palette[color_index] = color;
 }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int mfb_update(void *buffer, int fps_limit) {

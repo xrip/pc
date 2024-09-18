@@ -17,12 +17,12 @@ DCB dcb;
 #define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
 
 
-int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = { 0 };
+int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = {0};
 
 DWORD WINAPI SoundThread(LPVOID lpParam) {
     WAVEHDR waveHeaders[4];
 
-    WAVEFORMATEX format = { 0 };
+    WAVEFORMATEX format = {0};
     format.wFormatTag = WAVE_FORMAT_PCM;
     format.nChannels = 2;
     format.nSamplesPerSec = AUDIO_FREQ;
@@ -38,8 +38,8 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     for (size_t i = 0; i < 4; i++) {
         int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH * 2];
         waveHeaders[i] = {
-                .lpData = (char *) audio_buffers[i],
-                .dwBufferLength = AUDIO_BUFFER_LENGTH * 2,
+            .lpData = (char *) audio_buffers[i],
+            .dwBufferLength = AUDIO_BUFFER_LENGTH * 2,
         };
         waveOutPrepareHeader(hWaveOut, &waveHeaders[i], sizeof(WAVEHDR));
         waveHeaders[i].dwFlags |= WHDR_DONE;
@@ -58,9 +58,9 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
             return 1;
         }
 
-// Wait until audio finishes playing
+        // Wait until audio finishes playing
         while (currentHeader->dwFlags & WHDR_DONE) {
-//            PSG_calc_stereo(&psg, audiobuffer, AUDIO_BUFFER_LENGTH);
+            //            PSG_calc_stereo(&psg, audiobuffer, AUDIO_BUFFER_LENGTH);
             memcpy(currentHeader->lpData, audiobuffer, AUDIO_BUFFER_LENGTH * 2);
             waveOutWrite(hWaveOut, currentHeader, sizeof(WAVEHDR));
 
@@ -73,34 +73,34 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
 
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current;
-    QueryPerformanceCounter(&start);  // Get the starting time
+    QueryPerformanceCounter(&start); // Get the starting time
 
-    uint8_t localVRAM[VIDEORAM_SIZE] = { 0 };
+    uint8_t localVRAM[VIDEORAM_SIZE] = {0};
     double elapsed_system_timer = 0;
     double elapsed_blink_tics = 0;
     double elapsed_frame_tics = 0;
 
     while (true) {
-        QueryPerformanceCounter(&current);  // Get the current time
+        QueryPerformanceCounter(&current); // Get the current time
 
         // Calculate elapsed time in ticks since the start
         auto elapsedTime = (double) (current.QuadPart - start.QuadPart);
 
         if (elapsedTime - elapsed_system_timer >= timer_period) {
             doirq(0);
-            elapsed_system_timer = elapsedTime;  // Reset the tick counter for 1Hz
+            elapsed_system_timer = elapsedTime; // Reset the tick counter for 1Hz
         }
 
         if (elapsedTime - elapsed_blink_tics >= 500'000'0) {
             cursor_blink_state ^= 1;
-            elapsed_blink_tics = elapsedTime;  // Reset the tick counter for 2Hz
+            elapsed_blink_tics = elapsedTime; // Reset the tick counter for 2Hz
         }
 
         if (elapsedTime - elapsed_frame_tics >= 16'666) {
             if (1) {
-// http://www.techhelpmanual.com/114-video_modes.html
-// http://www.techhelpmanual.com/89-video_memory_layouts.html
-// https://mendelson.org/wpdos/videomodes.txt
+                // http://www.techhelpmanual.com/114-video_modes.html
+                // http://www.techhelpmanual.com/89-video_memory_layouts.html
+                // https://mendelson.org/wpdos/videomodes.txt
                 port3DA = 1;
                 static uint8_t v = 0;
                 if (v != videomode) {
@@ -117,15 +117,15 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                     switch (videomode) {
                         case 0x00:
                         case 0x01: {
-                            uint16_t y_div_16 = y / 16;       // Precompute y / 16
-                            uint8_t y_mod_8 = (y / 2) % 8;    // Precompute y % 8 for font lookup
+                            uint16_t y_div_16 = y / 16; // Precompute y / 16
+                            uint8_t y_mod_8 = (y / 2) % 8; // Precompute y % 8 for font lookup
 
                             for (uint8_t column = 0; column < cols; column++) {
                                 // Access vidram and font data once per character
-                                uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2];  // Character code
+                                uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2]; // Character code
                                 uint8_t glyph_row = font_8x8[charcode * 8 +
-                                                             y_mod_8];              // Glyph row from font
-                                uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1];  // Color attribute
+                                                             y_mod_8]; // Glyph row from font
+                                uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1]; // Color attribute
 
                                 // Calculate screen position
                                 uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column) * 2;
@@ -140,12 +140,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                 for (uint8_t bit = 0; bit < 8; bit++) {
                                     uint8_t pixel_color;
                                     if (cursor_active) {
-                                        pixel_color = color & 0x0F;  // Cursor foreground color
+                                        pixel_color = color & 0x0F; // Cursor foreground color
                                     } else if ((color >> 7) & 1 && cursor_blink_state) {
-                                        pixel_color = (color >> 4) & 0x07;  // Blinking background color
+                                        pixel_color = (color >> 4) & 0x07; // Blinking background color
                                     } else {
-                                        pixel_color = (glyph_row >> bit) & 1 ? (color & 0x0f) : (color
-                                                >> 4);  // Foreground or background color
+                                        pixel_color = (glyph_row >> bit) & 1
+                                                          ? (color & 0x0f)
+                                                          : (color
+                                                             >> 4); // Foreground or background color
                                     }
 
                                     // Write the pixel twice (horizontal scaling)
@@ -159,16 +161,16 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
                         case 0x02:
                         case 0x03: {
-                            uint16_t y_div_16 = y / 16;       // Precompute y / 16
-                            uint8_t y_mod_16 = y % 16;    // Precompute y % 8 for font lookup
+                            uint16_t y_div_16 = y / 16; // Precompute y / 16
+                            uint8_t y_mod_16 = y % 16; // Precompute y % 8 for font lookup
 
                             for (uint8_t column = 0; column < cols; column++) {
                                 // Access vidram and font data once per character
                                 const uint16_t column_offset = y_div_16 * (cols * 2) + column * 2;
-                                uint8_t charcode = vidramptr[column_offset];  // Character code
+                                uint8_t charcode = vidramptr[column_offset]; // Character code
                                 uint8_t color = vidramptr[column_offset + 1]; // Color attribute
                                 uint8_t glyph_row = font_8x16[charcode * 16 +
-                                                              y_mod_16];              // Glyph row from font
+                                                              y_mod_16]; // Glyph row from font
 
                                 // Calculate screen position
                                 uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column);
@@ -176,20 +178,23 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                 // Cursor blinking check
                                 uint8_t cursor_active =
                                         cursor_blink_state && y_div_16 == CURSOR_Y && column == CURSOR_X &&
-                                        (cursor_start > cursor_end ? !(y_mod_16 >= cursor_end << 1 &&
-                                                                       y_mod_16 <= cursor_start << 1) :
-                                         y_mod_16 >= cursor_start << 1 && y_mod_16 <= cursor_end << 1);
+                                        (cursor_start > cursor_end
+                                             ? !(y_mod_16 >= cursor_end << 1 &&
+                                                 y_mod_16 <= cursor_start << 1)
+                                             : y_mod_16 >= cursor_start << 1 && y_mod_16 <= cursor_end << 1);
 
                                 // Unrolled bit loop: Write 8 pixels with scaling (2x horizontally)
                                 for (uint8_t bit = 0; bit < 8; bit++) {
                                     uint8_t pixel_color;
                                     if (cursor_active) {
-                                        pixel_color = color & 0x0F;  // Cursor foreground color
+                                        pixel_color = color & 0x0F; // Cursor foreground color
                                     } else if (cga_blinking && (color >> 7) & 1 && cursor_blink_state) {
-                                        pixel_color = (color >> 4) & 0x07;  // Blinking background color
+                                        pixel_color = (color >> 4) & 0x07; // Blinking background color
                                     } else {
-                                        pixel_color = (glyph_row >> bit) & 1 ? (color & 0x0f) : (color
-                                                >> 4);  // Foreground or background color
+                                        pixel_color = (glyph_row >> bit) & 1
+                                                          ? (color & 0x0f)
+                                                          : (color
+                                                             >> 4); // Foreground or background color
                                     }
 
                                     *screenptr++ = cga_palette[pixel_color];
@@ -201,36 +206,40 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         case 0x05: {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             uint8_t *cga_row = &vidramptr[((((y / 2) >> 1) * 80) +
-                                                           (((y / 2) & 1) * 8192))];  // Precompute CGA row pointer
+                                                           (((y / 2) & 1) * 8192))]; // Precompute CGA row pointer
                             uint8_t *current_cga_palette = (uint8_t *) cga_gfxpal[cga_colorset][cga_intensity];
 
                             for (int x = 0; x < 320; x += 4) {
-                                uint8_t cga_byte = *cga_row++;  // Get the byte containing 4 pixels
+                                uint8_t cga_byte = *cga_row++; // Get the byte containing 4 pixels
 
                                 // Extract all four 2-bit pixels from the CGA byte
                                 // and write each pixel twice for horizontal scaling
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 6) & 3 ? current_cga_palette[
-                                        (cga_byte >> 6) & 3]
-                                                                                        : cga_foreground_color];
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 4) & 3 ? current_cga_palette[
-                                        (cga_byte >> 4) & 3]
-                                                                                        : cga_foreground_color];
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 2) & 3 ? current_cga_palette[
-                                        (cga_byte >> 2) & 3]
-                                                                                        : cga_foreground_color];
-                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 0) & 3 ? current_cga_palette[
-                                        (cga_byte >> 0) & 3]
-                                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 6) & 3
+                                                                        ? current_cga_palette[
+                                                                            (cga_byte >> 6) & 3]
+                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 4) & 3
+                                                                        ? current_cga_palette[
+                                                                            (cga_byte >> 4) & 3]
+                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 2) & 3
+                                                                        ? current_cga_palette[
+                                                                            (cga_byte >> 2) & 3]
+                                                                        : cga_foreground_color];
+                                *pixels++ = *pixels++ = cga_palette[(cga_byte >> 0) & 3
+                                                                        ? current_cga_palette[
+                                                                            (cga_byte >> 0) & 3]
+                                                                        : cga_foreground_color];
                             }
                             break;
                         }
                         case 0x06: {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             uint8_t *cga_row = &vidramptr[(((y / 2) >> 1) * 80) +
-                                                          (((y / 2) & 1) * 8192)];  // Precompute row start
+                                                          (((y / 2) & 1) * 8192)]; // Precompute row start
 
                             for (int x = 0; x < 640; x += 8) {
-                                uint8_t cga_byte = *cga_row++;  // Fetch 8 pixels from CGA memory
+                                uint8_t cga_byte = *cga_row++; // Fetch 8 pixels from CGA memory
 
                                 *pixels++ = cga_palette[((cga_byte >> 7) & 1) * cga_foreground_color];
                                 *pixels++ = cga_palette[((cga_byte >> 6) & 1) * cga_foreground_color];
@@ -258,15 +267,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                 case 0x76:
                                     palette = cga_composite_palette[cga_intensity + cga_colorset];
                                     break;
-
                             }
 
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             uint8_t *cga_row = &vidramptr[(((y / 2) >> 1) * 80) +
-                                                          (((y / 2) & 1) * 8192)];  // Precompute row start
+                                                          (((y / 2) & 1) * 8192)]; // Precompute row start
 
                             for (int x = 0; x < 640; x += 8) {
-                                uint8_t cga_byte = *cga_row++;  // Fetch 8 pixels from CGA memory
+                                uint8_t cga_byte = *cga_row++; // Fetch 8 pixels from CGA memory
 
                                 *pixels++ = *pixels++ = *pixels++ = *pixels++ = palette[((cga_byte >> 4) & 15)];
                                 *pixels++ = *pixels++ = *pixels++ = *pixels++ = palette[(cga_byte & 15)];
@@ -297,7 +305,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             break;
                         }
 
-                        case 0x0D: /* EGA */  {
+                        case 0x0D: /* EGA */ {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             vidramptr = VIDEORAM + vram_offset;
                             for (int x = 0; x < 320; x++) {
@@ -313,7 +321,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
-                        case 0x0E: /* EGA mode 0xE */  {
+                        case 0x0E: /* EGA mode 0xE */ {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             vidramptr = VIDEORAM + vram_offset;
                             for (int x = 0; x < 640; x++) {
@@ -327,7 +335,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
-                        case 0x13 : {
+                        case 0x13: {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             if (vga_planar_mode) {
                                 for (int x = 0; x < 320; x++) {
@@ -350,15 +358,15 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
 
                         case 0x77: /* 160x100x16 textmode */ {
-                            uint16_t y_div_16 = y / 4;       // Precompute y / 16
-                            uint8_t y_mod_8 = (y / 2) % 2;    // Precompute y % 8 for font lookup
+                            uint16_t y_div_16 = y / 4; // Precompute y / 16
+                            uint8_t y_mod_8 = (y / 2) % 2; // Precompute y % 8 for font lookup
 
                             for (uint8_t column = 0; column < cols; column++) {
                                 // Access vidram and font data once per character
-                                uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2];  // Character code
+                                uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2]; // Character code
                                 uint8_t glyph_row = font_8x16[charcode * 16 +
-                                                              y_mod_8];              // Glyph row from font
-                                uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1];  // Color attribute
+                                                              y_mod_8]; // Glyph row from font
+                                uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1]; // Color attribute
 
                                 // Calculate screen position
                                 uint8_t *screenptr = (uint8_t *) &SCREEN[0][0] + y * 640 + (8 * column);
@@ -372,12 +380,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                 for (uint8_t bit = 0; bit < 8; bit++) {
                                     uint8_t pixel_color;
                                     if (cursor_active) {
-                                        pixel_color = color & 0x0F;  // Cursor foreground color
+                                        pixel_color = color & 0x0F; // Cursor foreground color
                                     } else if (cga_blinking && (color >> 7) & 1 && cursor_blink_state) {
-                                        pixel_color = (color >> 4) & 0x07;  // Blinking background color
+                                        pixel_color = (color >> 4) & 0x07; // Blinking background color
                                     } else {
-                                        pixel_color = (glyph_row >> bit) & 1 ? (color & 0x0f) : (color
-                                                >> 4);  // Foreground or background color
+                                        pixel_color = (glyph_row >> bit) & 1
+                                                          ? (color & 0x0f)
+                                                          : (color
+                                                             >> 4); // Foreground or background color
                                     }
 
                                     *screenptr++ = pixel_color;
@@ -387,11 +397,10 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
                         default:
                             printf("Unsupported videomode %x\n", videomode);
-
                     }
             }
             port3DA = 0b1000;
-            elapsed_frame_tics = elapsedTime;  // Reset the tick counter for 2Hz
+            elapsed_frame_tics = elapsedTime; // Reset the tick counter for 2Hz
         }
 
         //Sleep(1);
@@ -399,6 +408,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 }
 
 uint8_t log_debug = 0;
+
+extern "C" void HandleMouse(int x, int y, uint8_t buttons) {
+    static int prev_x = 0, prev_y = 0;
+    sermouseevent(buttons, x - prev_x, y - prev_y);
+    prev_y = y;
+    prev_x = x;
+}
+
 extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
     unsigned char scancode = 0;
     // Check if SCROLL LOCK is pressed
@@ -406,7 +423,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
         // Check if CTRL and ALT are pressed
         if ((GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_MENU) & 0x8000)) {
             // Handle CTRL + ALT + SCROLL LOCK combination
-//            MessageBox(nullptr, "CTRL + ALT + SCROLL LOCK detected!", "COMPOSITE MODE ON", MB_OK);
+            //            MessageBox(nullptr, "CTRL + ALT + SCROLL LOCK detected!", "COMPOSITE MODE ON", MB_OK);
             static uint8_t old_vm;
             if (videomode == 4 || videomode == 6) {
                 old_vm = videomode;
@@ -454,15 +471,15 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             break;
         case VK_OEM_MINUS:
             scancode = 0x0C;
-            break;  // - key
+            break; // - key
         case VK_OEM_PLUS:
             scancode = 0x0D;
-            break;   // = key
+            break; // = key
         case VK_BACK:
             scancode = 0x0E;
-            break;       // Backspace
+            break; // Backspace
 
-            // Row 2
+        // Row 2
         case VK_TAB:
             scancode = 0x0F;
             break;
@@ -498,18 +515,18 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             break;
         case VK_OEM_4:
             scancode = 0x1A;
-            break;  // [ key
+            break; // [ key
         case VK_OEM_6:
             scancode = 0x1B;
-            break;  // ] key
+            break; // ] key
         case VK_RETURN:
             scancode = 0x1C;
             break; // Enter
 
-            // Row 3
+        // Row 3
         case VK_CONTROL:
             scancode = 0x1D;
-            break;  // Left Control
+            break; // Left Control
         case 'A':
             scancode = 0x1E;
             break;
@@ -539,21 +556,21 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             break;
         case VK_OEM_1:
             scancode = 0x27;
-            break;  // ; key
+            break; // ; key
         case VK_OEM_7:
             scancode = 0x28;
-            break;  // ' key
+            break; // ' key
         case VK_OEM_3:
             scancode = 0x29;
-            break;  // ` key (backtick)
+            break; // ` key (backtick)
 
-            // Row 4
+        // Row 4
         case VK_SHIFT:
             scancode = 0x2A;
-            break;  // Left Shift
+            break; // Left Shift
         case VK_OEM_5:
             scancode = 0x2B;
-            break;  // \ key
+            break; // \ key
         case 'Z':
             scancode = 0x2C;
             break;
@@ -577,32 +594,32 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             break;
         case VK_OEM_COMMA:
             scancode = 0x33;
-            break;  // , key
+            break; // , key
         case VK_OEM_PERIOD:
             scancode = 0x34;
             break; // . key
         case VK_OEM_2:
             scancode = 0x35;
-            break;      // / key
+            break; // / key
         case VK_RSHIFT:
             scancode = 0x36;
-            break;     // Right Shift
+            break; // Right Shift
 
-            // Row 5
+        // Row 5
         case VK_MULTIPLY:
             scancode = 0x37;
-            break;  // Numpad *
+            break; // Numpad *
         case VK_MENU:
             scancode = 0x38;
-            break;      // Left Alt
+            break; // Left Alt
         case VK_SPACE:
             scancode = 0x39;
-            break;     // Spacebar
+            break; // Spacebar
         case VK_CAPITAL:
             scancode = 0x3A;
-            break;   // Caps Lock
+            break; // Caps Lock
 
-            // F1-F10
+        // F1-F10
         case VK_F1:
             scancode = 0x3B;
             break;
@@ -634,88 +651,88 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x44;
             break;
 
-            // Numpad
+        // Numpad
         case VK_NUMLOCK:
             scancode = 0x45;
             break;
         case VK_SCROLL:
             scancode = 0x46;
-            break;    // Scroll Lock
+            break; // Scroll Lock
         case VK_NUMPAD7:
             scancode = 0x47;
-            break;   // Numpad 7
+            break; // Numpad 7
         case VK_NUMPAD8:
             scancode = 0x48;
-            break;   // Numpad 8
+            break; // Numpad 8
         case VK_NUMPAD9:
             scancode = 0x49;
-            break;   // Numpad 9
+            break; // Numpad 9
         case VK_SUBTRACT:
             scancode = 0x4A;
-            break;  // Numpad -
+            break; // Numpad -
         case VK_NUMPAD4:
             scancode = 0x4B;
-            break;   // Numpad 4
+            break; // Numpad 4
         case VK_NUMPAD5:
             scancode = 0x4C;
-            break;   // Numpad 5
+            break; // Numpad 5
         case VK_NUMPAD6:
             scancode = 0x4D;
-            break;   // Numpad 6
+            break; // Numpad 6
         case VK_ADD:
             scancode = 0x4E;
-            break;       // Numpad +
+            break; // Numpad +
         case VK_NUMPAD1:
             scancode = 0x4F;
-            break;   // Numpad 1
+            break; // Numpad 1
         case VK_NUMPAD2:
             scancode = 0x50;
-            break;   // Numpad 2
+            break; // Numpad 2
         case VK_NUMPAD3:
             scancode = 0x51;
-            break;   // Numpad 3
+            break; // Numpad 3
         case VK_NUMPAD0:
             scancode = 0x52;
-            break;   // Numpad 0
+            break; // Numpad 0
         case VK_DECIMAL:
             scancode = 0x53;
-            break;   // Numpad .
+            break; // Numpad .
 
-            // Additional keys (insert, delete, etc.)
+        // Additional keys (insert, delete, etc.)
         case VK_INSERT:
             scancode = 0x52;
-            break;    // Insert
+            break; // Insert
         case VK_DELETE:
             scancode = 0x53;
-            break;    // Delete
+            break; // Delete
         case VK_HOME:
             scancode = 0x47;
-            break;      // Home
+            break; // Home
         case VK_END:
             scancode = 0x4F;
-            break;       // End
+            break; // End
         case VK_PRIOR:
             scancode = 0x49;
-            break;     // Page Up
+            break; // Page Up
         case VK_NEXT:
             scancode = 0x51;
-            break;      // Page Down
+            break; // Page Down
         case VK_UP:
             scancode = 0x48;
-            break;        // Up Arrow
+            break; // Up Arrow
         case VK_DOWN:
             scancode = 0x50;
-            break;      // Down Arrow
+            break; // Down Arrow
         case VK_LEFT:
             scancode = 0x4B;
-            break;      // Left Arrow
+            break; // Left Arrow
         case VK_RIGHT:
             scancode = 0x4D;
-            break;     // Right Arrow
+            break; // Right Arrow
 
         default:
             scancode = 0;
-            break;  // No translation
+            break; // No translation
     }
 
     // For key release (KeyUp), add 0x80 to scancode
@@ -810,9 +827,9 @@ DWORD WINAPI MessageHandler(LPVOID lpParam) {
         uint16_t message = Dequeue(q);
 
         // Process the message (just print it for now)
-//        printf("Message received: %u\n", message);
+        //        printf("Message received: %u\n", message);
         if (hComm != NULL && !WriteFile(hComm, &message, 2, &bytesWritten, NULL)) {
-//            printf("!!!! Error in writing to serial port\n");
+            //            printf("!!!! Error in writing to serial port\n");
         }
         // Exit the thread if we receive a special "exit" message
         if (message == 0xFFFF) {
@@ -826,20 +843,22 @@ DWORD WINAPI MessageHandler(LPVOID lpParam) {
 extern "C" void tandy_write(uint16_t reg, uint8_t value) {
     Enqueue(&queue, (value & 0xff) << 8 | 0);
 }
+
 extern "C" void adlib_write(uint16_t reg, uint8_t value) {
-//    printf("Adlib Write %x %x", reg, value);
+    //    printf("Adlib Write %x %x", reg, value);
     uint16_t data = (reg & 0xff) << 8 | 2 << 4 | 0b0000 | (reg >> 8) & 1;
     Enqueue(&queue, data);
-//    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
-//        printf("!!!! Error in writing to serial port\n");
-//    }
+    //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
+    //        printf("!!!! Error in writing to serial port\n");
+    //    }
 
     data = (value & 0xff) << 8 | 2 << 4 | 0b0010 | (reg >> 8) & 1;
     Enqueue(&queue, data);
-//    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
-//        printf("!!!! Error in writing to serial port\n");
-//    }
+    //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
+    //        printf("!!!! Error in writing to serial port\n");
+    //    }
 }
+
 extern "C" void cms_write(uint16_t reg, uint8_t val) {
     switch (reg - 0x220) {
         case 0:
@@ -854,7 +873,6 @@ extern "C" void cms_write(uint16_t reg, uint8_t val) {
         case 3:
             Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0011);
             break;
-
     }
 }
 
@@ -875,9 +893,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-/*    HANDLE sound_thread = CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
-    if (!sound_thread)
-        return 1;*/
+    /*    HANDLE sound_thread = CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
+        if (!sound_thread)
+            return 1;*/
 
     if (hComm == NULL) {
         // Open the serial port
@@ -908,10 +926,10 @@ int main(int argc, char **argv) {
         }
 
         // Set the new state
-        dcb.BaudRate = CBR_115200;    // set the baud rate
-        dcb.ByteSize = 8;           // data size, xmit, and rcv
-        dcb.Parity = NOPARITY;    // no parity bit
-        dcb.StopBits = ONESTOPBIT;  // one stop bit
+        dcb.BaudRate = CBR_115200; // set the baud rate
+        dcb.ByteSize = 8; // data size, xmit, and rcv
+        dcb.Parity = NOPARITY; // no parity bit
+        dcb.StopBits = ONESTOPBIT; // one stop bit
         dcb.fDtrControl = DTR_CONTROL_ENABLE;
 
 
@@ -944,17 +962,16 @@ int main(int argc, char **argv) {
 
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
     while (true) {
-
         exec86(327680);
         if (mfb_update(SCREEN, 0) == -1)
             exit(1);
     }
     // Wait for the thread to finish
-//    WaitForSingleObject(hThread, INFINITE);
+    //    WaitForSingleObject(hThread, INFINITE);
 
     // Clean up
     CloseHandle(hThread);
     DestroyQueue(&queue);
-//    CloseHandle(sound_thread);
+    //    CloseHandle(sound_thread);
     mfb_close();
 }

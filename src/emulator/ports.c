@@ -117,6 +117,15 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x3D9:
             cga_portout(portnum, value);
             break;
+        case 0x3F8:
+case 0x3F9:
+case 0x3FA:
+case 0x3FB:
+case 0x3FC:
+case 0x3FD:
+case 0x3FE:
+case 0x3FF:
+    return mouse_portout(portnum, value);
     }
 }
 
@@ -163,7 +172,15 @@ uint16_t portin(uint16_t portnum) {
             return crt_controller[crt_controller_idx];
         case 0x3DA:
             return cga_portin(portnum);
-
+        case 0x3F8:
+        case 0x3F9:
+        case 0x3FA:
+        case 0x3FB:
+        case 0x3FC:
+        case 0x3FD:
+        case 0x3FE:
+        case 0x3FF:
+            return mouse_portin(portnum);
         default:
             return 0x00;
     }
