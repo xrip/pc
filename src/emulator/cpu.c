@@ -206,7 +206,7 @@ void intcall86(uint8_t intnum) {
                     CPU_BH = 0;
                     return;
                 case 0x00:
-        printf("INT 10h CPU_AH: 0x%x CPU_AL: 0x%x\r\n", CPU_AH, CPU_AL);
+//        printf("INT 10h CPU_AH: 0x%x CPU_AL: 0x%x\r\n", CPU_AH, CPU_AL);
                     videomode = CPU_AL & 0x7F;
 
                     RAM[0x449] = CPU_AL;
