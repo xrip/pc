@@ -215,9 +215,10 @@ void intcall86(uint8_t intnum) {
                     RAM[0x484] = (uint8_t) (25 - 1);
 
                     if ((CPU_AL & 0x80) == 0x00) {
-                        memset(VIDEORAM, 0x1, VIDEORAM_SIZE);
+                        memset(VIDEORAM, 0x0, VIDEORAM_SIZE);
                     }
                     vga_plane_offset = 0;
+                    vga_planar_mode = 0;
                     // http://www.techhelpmanual.com/114-video_modes.html
                     // http://www.techhelpmanual.com/89-video_memory_layouts.html
                     // char tmp[40];
