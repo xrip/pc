@@ -73,6 +73,8 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x3C7:
         case 0x3C8:
         case 0x3C9:
+        case 0x3CE:
+        case 0x3CF:
             return vga_portout(portnum, value);
 // https://stanislavs.org/helppc/6845.html
 // https://bitsavers.trailing-edge.com/components/motorola/_dataSheets/6845.pdf

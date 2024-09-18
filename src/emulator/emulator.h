@@ -60,7 +60,7 @@ extern uint16_t cga_portin(uint16_t portnum);
 extern void cga_portout(uint16_t portnum, uint16_t value);
 
 // EGA/VGA
-#define vga_plane_size (16000)
+#define vga_plane_size (32768)
 extern uint32_t vga_plane_offset;
 extern uint8_t vga_planar_mode;
 extern void vga_portout(uint16_t portnum, uint16_t value);

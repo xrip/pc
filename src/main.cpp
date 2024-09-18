@@ -335,6 +335,31 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
+                        case 0x10: /* EGA mode 010 */ {
+                            if (y > 350) break;
+                            uint32_t *pixels = &SCREEN[y][0];
+                            vidramptr = VIDEORAM;
+                            for (int x = 0; x < 80; x++) {
+                                uint32_t vidptr = y * 80 + x;
+
+                                uint8_t pixel1 = vidramptr[vidptr];
+                                uint8_t pixel2 = vidramptr[vga_plane_size + vidptr];
+                                uint8_t pixel3 = vidramptr[vga_plane_size * 2 + vidptr];
+                                uint8_t pixel4 = vidramptr[vga_plane_size * 3 + vidptr];
+
+                                *pixels++ = vga_palette[(pixel1 >> 7 & 1) << 0 | (pixel2 >> 7 & 1) << 1 | (pixel3 >> 7 & 1) << 2 | (pixel4 >> 7 & 1) << 3];
+                                *pixels++ = vga_palette[(pixel1 >> 6 & 1) << 0 | (pixel2 >> 6 & 1) << 1 | (pixel3 >> 6 & 1) << 2 | (pixel4 >> 6 & 1) << 3];
+                                *pixels++ = vga_palette[(pixel1 >> 5 & 1) << 0 | (pixel2 >> 5 & 1) << 1 | (pixel3 >> 5 & 1) << 2 | (pixel4 >> 5 & 1) << 3];
+                                *pixels++ = vga_palette[(pixel1 >> 4 & 1) << 0 | (pixel2 >> 4 & 1) << 1 | (pixel3 >> 4 & 1) << 2 | (pixel4 >> 4 & 1) << 3];
+
+                                *pixels++ = vga_palette[(pixel1 >> 3 & 1) << 0 | (pixel2 >> 3 & 1) << 1 | (pixel3 >> 3 & 1) << 2 | (pixel4 >> 3 & 1) << 3];
+                                *pixels++ = vga_palette[(pixel1 >> 2 & 1) << 0 | (pixel2 >> 2 & 1) << 1 | (pixel3 >> 2 & 1) << 2 | (pixel4 >> 2 & 1) << 3];
+                                *pixels++ = vga_palette[(pixel1 >> 1 & 1) << 0 | (pixel2 >> 1 & 1) << 1 | (pixel3 >> 1 & 1) << 2 | (pixel4 >> 1 & 1) << 3];
+                                *pixels++ = vga_palette[(pixel1 >> 0 & 1) << 0 | (pixel2 >> 0 & 1) << 1 | (pixel3 >> 0 & 1) << 2 | (pixel4 >> 0 & 1) << 3];
+
+                            }
+                            break;
+                        }
                         case 0x13: {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             if (vga_planar_mode) {
