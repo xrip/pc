@@ -8,6 +8,7 @@ uint32_t vram_offset = 0x0;
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 
+
 void portout(uint16_t portnum, uint16_t value) {
     switch (portnum) {
         case 0x20:
@@ -23,9 +24,11 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x61:
             port61 = value;
             if ((value & 3) == 3) {
+                tandy_write(0, 0b10010000);
                 speakerenabled = 1;
             } else {
-                speakerenabled = 0;
+               tandy_write(0, 0b10011111);
+               speakerenabled = 0;
             }
 
             break;

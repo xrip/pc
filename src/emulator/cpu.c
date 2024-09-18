@@ -1135,6 +1135,8 @@ void reset86() {
     CPU_SS = 0x0000;
     CPU_SP = 0x0000;
 
+    memset(RAM, 0xFF, RAM_SIZE);
+
     ip = 0x0000;
 }
 

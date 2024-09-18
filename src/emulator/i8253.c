@@ -12,7 +12,7 @@ int timer_period = 549250;
 void init8253() {
     memset(&i8253, 0, sizeof(i8253));
 }
-
+extern void emulate_pc_speaker_on_sn76489(uint16_t pit_counter);
 void out8253(uint16_t portnum, uint8_t value) {
     uint8_t curbyte = 0;
     portnum &= 3;
@@ -38,12 +38,21 @@ void out8253(uint16_t portnum, uint8_t value) {
 
             if (i8253.chandata[portnum] == 0) {
                 i8253.effectivedata[portnum] = 65536;
+                tandy_write(0, 0b10011111);
                 speakerenabled = 0;
             } else {
                 i8253.effectivedata[portnum] = i8253.chandata[portnum];
+
                 if (port61 & 2) {
+                    //uint16_t tone = (3579545 / (32 * 1193182 / i8253.effectivedata[portnum])) - 1;
+                    uint16_t tone = (111860 * i8253.effectivedata[portnum] >> 20) - 1;
+                    tandy_write(0, 0x80 | (tone & 0x0F));
+                    tandy_write(0, (tone >> 4) & 0x3F);
+
+                    tandy_write(0, 0b10010000);
                     speakerenabled = 1; // set 50% (127) duty cycle ==> Sound output on
                 } else {
+                    tandy_write(0, 0b10011111);
                     speakerenabled = 0; // set 0% (0) duty clcle ==> Sound output off
                 }
             }

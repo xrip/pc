@@ -942,15 +942,6 @@ int main(int argc, char **argv) {
 
     reset86();
 
-
-    mfb_set_pallete_array((uint32_t *) cga_palette, 0, 16);
-
-    mfb_set_pallete_array((uint32_t *) cga_composite_palette[0], 16, 32);
-    mfb_set_pallete_array((uint32_t *) cga_composite_palette[1], 32, 48);
-    mfb_set_pallete_array((uint32_t *) cga_composite_palette[2], 48, 64);
-
-    mfb_set_pallete_array((uint32_t *) tga_palette, 64, 80);
-
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
     while (true) {
 
