@@ -321,7 +321,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
-                        case 0x0E: /* tandy 640x200 16 color */ {
+                        case 0x0E: /* EGA 640x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *tga_row = VIDEORAM + (y / 2) * 80;
                             for (int x = 80; x--;) {

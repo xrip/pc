@@ -25,7 +25,7 @@ inline void tga_portout(uint16_t portnum, uint16_t value) {
 //    https://ia803208.us.archive.org/15/items/Tandy_1000_Computer_Service_Manual_1985_Tandy/Tandy_1000_Computer_Service_Manual_1985_Tandy.pdf
     static uint8_t tga_register;
 
-    printf("TANDY %x %x \n", portnum, value);
+//    printf("TANDY %x %x \n", portnum, value);
 
     switch (portnum) {
         case 0x3DA: // address
