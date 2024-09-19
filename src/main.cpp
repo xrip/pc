@@ -305,16 +305,21 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
-                        case 0x0D: /* tandy 320x200 16 color */ {
-                            uint32_t *pixels = &SCREEN[y][0];
-                            uint8_t *tga_row = VIDEORAM + (y / 2) * 40;
-                            for (int x = 40; x--;) {
-                                uint8_t tga_byte = *tga_row++;
-                                *pixels++ = *pixels++ =  *pixels++ = *pixels++ = tga_palette[tga_byte & 15];
-                                *pixels++ = *pixels++ =  *pixels++ = *pixels++ = tga_palette[(tga_byte >> 4) & 15];
+                        case 0x0D: /* EGA */ {
+                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            vidramptr = VIDEORAM + vram_offset;
+                            for (int x = 0; x < 320; x++) {
+                                uint32_t divy = y >> 1;
+                                uint32_t vidptr = divy * 40 + (x >> 3);
+                                int x1 = 7 - (x & 7);
+                                uint32_t color = (vidramptr[vidptr] >> x1) & 1;
+                                color |= (((vidramptr[vga_plane_size + vidptr] >> x1) & 1) << 1);
+                                color |= (((vidramptr[vga_plane_size * 2 + vidptr] >> x1) & 1) << 2);
+                                color |= (((vidramptr[vga_plane_size * 3 + vidptr] >> x1) & 1) << 3);
+                                *pixels++ = vga_palette[color];
+                                *pixels++ = vga_palette[color];
                             }
                             break;
-
                         }
                         case 0x0E: /* tandy 640x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
