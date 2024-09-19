@@ -7,6 +7,8 @@ uint8_t vga_planar_mode = 0;
 uint8_t vga_sequencer[5];
 uint8_t vga_graphics_control[9];
 
+// https://wiki.osdev.org/VGA_Hardware
+
 uint32_t vga_palette[256] = {
         rgb (0, 0, 0),
         rgb (0, 0, 169),
@@ -292,6 +294,8 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             data_mode ^= 1;
             break;
         }
+// http://www.osdever.net/FreeVGA/vga/seqreg.htm
+// https://vtda.org/books/Computing/Programming/EGA-VGA-ProgrammersReferenceGuide2ndEd_BradleyDyckKliewer.pdf
         case 0x3C4:
 //            printf("3C4 %x\n", value);
             sequencer_register = value & 0xff;
@@ -299,9 +303,15 @@ void vga_portout(uint16_t portnum, uint16_t value) {
         case 0x3C5: {
             if (sequencer_register == 2) {
                 switch (value & 0b1111) {
-                    case 2: vga_plane_offset = vga_plane_size * 1; break;
-                    case 4: vga_plane_offset = vga_plane_size * 2; break;
-                    case 8: vga_plane_offset = vga_plane_size * 3; break;
+                    case 2:
+                        vga_plane_offset = vga_plane_size * 1;
+                        break;
+                    case 4:
+                        vga_plane_offset = vga_plane_size * 2;
+                        break;
+                    case 8:
+                        vga_plane_offset = vga_plane_size * 3;
+                        break;
                     default:
                         vga_plane_offset = 0;
                 }
@@ -369,9 +379,13 @@ uint16_t vga_portin(uint16_t portnum) {
         case 0x3C9: {
             static uint8_t rgb_index = 0;
             switch (rgb_index++) {
-                case 0: return ((vga_palette[read_color_index] >> 18)) & 63;
-                case 1: return ((vga_palette[read_color_index] >> 10)) & 63;
-                case 2: rgb_index = 0; return ((vga_palette[read_color_index++] >> 2)) & 63;
+                case 0:
+                    return ((vga_palette[read_color_index] >> 18)) & 63;
+                case 1:
+                    return ((vga_palette[read_color_index] >> 10)) & 63;
+                case 2:
+                    rgb_index = 0;
+                    return ((vga_palette[read_color_index++] >> 2)) & 63;
             }
         }
     }
