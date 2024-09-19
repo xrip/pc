@@ -293,24 +293,26 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             break;
         }
         case 0x3C4:
+//            printf("3C4 %x\n", value);
             sequencer_register = value & 0xff;
             break;
         case 0x3C5: {
             if (sequencer_register == 2) {
                 switch (value & 0b1111) {
-                    case 1: vga_plane_offset = 0; break;
                     case 2: vga_plane_offset = vga_plane_size * 1; break;
                     case 4: vga_plane_offset = vga_plane_size * 2; break;
                     case 8: vga_plane_offset = vga_plane_size * 3; break;
+                    default:
+                        vga_plane_offset = 0;
                 }
 
-//                printf("vga_plane_offset %x\n",vga_plane_offset);
+                //printf("vga_plane_offset %x\n",vga_plane_offset);
             }
             if (sequencer_register == 4) {
                 vga_planar_mode = value & 6;
-                //printf("vga planar %i\n", vga_planar_mode);
+                printf("vga planar %i\n", vga_planar_mode);
             }
-
+            //printf("sequencer %x %x\n", sequencer_register, value);
             vga_sequencer[sequencer_register] = value & 0xff;
             break;
         }
@@ -348,8 +350,10 @@ void vga_portout(uint16_t portnum, uint16_t value) {
                 8 Bit Mask
              */
             graphics_control_register = value & 8;
+//            printf("3CE %x\n", value);
         }
         case 0x3CF: { // Graphics 1 and 2 Address Register
+//            printf("3CF %x\n", value);
             vga_graphics_control[graphics_control_register] = value & 0xff;
         }
     }

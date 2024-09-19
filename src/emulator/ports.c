@@ -27,8 +27,8 @@ void portout(uint16_t portnum, uint16_t value) {
                 tandy_write(0, 0b10010000);
                 speakerenabled = 1;
             } else {
-               tandy_write(0, 0b10011111);
-               speakerenabled = 0;
+                tandy_write(0, 0b10011111);
+                speakerenabled = 0;
             }
 
             break;
@@ -119,15 +119,21 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x3D9:
             cga_portout(portnum, value);
             break;
+
+        case 0x3DA:
+        case 0x3DE:
+        case 0x3DF:
+            tga_portout(portnum, value);
+            break;
         case 0x3F8:
-case 0x3F9:
-case 0x3FA:
-case 0x3FB:
-case 0x3FC:
-case 0x3FD:
-case 0x3FE:
-case 0x3FF:
-    return mouse_portout(portnum, value);
+        case 0x3F9:
+        case 0x3FA:
+        case 0x3FB:
+        case 0x3FC:
+        case 0x3FD:
+        case 0x3FE:
+        case 0x3FF:
+            return mouse_portout(portnum, value);
     }
 }
 
@@ -184,7 +190,7 @@ uint16_t portin(uint16_t portnum) {
         case 0x3FF:
             return mouse_portin(portnum);
         default:
-            return 0x00;
+            return 0xFF;
     }
 }
 

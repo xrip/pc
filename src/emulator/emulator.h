@@ -47,9 +47,13 @@ extern int videomode;
 #define CURSOR_Y RAM[0x451]
 extern uint8_t cursor_start, cursor_end;
 extern uint32_t vga_palette[256];
-extern uint32_t tga_palette[16];
 extern void videoram_write(uint32_t address, uint8_t value);
 extern uint8_t videoram_read(uint32_t address);
+
+// TGA
+extern uint32_t tga_palette[16];
+extern void tga_portout(uint16_t portnum, uint16_t value);
+
 
 // CGA
 extern uint32_t cga_palette[16];
