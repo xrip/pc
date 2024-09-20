@@ -6,6 +6,8 @@ SET(BUILD_NAME "${PROJECT_NAME}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
+add_compile_options(-O3)
+
 set(OUTPUT_DIR "${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
@@ -20,7 +22,10 @@ foreach(SRC_FILE IN LISTS SRC)
 endforeach()
 message(STATUS "")
 
-add_executable(${PROJECT_NAME} ${SRC}
-        src/emulator/emulator.h)
+add_executable(${PROJECT_NAME} ${SRC})
+
 target_include_directories(${PROJECT_NAME} PRIVATE src)
+
 target_link_libraries(${PROJECT_NAME} winmm)
+
+target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)

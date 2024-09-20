@@ -1,4 +1,4 @@
-#include "../emulator.h"
+#include "emulator/emulator.h"
 
 uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0;
 uint8_t port3DA;
