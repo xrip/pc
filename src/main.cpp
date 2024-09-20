@@ -8,17 +8,16 @@
 static uint32_t SCREEN[400][640];
 
 int cursor_blink_state = 0;
+uint8_t log_debug = 0;
 
 HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
-
 #define AUDIO_FREQ 44100
 #define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
 
 
 int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = {0};
-
 DWORD WINAPI SoundThread(LPVOID lpParam) {
     WAVEHDR waveHeaders[4];
 
@@ -70,7 +69,6 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     }
     return 0;
 }
-
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current;
     QueryPerformanceCounter(&start); // Get the starting time
@@ -417,7 +415,6 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     }
 }
 
-uint8_t log_debug = 0;
 
 extern "C" void HandleMouse(int x, int y, uint8_t buttons) {
     static int prev_x = 0, prev_y = 0;
