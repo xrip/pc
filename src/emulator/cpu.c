@@ -1,6 +1,8 @@
 #include "emulator.h"
 #include <time.h>
 
+#define CPU_TYPE_286
+
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;
@@ -1825,6 +1827,11 @@ void exec86(uint32_t execloops) {
 
             case 0x54: /* 54 PUSH eSP */
                 push(CPU_SP);
+#ifdef CPU_TYPE_286
+                push(CPU_SP);
+#else
+                push(CPU_SP - 2);
+#endif
                 break;
 
             case 0x55: /* 55 PUSH eBP */
@@ -2430,7 +2437,12 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x9C: /* 9C PUSHF */
+#ifdef CPU_TYPE_286
+                push (makeflagsword() | 0x0800);
+#else
                 push(makeflagsword() | 0xF800);
+#endif
+
                 break;
 
             case 0x9D: /* 9D POPF */

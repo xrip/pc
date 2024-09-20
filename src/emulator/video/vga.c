@@ -1,7 +1,6 @@
 #include "emulator/emulator.h"
 
-uint8_t vga_register;
-static uint8_t color_index = 0, read_color_index = 0, sequencer_register = 0, graphics_control_register = 0;
+static uint8_t color_index = 0, read_color_index = 0, vga_register, sequencer_register = 0, graphics_control_register = 0;
 uint32_t vga_plane_offset = 0;
 uint8_t vga_planar_mode = 0;
 uint8_t vga_sequencer[5];
@@ -269,21 +268,24 @@ uint32_t vga_palette[256] = {
 };
 
 void vga_portout(uint16_t portnum, uint16_t value) {
+//    http://www.techhelpmanual.com/900-video_graphics_array_i_o_ports.html
 //    if (portnum != 0x3c8 && portnum != 0x3c9)
 //        printf("vga_portout %x %x\n", portnum, value);
 
     switch (portnum) {
-        case 0x3C0: {
+        /* Attribute Address Register */
+        case 0x3C0:  {
             static uint8_t data_mode = 0; // 0 -- address, 1 -- data
 
             if (data_mode) {
+
                 // Palette registers
                 if (vga_register <= 0x0f) {
-                    const uint8_t r = (value & 0b001 ? 2 : 0) + (value & 0b111000 ? 1 : 0);
-                    const uint8_t g = (value & 0b010 ? 2 : 0) + (value & 0b111000 ? 1 : 0);
-                    const uint8_t b = (value & 0b100 ? 2 : 0) + (value & 0b111000 ? 1 : 0);
+                    const uint8_t r = (((value >> 2) & 1) << 1) + (value >> 5 & 1);
+                    const uint8_t g = (((value >> 1) & 1) << 1) + (value >> 4 & 1);
+                    const uint8_t b = (((value >> 0) & 1) << 1) + (value >> 3 & 1);
 
-                    vga_palette[vga_register] = rgb(b * 85, g * 85, r * 85);
+                    vga_palette[vga_register] = rgb(r * 85, g * 85, b * 85);
                 } else {
                     // vga[vga_register_index] = value;
                 }
