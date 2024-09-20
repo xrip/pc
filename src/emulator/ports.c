@@ -9,7 +9,7 @@ static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 #include <time.h>
 
-inline uint8_t rtc_read(uint16_t addr) {
+uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
 
@@ -226,7 +226,7 @@ uint16_t portin(uint16_t portnum) {
         case 0x256:
         case 0x257:
             return rtc_read(portnum);
-// Alib
+// Adlib
         case 0x388:
         case 0x389:
             if (!adlibregmem[4])

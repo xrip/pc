@@ -110,8 +110,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                 }
 
 
-                memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
-                uint8_t *vidramptr = localVRAM;
+                //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
+                uint8_t *vidramptr = VIDEORAM + 0x18000 + (vram_offset << 1);
                 const uint8_t cols = videomode <= 1 ? 40 : 80;
                 for (uint16_t y = 0; y < 400; y++)
                     switch (videomode) {
@@ -204,13 +204,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
                         case 0x04:
                         case 0x05: {
-                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
-                            uint8_t *cga_row = &vidramptr[((((y / 2) >> 1) * 80) +
-                                                           (((y / 2) & 1) * 8192))]; // Precompute CGA row pointer
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *cga_row = &vidramptr[(((((y / 2) >> 1) * 80) +
+                                                           (((y / 2) & 1) * 8192)))]; // Precompute CGA row pointer
                             uint8_t *current_cga_palette = (uint8_t *) cga_gfxpal[cga_colorset][cga_intensity];
 
-                            for (int x = 0; x < 320; x += 4) {
-                                uint8_t cga_byte = *cga_row++; // Get the byte containing 4 pixels
+                            // Each byte containing 4 pixels
+                            for (int x = 320/4; x--;) {
+                                uint8_t cga_byte = *cga_row++;
 
                                 // Extract all four 2-bit pixels from the CGA byte
                                 // and write each pixel twice for horizontal scaling
@@ -234,12 +235,13 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             break;
                         }
                         case 0x06: {
-                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *cga_row = &vidramptr[(((y / 2) >> 1) * 80) +
                                                           (((y / 2) & 1) * 8192)]; // Precompute row start
 
-                            for (int x = 0; x < 640; x += 8) {
-                                uint8_t cga_byte = *cga_row++; // Fetch 8 pixels from CGA memory
+                            // Each byte containing 8 pixels
+                            for (int x = 640/8; x--;) {
+                                uint8_t cga_byte = *cga_row++;
 
                                 *pixels++ = cga_palette[((cga_byte >> 7) & 1) * cga_foreground_color];
                                 *pixels++ = cga_palette[((cga_byte >> 6) & 1) * cga_foreground_color];
@@ -262,35 +264,43 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                     palette = tga_palette;
                                     break;
                                 case 0x74:
-                                    palette = cga_composite_palette[1 + cga_intensity];
+                                    //printf("cga %x %x", cga_intensity, cga_colorset);
+
+                                    palette = cga_composite_palette[cga_intensity << 1];
                                     break;
                                 case 0x76:
-                                    palette = cga_composite_palette[cga_intensity + cga_colorset];
+                                    palette = cga_composite_palette[0];
                                     break;
                             }
 
-                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *cga_row = &vidramptr[(((y / 2) >> 1) * 80) +
                                                           (((y / 2) & 1) * 8192)]; // Precompute row start
 
-                            for (int x = 0; x < 640; x += 8) {
-                                uint8_t cga_byte = *cga_row++; // Fetch 8 pixels from CGA memory
+                            // Each byte containing 8 pixels
+                            for (int x = 640/8; x--;) {
+                                uint8_t cga_byte = *cga_row++; // Fetch 8 pixels from TGA memory
+                                uint8_t color1 = ((cga_byte >> 4) & 15);
+                                uint8_t color2 = (cga_byte & 15);
 
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = palette[((cga_byte >> 4) & 15)];
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = palette[(cga_byte & 15)];
+                                if (!color1 && videomode == 0x8) color1 = cga_foreground_color;
+                                if (!color2 && videomode == 0x8) color2 = cga_foreground_color;
+
+                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = palette[color1];
+                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = palette[color2];
                             }
 
                             break;
                         }
                         case 0x09: /* tandy 320x200 16 color */ {
-                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
-                            uint8_t *tga_row = VIDEORAM + 0x18000 + (((y / 2) & 3) * 8192) + ((y / 8) * 160);
-                            for (int x = 160; x--;) {
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *tga_row =  &vidramptr[(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
+
+                            // Each byte containing 4 pixels
+                            for (int x = 320/2; x--;) {
                                 uint8_t tga_byte = *tga_row++;
-                                *pixels++ = tga_palette[(tga_byte >> 4) & 15];
-                                *pixels++ = tga_palette[(tga_byte >> 4) & 15];
-                                *pixels++ = tga_palette[tga_byte & 15];
-                                *pixels++ = tga_palette[tga_byte & 15];
+                                *pixels++ = *pixels++ = tga_palette[(tga_byte >> 4) & 15];
+                                *pixels++ = *pixels++ = tga_palette[tga_byte & 15];
                             }
                             break;
 
@@ -298,7 +308,9 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         case 0x0a: /* tandy 640x200 16 color */ {
                             uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
                             uint8_t *tga_row = VIDEORAM + ((y / 2) * 320);
-                            for (int x = 320; x--;) {
+
+                            // Each byte contains 2 pixels
+                            for (int x = 640/2; x--;) {
                                 uint8_t tga_byte = *tga_row++;
                                 *pixels++ = tga_palette[(tga_byte >> 4) & 15];
                                 *pixels++ = tga_palette[tga_byte & 15];
@@ -306,7 +318,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             break;
                         }
                         case 0x0D: /* EGA */ {
-                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            uint32_t *pixels = &SCREEN[y][0];
                             vidramptr = VIDEORAM + vram_offset;
                             for (int x = 0; x < 320; x++) {
                                 uint32_t divy = y >> 1;
@@ -324,7 +336,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         case 0x0E: /* EGA 640x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *tga_row = VIDEORAM + (y / 2) * 80;
-                            for (int x = 80; x--;) {
+                            for (int x = 640/4; x--;) {
                                 uint8_t tga_byte = *tga_row++;
                                 *pixels++ = *pixels++ =  *pixels++ = *pixels++ = tga_palette[tga_byte & 15];
                                 *pixels++ = *pixels++ =  *pixels++ = *pixels++ = tga_palette[(tga_byte >> 4) & 15];
