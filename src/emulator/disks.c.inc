@@ -15,7 +15,7 @@ struct struct_drive {
 } disk[4];
 
 
-void ejectdisk(uint8_t drivenum) {
+static inline void ejectdisk(uint8_t drivenum) {
     if (drivenum & 0x80) drivenum -= 126;
 
     if (disk[drivenum].inserted) {
@@ -103,14 +103,14 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
 }
 
 // Call this ONLY if all parameters are valid! There is no check here!
-static size_t chs2ofs(int drivenum, int cyl, int head, int sect) {
+static inline size_t chs2ofs(int drivenum, int cyl, int head, int sect) {
     return (
                    ((size_t)cyl * (size_t)disk[drivenum].heads + (size_t)head) * (size_t)disk[drivenum].sects + (size_t) sect - 1
            ) * 512UL;
 }
 
 
-void readdisk(uint8_t drivenum,
+static void readdisk(uint8_t drivenum,
               uint16_t dstseg, uint16_t dstoff,
               uint16_t cyl, uint16_t sect, uint16_t head,
               uint16_t sectcount, int is_verify
@@ -198,7 +198,7 @@ void readdisk(uint8_t drivenum,
     CPU_AH = 0;
 }
 
-void writedisk(uint8_t drivenum,
+static void writedisk(uint8_t drivenum,
                uint16_t dstseg, uint16_t dstoff,
                uint16_t cyl, uint16_t sect, uint16_t head,
                uint16_t sectcount
@@ -268,7 +268,7 @@ void writedisk(uint8_t drivenum,
 }
 
 
-void diskhandler() {
+static inline void diskhandler() {
     static uint8_t lastdiskah[4] = { 0 }, lastdiskcf[4] = { 0 };
     uint8_t drivenum = CPU_DL;
 

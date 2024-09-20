@@ -390,5 +390,7 @@ uint16_t vga_portin(uint16_t portnum) {
                     return ((vga_palette[read_color_index++] >> 2)) & 63;
             }
         }
+        default:
+            return 0xff;
     }
 }

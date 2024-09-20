@@ -1,4 +1,11 @@
+#include <time.h>
 #include "emulator.h"
+#include "emulator/i8253.c.inc"
+#include "emulator/i8259.c.inc"
+#include "emulator/mouse.c.inc"
+#include "emulator/video/cga.c.inc"
+#include "emulator/video/tga.c.inc"
+#include "emulator/video/vga.c.inc"
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
@@ -7,9 +14,8 @@ uint32_t vram_offset = 0x0;
 
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
-#include <time.h>
 
-uint8_t rtc_read(uint16_t addr) {
+static inline uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
 
@@ -97,12 +103,13 @@ void portout(uint16_t portnum, uint16_t value) {
             return cms_write(portnum, value);
 
 // AdLib / OPL
-        case 0x388: // adlib
+        case 0x388:
             adlib_register = value;
             break;
         case 0x389:
             if (adlib_register <= 4) {
                 adlibregmem[adlib_register] = value;
+
                 if (adlib_register == 4 && value & 0x80) {
                     adlibstatus = 0;
                     adlibregmem[4] = 0;
@@ -162,14 +169,11 @@ void portout(uint16_t portnum, uint16_t value) {
             break;
         case 0x3D8:
         case 0x3D9:
-            cga_portout(portnum, value);
-            break;
-
+            return cga_portout(portnum, value);
         case 0x3DA:
         case 0x3DE:
         case 0x3DF:
-            tga_portout(portnum, value);
-            break;
+            return tga_portout(portnum, value);
         case 0x3F8:
         case 0x3F9:
         case 0x3FA:

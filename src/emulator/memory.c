@@ -1,12 +1,12 @@
 #include "includes/bios.h"
 #include "emulator.h"
 
-
-uint8_t RAM[RAM_SIZE]; // +4 for safe WORD reads
+uint8_t RAM[RAM_SIZE];
+uint8_t VIDEORAM[VIDEORAM_SIZE];
 
 void write86(uint32_t address, uint8_t value) {
     if (address >= 0xA0000 && address < 0xC0000) {
-        videoram_write(address, value);
+        VIDEORAM[(vga_plane_offset + address - 0xA0000) % VIDEORAM_SIZE] = value;
     } else if (address <= RAM_SIZE) {
         RAM[address] = value;
     }
@@ -23,7 +23,7 @@ void writew86(uint32_t address, uint16_t value) {
 uint8_t read86(uint32_t address) {
     if (address == 0xFC000) { return 0x21; };
     if (address >= 0xA0000 && address <= 0xC0000) {
-        return videoram_read(address);
+        return VIDEORAM[(vga_plane_offset + address - 0xA0000) % VIDEORAM_SIZE];
     } else if (address >= 0xFE000) {
         return BIOS[address - 0xFE000];
     } else if (address <= RAM_SIZE) {

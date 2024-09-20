@@ -6,14 +6,14 @@
 #define PIT_MODE_TOGGLE 3
 
 struct i8253_s i8253 = { 0 };
-
+int speakerenabled = 0;
 int timer_period = 549250;
 
 void init8253() {
     memset(&i8253, 0, sizeof(i8253));
 }
-extern void emulate_pc_speaker_on_sn76489(uint16_t pit_counter);
-void out8253(uint16_t portnum, uint8_t value) {
+
+static inline void out8253(uint16_t portnum, uint8_t value) {
     uint8_t curbyte = 0;
     portnum &= 3;
     switch (portnum) {
@@ -81,7 +81,7 @@ void out8253(uint16_t portnum, uint8_t value) {
     }
 }
 
-uint8_t in8253(uint16_t portnum) {
+static inline uint8_t in8253(uint16_t portnum) {
     uint8_t curbyte;
     portnum &= 3;
     switch (portnum) {

@@ -1,6 +1,7 @@
 #include "emulator.h"
-#include <time.h>
+#include "disks.c.inc"
 
+int videomode = 0;
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;
@@ -194,7 +195,6 @@ static inline void decodeflagsword(uint16_t x) {
 }
 
 void intcall86(uint8_t intnum) {
-
     switch (intnum) {
         case 0x10: {
 //        printf("INT 10h CPU_AH: 0x%x CPU_AL: 0x%x\r\n", CPU_AH, CPU_AL);
