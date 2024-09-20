@@ -1,7 +1,8 @@
 #include "emulator.h"
 #include <time.h>
 
-#define CPU_TYPE_286
+//#define CPU_TYPE_286
+//#define CPU_8086
 
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
@@ -1115,8 +1116,8 @@ void exec86(uint32_t execloops) {
         while (!docontinue) {
             CPU_CS &= 0xFFFF;
             CPU_IP &= 0xFFFF;
-//            savecs = CPU_CS;
-//            saveip = ip;
+            savecs = CPU_CS;
+            saveip = ip;
 #ifdef XMS_DRIVER
             // W/A-hack: last byte of interrupts table (actually should not be ever used as CS:IP)
             if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
@@ -1283,11 +1284,9 @@ void exec86(uint32_t execloops) {
                 push(CPU_CS);
                 break;
 
-                /*
                 case 0xF: //0F POP CS only the 8086/8088 does this.
                     CPU_CS = pop();
                     break;
-                    */
 
             case 0x10: /* 10 ADC Eb Gb */
                 modregrm();
@@ -3022,8 +3021,10 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0xD6: /* D6 XLAT on V20/V30, SALC on 8086/8088 */
-//                CPU_AL = cf ? 0xFF : 0x00;
-//                break;
+#ifdef CPU_TYPE_286
+            CPU_AL = cf ? 0xFF : 0x00;
+                break;
+#endif
 
             case 0xD7: /* D7 XLAT */
                 CPU_AL = read86(useseg * 16 + (CPU_BX) + CPU_AL);
@@ -3229,11 +3230,19 @@ void exec86(uint32_t execloops) {
                 break;
 
             default: {
-//                char tmp[40];
-                printf("Unexpected opcode: %02Xh ignored", opcode);
-            }
-                //intcall86(6);
+                if (1) {
+                    printf("Illegal opcode: %02X %02X /%X @ "
+                           "%04X:%04X\n",
+                           getmem8(savecs, saveip),
+                           getmem8(savecs, saveip + 1),
+                           (getmem8(savecs, saveip + 2) >> 3) & 7,
+                           savecs, saveip);
+                }
+#ifdef CPU_TYPE_286
+                intcall86(6);
+#endif
                 break;
+            }
         }
     }
 }
