@@ -1826,7 +1826,6 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x54: /* 54 PUSH eSP */
-                push(CPU_SP);
 #ifdef CPU_TYPE_286
                 push(CPU_SP);
 #else
