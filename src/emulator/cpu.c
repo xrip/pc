@@ -1,9 +1,6 @@
 #include "emulator.h"
 #include <time.h>
 
-//#define CPU_TYPE_286
-//#define CPU_8086
-
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;
@@ -1116,8 +1113,8 @@ void exec86(uint32_t execloops) {
         while (!docontinue) {
             CPU_CS &= 0xFFFF;
             CPU_IP &= 0xFFFF;
-            savecs = CPU_CS;
-            saveip = ip;
+//            savecs = CPU_CS;
+//            saveip = ip;
 #ifdef XMS_DRIVER
             // W/A-hack: last byte of interrupts table (actually should not be ever used as CS:IP)
             if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
@@ -1284,9 +1281,11 @@ void exec86(uint32_t execloops) {
                 push(CPU_CS);
                 break;
 
+                /*
                 case 0xF: //0F POP CS only the 8086/8088 does this.
                     CPU_CS = pop();
                     break;
+                    */
 
             case 0x10: /* 10 ADC Eb Gb */
                 modregrm();
@@ -1825,11 +1824,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x54: /* 54 PUSH eSP */
-#ifdef CPU_TYPE_286
-                push(CPU_SP);
-#else
-                push(CPU_SP - 2);
-#endif
+                push(CPU_SP-2);
                 break;
 
             case 0x55: /* 55 PUSH eBP */
@@ -2435,12 +2430,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x9C: /* 9C PUSHF */
-#ifdef CPU_TYPE_286
-                push (makeflagsword() | 0x0800);
-#else
                 push(makeflagsword() | 0xF800);
-#endif
-
                 break;
 
             case 0x9D: /* 9D POPF */
@@ -3021,10 +3011,8 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0xD6: /* D6 XLAT on V20/V30, SALC on 8086/8088 */
-#ifdef CPU_TYPE_286
-            CPU_AL = cf ? 0xFF : 0x00;
-                break;
-#endif
+//                CPU_AL = cf ? 0xFF : 0x00;
+//                break;
 
             case 0xD7: /* D7 XLAT */
                 CPU_AL = read86(useseg * 16 + (CPU_BX) + CPU_AL);
@@ -3230,19 +3218,11 @@ void exec86(uint32_t execloops) {
                 break;
 
             default: {
-                if (1) {
-                    printf("Illegal opcode: %02X %02X /%X @ "
-                           "%04X:%04X\n",
-                           getmem8(savecs, saveip),
-                           getmem8(savecs, saveip + 1),
-                           (getmem8(savecs, saveip + 2) >> 3) & 7,
-                           savecs, saveip);
-                }
-#ifdef CPU_TYPE_286
-                intcall86(6);
-#endif
-                break;
+//                char tmp[40];
+                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
+                //intcall86(6);
+                break;
         }
     }
 }
