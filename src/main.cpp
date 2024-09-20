@@ -111,7 +111,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
 
                 //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
-                uint8_t *vidramptr = VIDEORAM + 0x18000 + (vram_offset << 1);
+                uint8_t *vidramptr = VIDEORAM + 32768 + (vram_offset << 1);
                 const uint8_t cols = videomode <= 1 ? 40 : 80;
                 for (uint16_t y = 0; y < 400; y++)
                     switch (videomode) {

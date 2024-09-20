@@ -7,7 +7,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define VIDEORAM_SIZE (256 << 10)
+#define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 * 1024)
 #define SOUND_FREQUENCY 44100
 #define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
