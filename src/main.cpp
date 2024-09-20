@@ -97,11 +97,11 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         if (elapsedTime - elapsed_frame_tics >= 16'666) {
+            port3DA = 1;
             if (1) {
                 // http://www.techhelpmanual.com/114-video_modes.html
                 // http://www.techhelpmanual.com/89-video_memory_layouts.html
                 // https://mendelson.org/wpdos/videomodes.txt
-                port3DA = 1;
                 static uint8_t v = 0;
                 if (v != videomode) {
                     printf("videomode %x %x\n", videomode, v);
