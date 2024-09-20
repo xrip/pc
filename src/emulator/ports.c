@@ -7,20 +7,64 @@ uint32_t vram_offset = 0x0;
 
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
+#include <time.h>
 
+inline uint8_t rtc_read(uint16_t addr) {
+    uint8_t ret = 0xFF;
+    struct tm tdata;
+
+    time(&tdata);
+    struct tm *t = localtime(&tdata);
+
+    t->tm_year = 24;
+    addr &= 0x1F;
+    switch (addr) {
+        case 1:
+            ret = 0;
+            break;
+        case 2:
+            ret = (uint8_t)t->tm_sec;
+            break;
+        case 3:
+            ret = (uint8_t)t->tm_min;
+            break;
+        case 4:
+            ret = (uint8_t)t->tm_hour;
+            break;
+        case 5:
+            ret = (uint8_t)t->tm_wday;
+            break;
+        case 6:
+            ret = (uint8_t)t->tm_mday;
+            break;
+        case 7:
+            ret = (uint8_t)t->tm_mon + 1;
+            break;
+        case 9:
+            ret = (uint8_t)t->tm_year % 100;
+            break;
+    }
+
+    if (ret != 0xFF) {
+        uint8_t rh, rl;
+        rh = (ret / 10) % 10;
+        rl = ret % 10;
+        ret = (rh << 4) | rl;
+    }
+
+    return ret;
+}
 
 void portout(uint16_t portnum, uint16_t value) {
     switch (portnum) {
         case 0x20:
         case 0x21: //i8259
-            out8259(portnum, value);
-            return;
+            return out8259(portnum, value);
         case 0x40:
         case 0x41:
         case 0x42:
         case 0x43: //i8253
-            out8253(portnum, value);
-            break;
+            return out8253(portnum, value);
         case 0x61:
             port61 = value;
             if ((value & 3) == 3) {
@@ -51,6 +95,7 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x222:
         case 0x223:
             return cms_write(portnum, value);
+
 // AdLib / OPL
         case 0x388: // adlib
             adlib_register = value;
@@ -155,7 +200,32 @@ uint16_t portin(uint16_t portnum) {
             return port61;
         case 0x64:
             return port64;
-
+// RTC
+        case 0x240:
+        case 0x241:
+        case 0x242:
+        case 0x243:
+        case 0x244:
+        case 0x245:
+        case 0x246:
+        case 0x247:
+        case 0x248:
+        case 0x249:
+        case 0x24A:
+        case 0x24B:
+        case 0x24C:
+        case 0x24D:
+        case 0x24E:
+        case 0x24F:
+        case 0x250:
+        case 0x251:
+        case 0x252:
+        case 0x253:
+        case 0x254:
+        case 0x255:
+        case 0x256:
+        case 0x257:
+            return rtc_read(portnum);
 // Alib
         case 0x388:
         case 0x389:

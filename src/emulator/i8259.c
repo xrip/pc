@@ -24,7 +24,7 @@ uint8_t in8259(uint16_t portnum) {
 }
 
 
-void out8259(uint16_t portnum, uint8_t value) {
+ void out8259(uint16_t portnum, uint8_t value) {
     //printf("out8259 %i %i\r\n", portnum, value);
     uint8_t i;
     switch (portnum & 1) {

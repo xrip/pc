@@ -235,48 +235,6 @@ void intcall86(uint8_t intnum) {
             insertdisk(0, "fdd0.img");
             insertdisk(2, "hdd.img");
             break;
-/*        case 0x1A:
-            switch (CPU_AH) {
-                case 0x00:    // get 18.2 ticks/sec since midnight and day change flag
-                    CPU_DX = 1000; //peekw(0x46C);
-                    CPU_CX = 1000; //peekw(0x46E);
-                    CPU_AL = 100;  //peekb(0x470);
-                    break;
-                case 0x01:
-        //            pokew(0x46C, CPU_DX);
-        //        pokew(0x46E, CPU_CX);
-            //printf("BIOS: RTC %x %x \n", CPU_DX, CPU_CX);
-                    break;
-                case 0x02:    // read real-time clock
-                {
-                    time_t uts = time(NULL);
-                    struct tm *t = localtime(&uts);
-                    CPU_DH = t->tm_sec;
-                    CPU_CL = t->tm_min;
-                    CPU_CH = t->tm_hour;
-                    CPU_DL = t->tm_isdst > 0;
-                    printf("BIOS: RTC time requested, answer: %02u:%02u:%02u DST=%u\n", CPU_CH, CPU_CL, CPU_DH, CPU_DL);
-                }
-                    CPU_FL_CF = 0;
-                    break;
-                case 0x04:    // read real-time clock's date
-                {
-                    time_t uts = time(NULL);
-                    struct tm *t = localtime(&uts);
-                    CPU_DL = t->tm_mday;
-                    CPU_DH = t->tm_mon + 1;
-                    CPU_CL = t->tm_year % 100;
-                    CPU_CH = t->tm_year / 100 + 19;
-                    printf("BIOS: RTC date requested, answer: %02u%02u.%02u.%02u\n", CPU_CH, CPU_CL, CPU_DH, CPU_DL);
-                }
-                    CPU_FL_CF = 0;
-                    break;
-                default:
-                    printf("BIOS: unknown 1Ah interrupt function %02Xh\n", CPU_AH);
-                    CPU_FL_CF = 1;
-                    CPU_AH = 1;
-                    break;
-            }*/
     }
 
     push(makeflagsword());
