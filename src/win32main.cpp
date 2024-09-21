@@ -84,7 +84,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Calculate elapsed time in ticks since the start
         auto elapsedTime = (double) (current.QuadPart - start.QuadPart);
 
-        if (elapsedTime - elapsed_system_timer >= timer_period) {
+        if (elapsedTime - elapsed_system_timer >= timer_period*10) {
             doirq(0);
             elapsed_system_timer = elapsedTime; // Reset the tick counter for 1Hz
         }

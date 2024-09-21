@@ -1,5 +1,9 @@
 #include "emulator.h"
-#include "disks.c.inc"
+#if PICO_ON_DEVICE
+#include "disks-rp2350.c.inc"
+#else
+#include "disks-win32.c.inc"
+#endif
 
 int videomode = 0;
 uint8_t opcode, segoverride, reptype;
@@ -232,8 +236,14 @@ void intcall86(uint8_t intnum) {
         case 0x13:
             return diskhandler();
         case 0x19:
+#if PICO_ON_DEVICE
+            insertdisk(0, "\\XT\\fdd0.img");
+            insertdisk(2, "\\XT\\hdd.img");
+#else
             insertdisk(0, "fdd0.img");
             insertdisk(2, "hdd.img");
+
+#endif
             break;
     }
 
@@ -3219,7 +3229,7 @@ void exec86(uint32_t execloops) {
 
             default: {
 //                char tmp[40];
-                printf("Unexpected opcode: %02Xh ignored", opcode);
+//                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 //intcall86(6);
                 break;

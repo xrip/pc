@@ -7,13 +7,13 @@
 
 struct i8253_s i8253 = { 0 };
 int speakerenabled = 0;
-int timer_period = 549250;
+int timer_period = 54925;
 
 void init8253() {
     memset(&i8253, 0, sizeof(i8253));
 }
 
-static inline void out8253(uint16_t portnum, uint8_t value) {
+void out8253(uint16_t portnum, uint8_t value) {
     uint8_t curbyte = 0;
     portnum &= 3;
     switch (portnum) {
@@ -69,7 +69,7 @@ static inline void out8253(uint16_t portnum, uint8_t value) {
 #if 1
             if (portnum == 0) {
                 // Timer freq 1,193,180
-                timer_period =  ((uint32_t) ((float) 10000000.0 /
+                timer_period =  ((uint32_t) ((float) 1000000.0 /
                                             (((float) 1193182.0 / (float) i8253.effectivedata[portnum]))));
             }
 #endif
@@ -81,7 +81,7 @@ static inline void out8253(uint16_t portnum, uint8_t value) {
     }
 }
 
-static inline uint8_t in8253(uint16_t portnum) {
+uint8_t in8253(uint16_t portnum) {
     uint8_t curbyte;
     portnum &= 3;
     switch (portnum) {

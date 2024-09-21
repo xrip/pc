@@ -1,20 +1,18 @@
 #include <time.h>
 #include "emulator.h"
-#include "emulator/i8253.c.inc"
-#include "emulator/i8259.c.inc"
 #include "emulator/mouse.c.inc"
 #include "emulator/video/cga.c.inc"
 #include "emulator/video/tga.c.inc"
 #include "emulator/video/vga.c.inc"
 
-uint8_t crt_controller_idx, crt_controller[32];
-uint8_t port60, port61, port64;
+uint8_t crt_controller_idx  = 0xff , crt_controller[32];
+uint8_t port60 = 0xff, port61 = 0xff, port64 = 0xff;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
-
+#if 0
 static inline uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
@@ -60,7 +58,7 @@ static inline uint8_t rtc_read(uint16_t addr) {
 
     return ret;
 }
-
+#endif
 void portout(uint16_t portnum, uint16_t value) {
     switch (portnum) {
         case 0x20:
@@ -229,7 +227,8 @@ uint16_t portin(uint16_t portnum) {
         case 0x255:
         case 0x256:
         case 0x257:
-            return rtc_read(portnum);
+            break;
+//            return rtc_read(portnum);
 // Adlib
         case 0x388:
         case 0x389:

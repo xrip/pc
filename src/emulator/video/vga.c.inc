@@ -322,7 +322,7 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             }
             if (sequencer_register == 4) {
                 vga_planar_mode = value & 6;
-                printf("vga planar %i\n", vga_planar_mode);
+//                printf("vga planar %i\n", vga_planar_mode);
             }
             //printf("sequencer %x %x\n", sequencer_register, value);
             vga_sequencer[sequencer_register] = value & 0xff;

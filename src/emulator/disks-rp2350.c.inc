@@ -1,11 +1,15 @@
 #include "emulator.h"
+#include "ff.h"
+#include "graphics.h"
+
+extern FATFS fs;
 
 int hdcount = 0, fdcount = 0;
 
 static uint8_t sectorbuffer[512];
 
 struct struct_drive {
-    FILE *diskfile;
+    FIL *diskfile;
     size_t filesize;
     uint16_t cyls;
     uint16_t sects;
@@ -28,23 +32,22 @@ static inline void ejectdisk(uint8_t drivenum) {
 }
 
 uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
+    FIL file;
+
     if (drivenum & 0x80) drivenum -= 126;  // Normalize hard drive numbers
 
-    FILE *file = fopen(pathname, "rb+");
-    if (!file) {
-        fprintf(stderr, "DISK: ERROR: cannot open disk file %s for drive %02Xh\n", pathname, drivenum);
+    if (FR_OK != f_open(&file, pathname, FA_READ | FA_WRITE )) {
+        draw_text("Cant mount drive", 0, 0, 12, 0);
+        while (1);
         return 0;
     }
 
-    // Find the file size
-    fseek(file, 0, SEEK_END);
-    size_t size = ftell(file);
-    rewind(file);
+    size_t size = f_size(&file);
 
     // Validate size constraints
     if (size < 360 * 1024 || size > 0x1f782000UL || (size & 511)) {
-        fclose(file);
-        fprintf(stderr, "DISK: ERROR: invalid disk size for drive %02Xh (%lu bytes)\n", drivenum, (unsigned long) size);
+        f_close(&file);
+//        fprintf(stderr, "DISK: ERROR: invalid disk size for drive %02Xh (%lu bytes)\n", drivenum, (unsigned long) size);
         return 0;
     }
 
@@ -74,14 +77,14 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
     // Validate geometry
     if (cyls > 1023 || cyls * heads * sects * 512 != size) {
 //        fclose(file);
-        fprintf(stderr, "DISK: ERROR: Cannot determine correct CHS geometry for drive %02Xh\n", drivenum);
+//        fprintf(stderr, "DISK: ERROR: Cannot determine correct CHS geometry for drive %02Xh\n", drivenum);
 //        return 0;
     }
 
     // Eject any existing disk and insert the new one
     ejectdisk(drivenum);
 
-    disk[drivenum].diskfile = file;
+    disk[drivenum].diskfile = &file;
     disk[drivenum].filesize = size;
     disk[drivenum].inserted = 1;  // Using 1 instead of true for consistency with uint8_t
     disk[drivenum].readonly = 0;  // Default to read-write
@@ -96,8 +99,8 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
         fdcount++;
     }
 
-    printf("DISK: Disk %02Xh attached from file %s, size=%luK, CHS=%d,%d,%d\n",
-           drivenum, pathname, (unsigned long) (size >> 10), cyls, heads, sects);
+//    printf("DISK: Disk %02Xh attached from file %s, size=%luK, CHS=%d,%d,%d\n",
+//           drivenum, pathname, (unsigned long) (size >> 10), cyls, heads, sects);
 
     return 1;
 }
@@ -120,7 +123,7 @@ static void readdisk(uint8_t drivenum,
 
     // Check if disk is inserted
     if (!disk[drivenum].inserted) {
-        printf("no media %i\r\n", drivenum);
+//        printf("no media %i\r\n", drivenum);
         CPU_AH = 0x31;    // no media in drive
         CPU_AL = 0;
         CPU_FL_CF = 1;
@@ -129,7 +132,7 @@ static void readdisk(uint8_t drivenum,
 
     // Check if CHS parameters are valid
     if (sect == 0 || sect > disk[drivenum].sects || cyl >= disk[drivenum].cyls || head >= disk[drivenum].heads) {
-        printf("sector not found\r\n");
+//        printf("sector not found\r\n");
         CPU_AH = 0x04;    // sector not found
         CPU_AL = 0;
         CPU_FL_CF = 1;
@@ -141,7 +144,7 @@ static void readdisk(uint8_t drivenum,
 
     // Check if fileoffset is valid
     if (fileoffset > disk[drivenum].filesize) {
-        printf("sector not found\r\n");
+//        printf("sector not found\r\n");
         CPU_AH = 0x04;    // sector not found
         CPU_AL = 0;
         CPU_FL_CF = 1;
@@ -149,13 +152,16 @@ static void readdisk(uint8_t drivenum,
     }
 
     // Set file position
-    fseek(disk[drivenum].diskfile, fileoffset, SEEK_SET);
+    f_lseek(disk[drivenum].diskfile, fileoffset);
 
     // Process sectors
     for (cursect = 0; cursect < sectcount; cursect++) {
         // Read the sector into buffer
-        if (fread(&sectorbuffer[0], 512, 1, disk[drivenum].diskfile) != 1) {
-            printf("Disk read error on drive %i\r\n", drivenum);
+        size_t br;
+        f_read(disk[drivenum].diskfile, &sectorbuffer[0], 512, &br);
+
+        if (!br) {
+//            printf("Disk read error on drive %i\r\n", drivenum);
             CPU_AH = 0x04;    // sector not found
             CPU_AL = 0;
             CPU_FL_CF = 1;
@@ -238,7 +244,7 @@ static void writedisk(uint8_t drivenum,
     }
 
     // Set file position
-    fseek(disk[drivenum].diskfile, fileoffset, SEEK_SET);
+    f_lseek(disk[drivenum].diskfile, fileoffset);
 
 
     // Write each sector
@@ -250,7 +256,8 @@ static void writedisk(uint8_t drivenum,
         }
 
         // Write the buffer to the file
-        fwrite(sectorbuffer, 512, 1, disk[drivenum].diskfile);
+        size_t bw;
+        //f_write(disk[drivenum].diskfile, sectorbuffer, 512, &bw);
     }
 
     // Handle the case where no sectors were written
@@ -290,7 +297,7 @@ static inline void diskhandler() {
         case 0x01:  // Return last status
             CPU_AH = lastdiskah[drivenum];
             CPU_FL_CF = lastdiskcf[drivenum];
-            printf("disk not inserted %i", drivenum);
+//            printf("disk not inserted %i", drivenum);
             return;
 
         case 0x02:  // Read sector(s) into memory
