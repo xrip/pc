@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 #include "graphics.h"
 #include "hardware/clocks.h"
 #include "stdbool.h"
