@@ -30,9 +30,8 @@ bool handleScancode(uint32_t ps2scancode) {
     doirq(1);
     return true;
 }
-
-struct semaphore vga_start_semaphore;
 int cursor_blink_state = 0;
+struct semaphore vga_start_semaphore;
 /* Renderer loop on Pico's second core */
 void second_core() {
     graphics_init();
@@ -42,14 +41,17 @@ void second_core() {
     graphics_set_offset(0, 0);
     graphics_set_flashmode(true, true);
 
-    for (int i = 0; i < 16; ++i) {
-        graphics_set_palette(i, cga_palette[i]);
+    for (int i = 0; i < 256; ++i) {
+        graphics_set_palette(i, vga_palette[i]);
     }
+
+    graphics_set_mode(videomode);
 
     sem_acquire_blocking(&vga_start_semaphore);
 
     uint64_t tick = time_us_64();
-    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_dss_tick = tick;
+    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
+    int old_video_mode = videomode;
 
     while (true) {
         if (tick >= last_timer_tick + timer_period) {
@@ -62,6 +64,40 @@ void second_core() {
             last_cursor_blink = tick;
         }
 
+        if (tick >= last_frame_tick + 16667) {
+            if (old_video_mode != videomode) {
+
+                switch (videomode) {
+                    case TGA_160x200x16:
+                    case TGA_320x200x16:
+                    case TGA_640x200x16: {
+                        for (int i = 0; i < 16; ++i) {
+                            graphics_set_palette(i, tga_palette[i]);
+                        }
+                        break;
+                    }
+
+                    case CGA_320x200x4: {
+                        for (int i = 0; i < 4; ++i) {
+                            graphics_set_palette(i, cga_palette[cga_gfxpal[cga_colorset][cga_intensity][i]]);
+                        }
+                        break;
+                    }
+                    case VGA_320x200x256:
+                    case VGA_320x200x256x4: {
+                        for (int i = 0; i < 256; ++i) {
+                            graphics_set_palette(i, vga_palette[i]);
+                        }
+                        break;
+                    }
+
+                }
+
+                graphics_set_mode(videomode);
+                old_video_mode = videomode;
+            }
+            last_frame_tick = tick;
+        }
         tick = time_us_64();
         tight_loop_contents();
     }
@@ -95,18 +131,8 @@ int main() {
 
     reset86();
 
-    graphics_set_mode(TEXTMODE_DEFAULT);
-
-
-    int old_video_mode = videomode;
     while (true) {
         exec86(327680);
-        if (old_video_mode != videomode) {
-
-            old_video_mode = videomode;
-            graphics_set_mode(videomode);
-        }
-        //doirq(0);
     }
 
     return 0;

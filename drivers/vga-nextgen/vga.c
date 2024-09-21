@@ -11,22 +11,23 @@
 #include "hardware/pio.h"
 #include "pico/stdlib.h"
 #include "stdlib.h"
+#include "emulator/emulator.h"
 
 uint16_t pio_program_VGA_instructions[] = {
-    //     .wrap_target
-    0x6008, //  0: out    pins, 8
-    //     .wrap
+        //     .wrap_target
+        0x6008, //  0: out    pins, 8
+        //     .wrap
 };
 
 const struct pio_program pio_program_VGA = {
-    .instructions = pio_program_VGA_instructions,
-    .length = 1,
-    .origin = -1,
+        .instructions = pio_program_VGA_instructions,
+        .length = 1,
+        .origin = -1,
 };
 
 
-static uint32_t* lines_pattern[4];
-static uint32_t* lines_pattern_data = NULL;
+static uint32_t *lines_pattern[4];
+static uint32_t *lines_pattern_data = NULL;
 static int _SM_VGA = -1;
 
 
@@ -42,8 +43,8 @@ static int visible_line_size = 320;
 static int dma_chan_ctrl;
 static int dma_chan;
 
-static uint8_t* graphics_buffer;
-uint8_t* text_buffer = NULL;
+static uint8_t *graphics_buffer;
+uint8_t *text_buffer = NULL;
 static uint graphics_buffer_width = 0;
 static uint graphics_buffer_height = 0;
 static int graphics_buffer_shift_x = 0;
@@ -64,7 +65,7 @@ static uint text_buffer_height = 0;
 static uint16_t txt_palette[16];
 
 //буфер 2К текстовой палитры для быстрой работы
-static uint16_t* txt_palette_fast = NULL;
+static uint16_t *txt_palette_fast = NULL;
 //static uint16_t txt_palette_fast[256*4];
 
 enum graphics_mode_t graphics_mode;
@@ -74,7 +75,7 @@ void __time_critical_func() dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
     static uint32_t frame_number = 0;
     static uint32_t screen_line = 0;
-    static uint8_t* input_buffer = NULL;
+    static uint8_t *input_buffer = NULL;
     screen_line++;
 
     if (screen_line == N_lines_total) {
@@ -86,7 +87,7 @@ void __time_critical_func() dma_handler_VGA() {
     if (screen_line >= N_lines_visible) {
         //заполнение цветом фона
         if (screen_line == N_lines_visible | screen_line == N_lines_visible + 3) {
-            uint32_t* output_buffer_32bit = lines_pattern[2 + (screen_line & 1)];
+            uint32_t * output_buffer_32bit = lines_pattern[2 + (screen_line & 1)];
             output_buffer_32bit += shift_picture / 4;
             uint32_t p_i = (screen_line & is_flash_line) + (frame_number & is_flash_frame) & 1;
             uint32_t color32 = bg_color[p_i];
@@ -108,78 +109,56 @@ void __time_critical_func() dma_handler_VGA() {
         return;
     } //если нет видеобуфера - рисуем пустую строку
 
-    int y, line_number;
-
-    uint32_t* * output_buffer = &lines_pattern[2 + (screen_line & 1)];
+    uint32_t * *output_buffer = &lines_pattern[2 + (screen_line & 1)];
     switch (graphics_mode) {
-        case CGA_160x200x16:
-        case CGA_320x200x4:
-        case CGA_640x200x2:
-        case TGA_320x200x16:
-        case EGA_320x200x16x4:
-        case VGA_320x200x256x4:
-        case GRAPHICSMODE_DEFAULT:
-        line_number = screen_line / 2;
-        if (screen_line % 3) return;
-        y = screen_line / 3 - graphics_buffer_shift_y;
-            break;
-
-        case TEXTMODE_160x100:
-        case TEXTMODE_53x30:
-        case TEXTMODE_DEFAULT: {
+        case TEXTMODE_80x25_COLOR:
+        case TEXTMODE_80x25_BW:  {
             uint16_t* output_buffer_16bit = (uint16_t *)*output_buffer;
             output_buffer_16bit += shift_picture / 2;
             const uint font_height = 16;
 
             // "слой" символа
             uint32_t glyph_line = screen_line % font_height;
+            uint y_div_16 = screen_line / 16;
 
             //указатель откуда начать считывать символы
             uint8_t* text_buffer_line = &text_buffer[screen_line / font_height * text_buffer_width * 2];
 
             for (int x = 0; x < text_buffer_width; x++) {
                 //из таблицы символов получаем "срез" текущего символа
-                uint8_t glyph_pixels = font_8x16[*text_buffer_line++ * font_height + glyph_line];
+                uint8_t glyph_pixels = font_8x16[(*text_buffer_line++) * font_height + glyph_line];
                 //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
-                uint16_t* color = &txt_palette_fast[*text_buffer_line++ * 4];
-#if 0
-                if (cursor_blink_state && !manager_started &&
-                    (screen_line / 16 == CURSOR_Y && x == CURSOR_X && glyph_line >= 11 && glyph_line <= 13)) {
+                uint16_t* color = &txt_palette_fast[4 * (*text_buffer_line++)];
+                uint8_t cursor_active =
+                        cursor_blink_state && y_div_16 == CURSOR_Y && x == CURSOR_X &&
+                        (cursor_start > cursor_end
+                         ? !(glyph_line >= cursor_end << 1 &&
+                             glyph_line <= cursor_start << 1)
+                         : glyph_line >= cursor_start << 1 && glyph_line <= cursor_end << 1);
+
+                if (cursor_active) {
                     *output_buffer_16bit++ = color[3];
                     *output_buffer_16bit++ = color[3];
                     *output_buffer_16bit++ = color[3];
                     *output_buffer_16bit++ = color[3];
-                    if (text_buffer_width == 40) {
-                        *output_buffer_16bit++ = color[3];
-                        *output_buffer_16bit++ = color[3];
-                        *output_buffer_16bit++ = color[3];
-                        *output_buffer_16bit++ = color[3];
-                    }
-                }
-                else
-#endif
-                {
+                } else {
                     *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
                     glyph_pixels >>= 2;
                     *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
                     glyph_pixels >>= 2;
                     *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
                     glyph_pixels >>= 2;
                     *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
                 }
             }
             dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
             return;
         }
-        default: {
-            dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
-            return;
-        }
     }
+
+    int line_number = screen_line / 2;
+    if (screen_line % 2) return;
+    int y = screen_line / 2 - graphics_buffer_shift_y;
 
     if (y < 0) {
         dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
@@ -189,7 +168,7 @@ void __time_critical_func() dma_handler_VGA() {
         // заполнение линии цветом фона
         if (y == graphics_buffer_height | y == graphics_buffer_height + 1 |
             y == graphics_buffer_height + 2) {
-            uint32_t* output_buffer_32bit = *output_buffer;
+            uint32_t * output_buffer_32bit = *output_buffer;
             uint32_t p_i = ((line_number & is_flash_line) + (frame_number & is_flash_frame)) & 1;
             uint32_t color32 = bg_color[p_i];
 
@@ -208,19 +187,18 @@ void __time_critical_func() dma_handler_VGA() {
     // uint8_t* vbuf8=vbuf+(line*g_buf_width/2); //4bit buf
     //uint8_t* vbuf8=vbuf+(line*g_buf_width/4); //2bit buf
     //uint8_t* vbuf8=vbuf+((line&1)*8192+(line>>1)*g_buf_width/4);
-    uint8_t* input_buffer_8bit = input_buffer + y * graphics_buffer_width;
+    uint8_t *input_buffer_8bit = input_buffer + 32768 + (vram_offset << 1) + y / 2 * 80 + (y & 1) * 8192;
 
 
     //output_buffer = &lines_pattern[2 + ((line_number) & 1)];
 
-    uint16_t* output_buffer_16bit = (uint16_t *)*output_buffer;
+    uint16_t *output_buffer_16bit = (uint16_t *) (*output_buffer);
     output_buffer_16bit += shift_picture / 2; //смещение началы вывода на размер синхросигнала
 
     //    g_buf_shx&=0xfffffffe;//4bit buf
     if (graphics_mode == CGA_640x200x2) {
         graphics_buffer_shift_x &= 0xfffffff1; //1bit buf
-    }
-    else {
+    } else {
         graphics_buffer_shift_x &= 0xfffffff2; //2bit buf
     }
 
@@ -230,36 +208,103 @@ void __time_critical_func() dma_handler_VGA() {
         //vbuf8-=g_buf_shx; //8bit buf
         if (CGA_640x200x2 == graphics_mode) {
             input_buffer_8bit -= graphics_buffer_shift_x / 8; //1bit buf
-        }
-        else {
+        } else {
             input_buffer_8bit -= graphics_buffer_shift_x / 4; //2bit buf
         }
         max_width += graphics_buffer_shift_x;
-    }
-    else {
+    } else {
 #define div_factor (2)
         output_buffer_16bit += graphics_buffer_shift_x * 2 / div_factor;
     }
 
 
     int width = MIN((visible_line_size - ((graphics_buffer_shift_x > 0) ? (graphics_buffer_shift_x) : 0)), max_width);
-    // if (width < 0) return; // TODO: detect a case
+    if (width < 0) return; // TODO: detect a case
 
     // Индекс палитры в зависимости от настроек чередования строк и кадров
-    uint16_t* current_palette = palette[(y & is_flash_line) + (frame_number & is_flash_frame) & 1];
+    uint16_t *current_palette = palette[(y & is_flash_line) + (frame_number & is_flash_frame) & 1];
 
-    uint8_t* output_buffer_8bit;
+    uint8_t *output_buffer_8bit;
     switch (graphics_mode) {
-        case GRAPHICSMODE_DEFAULT:
-            output_buffer_8bit = (uint8_t *)output_buffer_16bit;
-            for(int m = 1+(screen_line % 3 == 0 ? 0 : 0); m--;) {
-                for (int i = width; i--;) {
-                    //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
-                    // *output_buffer_16bit++ = current_palette[*input_buffer_8bit];
-                    *output_buffer_8bit++ = current_palette[*input_buffer_8bit];
-                    *output_buffer_8bit++ = current_palette[*input_buffer_8bit];
-                    *output_buffer_8bit++ = current_palette[*input_buffer_8bit++];
+        case CGA_640x200x2:
+            output_buffer_8bit = (uint8_t *) output_buffer_16bit;
+            //1bit buf
+            for (int x = width / 4; x--;) {
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 7 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 6 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 5 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 4 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 3 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 2 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 1 & 1];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 0 & 1];
+                input_buffer_8bit++;
+            }
+            break;
+        case CGA_320x200x4:
+            //2bit buf
+            for (int x = 320 / 4; x--;) {
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 6 & 3];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 3];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 2 & 3];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 0 & 3];
+                input_buffer_8bit++;
+            }
+            break;
+        case COMPOSITE_160x200x16_force:
+        case COMPOSITE_160x200x16:
+        case TGA_160x200x16:
+            //input_buffer_8bit = 32768 + input_buffer + (y & 1) * 8192 + y / 4 * 80;
+            //4bit buf
+            for (int x = width / 4; x--;) {
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
+                input_buffer_8bit++;
+            }
+            break;
+        case TGA_320x200x16: {
+            //4bit buf
+            input_buffer_8bit = 32768 + input_buffer + (y & 3) * 8192 + y / 4 * 160;
+            for (int x = width / 2; x--;) {
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
+                input_buffer_8bit++;
+            }
+            break;
+        }
+        case TGA_640x200x16: {
+            //4bit buf
+            input_buffer_8bit = input_buffer + y * 320;
+            output_buffer_8bit = (uint8_t *) output_buffer_16bit;
+
+            for (int x = 320; x--;) {
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
+                *output_buffer_8bit++ = current_palette[*input_buffer_8bit & 15];
+                input_buffer_8bit++;
+            }
+            break;
+        }
+        case EGA_320x200x16x4: {
+            input_buffer_8bit = input_buffer + y * 40;
+            for (int x = 0; x < 40; x++) {
+                for (int bit = 7; bit--;) {
+                    uint8_t color = *input_buffer_8bit >> bit & 1;
+                    color |= (*(input_buffer_8bit + 16000) >> bit & 1) << 1;
+                    color |= (*(input_buffer_8bit + 32000) >> bit & 1) << 2;
+                    color |= (*(input_buffer_8bit + 48000) >> bit & 1) << 3;
+                    *output_buffer_16bit++ = current_palette[color];
                 }
+                input_buffer_8bit++;
+            }
+            break;
+        }
+        case VGA_320x200x256:
+            input_buffer_8bit = input_buffer + y * width;
+            for (int i = width; i--;) {
+                //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
             }
             break;
         case VGA_320x200x256x4:
@@ -270,7 +315,7 @@ void __time_critical_func() dma_handler_VGA() {
                 *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 16000)];
                 *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 32000)];
                 *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 48000)];
-                *input_buffer_8bit++;
+                input_buffer_8bit++;
             }
             break;
         default:
@@ -281,12 +326,11 @@ void __time_critical_func() dma_handler_VGA() {
 
 void graphics_set_mode(enum graphics_mode_t mode) {
     switch (mode) {
-        case TEXTMODE_53x30:
+        case TEXTMODE_40x25_COLOR:
             text_buffer_width = 40;
             text_buffer_height = 30;
             break;
-        case TEXTMODE_DEFAULT:
-        case TEXTMODE_160x100:
+        case TEXTMODE_80x25_COLOR:
         default:
             text_buffer_width = 80;
             text_buffer_height = 30;
@@ -311,16 +355,15 @@ void graphics_set_mode(enum graphics_mode_t mode) {
     int HS_SHIFT = 100;
 
     switch (graphics_mode) {
-        case TEXTMODE_160x100:
-        case TEXTMODE_53x30:
-        case TEXTMODE_DEFAULT:
+        case TEXTMODE_80x25_BW:
+        case TEXTMODE_80x25_COLOR:
             //текстовая палитра
             for (int i = 0; i < 16; i++) {
                 txt_palette[i] = txt_palette[i] & 0x3f | palette16_mask >> 8;
             }
 
             if (!txt_palette_fast) {
-                txt_palette_fast = (uint16_t *)calloc(256 * 4, sizeof(uint16_t));
+                txt_palette_fast = (uint16_t *) calloc(256 * 4, sizeof(uint16_t));
                 for (int i = 0; i < 256; i++) {
                     const uint8_t c1 = txt_palette[i & 0xf];
                     const uint8_t c0 = txt_palette[i >> 4];
@@ -333,8 +376,8 @@ void graphics_set_mode(enum graphics_mode_t mode) {
             }
         case CGA_640x200x2:
         case CGA_320x200x4:
-        case CGA_160x200x16:
-        case GRAPHICSMODE_DEFAULT:
+        case TGA_160x200x16:
+        case VGA_320x200x256:
         case VGA_320x200x256x4:
         case EGA_320x200x16x4:
         case TGA_320x200x16:
@@ -373,11 +416,11 @@ void graphics_set_mode(enum graphics_mode_t mode) {
     //инициализация шаблонов строк и синхросигнала
     if (!lines_pattern_data) //выделение памяти, если не выделено
     {
-        const uint32_t div32 = (uint32_t)(fdiv * (1 << 16) + 0.0);
+        const uint32_t div32 = (uint32_t) (fdiv * (1 << 16) + 0.0);
         PIO_VGA->sm[_SM_VGA].clkdiv = div32 & 0xfffff000; //делитель для конкретной sm
         dma_channel_set_trans_count(dma_chan, line_size / 4, false);
 
-        lines_pattern_data = (uint32_t *)calloc(line_size * 4 / 4, sizeof(uint32_t));
+        lines_pattern_data = (uint32_t *) calloc(line_size * 4 / 4, sizeof(uint32_t));
 
         for (int i = 0; i < 4; i++) {
             lines_pattern[i] = &lines_pattern_data[i * (line_size / 4)];
@@ -387,7 +430,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
         TMPL_VS8 = TMPL_LINE8 ^ 0b10000000;
         TMPL_HS8 = TMPL_LINE8 ^ 0b01000000;
 
-        uint8_t* base_ptr = (uint8_t *)lines_pattern[0];
+        uint8_t *base_ptr = (uint8_t *) lines_pattern[0];
         //пустая строка
         memset(base_ptr, TMPL_LINE8, line_size);
         //memset(base_ptr+HS_SHIFT,TMPL_HS8,HS_SIZE);
@@ -395,21 +438,21 @@ void graphics_set_mode(enum graphics_mode_t mode) {
         memset(base_ptr, TMPL_HS8, HS_SIZE);
 
         // кадровая синхра
-        base_ptr = (uint8_t *)lines_pattern[1];
+        base_ptr = (uint8_t *) lines_pattern[1];
         memset(base_ptr, TMPL_VS8, line_size);
         //memset(base_ptr+HS_SHIFT,TMPL_VHS8,HS_SIZE);
         //выровненная синхра вначале
         memset(base_ptr, TMPL_VHS8, HS_SIZE);
 
         //заготовки для строк с изображением
-        base_ptr = (uint8_t *)lines_pattern[2];
+        base_ptr = (uint8_t *) lines_pattern[2];
         memcpy(base_ptr, lines_pattern[0], line_size);
-        base_ptr = (uint8_t *)lines_pattern[3];
+        base_ptr = (uint8_t *) lines_pattern[3];
         memcpy(base_ptr, lines_pattern[0], line_size);
     }
 }
 
-void graphics_set_buffer(uint8_t* buffer, const uint16_t width, const uint16_t height) {
+void graphics_set_buffer(uint8_t *buffer, const uint16_t width, const uint16_t height) {
     graphics_buffer = buffer;
     graphics_buffer_width = width;
     graphics_buffer_height = height;
@@ -426,7 +469,7 @@ void graphics_set_flashmode(const bool flash_line, const bool flash_frame) {
     is_flash_line = flash_line;
 }
 
-void graphics_set_textbuffer(uint8_t* buffer) {
+void graphics_set_textbuffer(uint8_t *buffer) {
     text_buffer = buffer;
 }
 
@@ -533,12 +576,12 @@ void graphics_init() {
     channel_config_set_chain_to(&c0, dma_chan_ctrl); // chain to other channel
 
     dma_channel_configure(
-        dma_chan,
-        &c0,
-        &PIO_VGA->txf[sm], // Write address
-        lines_pattern[0], // read address
-        600 / 4, //
-        false // Don't start yet
+            dma_chan,
+            &c0,
+            &PIO_VGA->txf[sm], // Write address
+            lines_pattern[0], // read address
+            600 / 4, //
+            false // Don't start yet
     );
     //канал DMA для контроля основного канала
     dma_channel_config c1 = dma_channel_get_default_config(dma_chan_ctrl);
@@ -550,16 +593,16 @@ void graphics_init() {
     //channel_config_set_dreq(&c1, DREQ_PIO0_TX0);
 
     dma_channel_configure(
-        dma_chan_ctrl,
-        &c1,
-        &dma_hw->ch[dma_chan].read_addr, // Write address
-        &lines_pattern[0], // read address
-        1, //
-        false // Don't start yet
+            dma_chan_ctrl,
+            &c1,
+            &dma_hw->ch[dma_chan].read_addr, // Write address
+            &lines_pattern[0], // read address
+            1, //
+            false // Don't start yet
     );
     //dma_channel_set_read_addr(dma_chan, &DMA_BUF_ADDR[0], false);
 
-    graphics_set_mode(TGA_320x200x16);
+    graphics_set_mode(VGA_320x200x256);
 
     irq_set_exclusive_handler(VGA_DMA_IRQ, dma_handler_VGA);
 
@@ -571,7 +614,7 @@ void graphics_init() {
 
 
 void clrScr(const uint8_t color) {
-    uint16_t* t_buf = (uint16_t *)text_buffer;
+    uint16_t *t_buf = (uint16_t *) text_buffer;
     int size = TEXTMODE_COLS * TEXTMODE_ROWS;
 
     while (size--) *t_buf++ = color << 4 | ' ';

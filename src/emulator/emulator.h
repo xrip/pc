@@ -13,7 +13,7 @@ extern "C" {
 #define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
 
 extern uint8_t log_debug;
-
+extern int cursor_blink_state;
 extern uint8_t VIDEORAM[VIDEORAM_SIZE];
 extern uint8_t RAM[RAM_SIZE];
 extern union _bytewordregs_ {
@@ -90,7 +90,7 @@ extern uint16_t portin16(uint16_t portnum);
 
 // Ports
 extern uint8_t portram[0x400];
-extern uint8_t port60, port61, port64, port3DA;
+extern uint8_t port60, port61, port64, port3DA, port3D8;
 extern uint32_t vram_offset;
 // CPU
 extern void exec86(uint32_t execloops);

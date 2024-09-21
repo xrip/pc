@@ -1,7 +1,7 @@
 #include "emulator/emulator.h"
 
 uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0;
-uint8_t port3DA;
+uint8_t port3DA, port3D8;
 
 uint32_t cga_palette[16] = {
         //R, G, B
@@ -108,7 +108,9 @@ static inline void cga_portout(uint16_t portnum, uint16_t value) {
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
         case 0x3D8: // Mode control register:
+        port3D8 = value;
         // 0x13 -- 640 dot mode -- 0b10011
+        //printf("3D8 %x\n", value);
             if (videomode >= 0xd) return;
             color_burst = (value >> 2) & 1;
             // the unofficial Mode 5 palette, accessed by disabling ColorBurst

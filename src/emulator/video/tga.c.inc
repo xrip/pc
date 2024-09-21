@@ -38,10 +38,10 @@ inline void tga_portout(uint16_t portnum, uint16_t value) {
                     return;
                 case 0x03: /* Mode Control */
                     if (value == 0x10) {
-                        videomode = 0x0A; //
+                        videomode = port3D8 == 0x13 ? 0x0A : 0x08; //
                     }
 
-                    if (value == 8) {
+                    if (value == 0x08) {
                         videomode = 0x8; // 640x200x4
                     }
 

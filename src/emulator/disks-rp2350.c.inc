@@ -9,7 +9,7 @@ int hdcount = 0, fdcount = 0;
 static uint8_t sectorbuffer[512];
 
 struct struct_drive {
-    FIL *diskfile;
+    FIL diskfile;
     size_t filesize;
     uint16_t cyls;
     uint16_t sects;
@@ -84,7 +84,7 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
     // Eject any existing disk and insert the new one
     ejectdisk(drivenum);
 
-    disk[drivenum].diskfile = &file;
+    disk[drivenum].diskfile = file;
     disk[drivenum].filesize = size;
     disk[drivenum].inserted = 1;  // Using 1 instead of true for consistency with uint8_t
     disk[drivenum].readonly = 0;  // Default to read-write
@@ -152,13 +152,13 @@ static void readdisk(uint8_t drivenum,
     }
 
     // Set file position
-    f_lseek(disk[drivenum].diskfile, fileoffset);
+    f_lseek(&disk[drivenum].diskfile, fileoffset);
 
     // Process sectors
     for (cursect = 0; cursect < sectcount; cursect++) {
         // Read the sector into buffer
         size_t br;
-        f_read(disk[drivenum].diskfile, &sectorbuffer[0], 512, &br);
+        f_read(&disk[drivenum].diskfile, &sectorbuffer[0], 512, &br);
 
         if (!br) {
 //            printf("Disk read error on drive %i\r\n", drivenum);
@@ -244,7 +244,7 @@ static void writedisk(uint8_t drivenum,
     }
 
     // Set file position
-    f_lseek(disk[drivenum].diskfile, fileoffset);
+    f_lseek(&disk[drivenum].diskfile, fileoffset);
 
 
     // Write each sector
@@ -257,7 +257,7 @@ static void writedisk(uint8_t drivenum,
 
         // Write the buffer to the file
         size_t bw;
-        //f_write(disk[drivenum].diskfile, sectorbuffer, 512, &bw);
+        f_write(&disk[drivenum].diskfile, sectorbuffer, 512, &bw);
     }
 
     // Handle the case where no sectors were written

@@ -5,7 +5,7 @@
 #include "disks-win32.c.inc"
 #endif
 
-int videomode = 0;
+int videomode = 3;
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;

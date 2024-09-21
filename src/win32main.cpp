@@ -95,7 +95,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         if (elapsedTime - elapsed_frame_tics >= 16'666) {
-            port3DA = 1;
+//            port3DA = 1;
             if (1) {
                 // http://www.techhelpmanual.com/114-video_modes.html
                 // http://www.techhelpmanual.com/89-video_memory_layouts.html
@@ -121,8 +121,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             for (uint8_t column = 0; column < cols; column++) {
                                 // Access vidram and font data once per character
                                 uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2]; // Character code
-                                uint8_t glyph_row = font_8x8[charcode * 8 +
-                                                             y_mod_8]; // Glyph row from font
+                                uint8_t glyph_row = font_8x8[charcode * 8 + y_mod_8]; // Glyph row from font
                                 uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1]; // Color attribute
 
                                 // Calculate screen position
@@ -407,7 +406,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             printf("Unsupported videomode %x\n", videomode);
                     }
             }
-            port3DA = 0b1000;
+//            port3DA = 0b1000;
             elapsed_frame_tics = elapsedTime; // Reset the tick counter for 2Hz
         }
 
