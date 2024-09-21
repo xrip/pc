@@ -35,10 +35,19 @@ extern struct i8259_s {
     uint8_t readmode; //remember what to return on read register from OCW3
     uint8_t enabled;
 } i8259;
-void doirq(uint8_t irqnum);
-uint8_t nextintr();
-void out8259(uint16_t portnum, uint8_t value);
-uint8_t in8259(uint16_t portnum);
+#define doirq(irqnum) (i8259.irr |= (1 << irqnum))
+static inline uint8_t nextintr() {
+    uint8_t tmpirr = i8259.irr & (~i8259.imr); //XOR request register with inverted mask register
+    for (uint8_t i = 0; i < 8; i++)
+        if ((tmpirr >> i) & 1) {
+            i8259.irr ^= (1 << i);
+            i8259.isr |= (1 << i);
+            return (i8259.icw[2] + i);
+        }
+}
+
+//void out8259(uint16_t portnum, uint8_t value);
+//uint8_t in8259(uint16_t portnum);
 
 // Video
 extern int videomode;
@@ -100,8 +109,8 @@ extern struct i8253_s {
 
 extern int timer_period;
 extern int speakerenabled;
-extern void out8253(uint16_t portnum, uint8_t value);
-extern uint8_t in8253(uint16_t portnum);
+//extern void out8253(uint16_t portnum, uint8_t value);
+//extern uint8_t in8253(uint16_t portnum);
 
 // Mouse
 void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel);

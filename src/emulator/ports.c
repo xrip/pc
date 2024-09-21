@@ -1,6 +1,8 @@
 #include <time.h>
 #include "emulator.h"
 #include "emulator/mouse.c.inc"
+#include "emulator/i8253.c.inc"
+#include "emulator/i8259.c.inc"
 #include "emulator/video/cga.c.inc"
 #include "emulator/video/tga.c.inc"
 #include "emulator/video/vga.c.inc"

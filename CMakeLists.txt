@@ -23,8 +23,8 @@ else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
-    add_executable(${PROJECT_NAME} src/rp2350main.c src/emulator/memory.c src/emulator/i8253.c
-            src/emulator/i8259.c src/emulator/cpu.c src/emulator/ports.c)
+    add_executable(${PROJECT_NAME} src/rp2350main.c src/emulator/memory.c src/emulator/i8253.c.inc
+            src/emulator/i8259.c.inc src/emulator/cpu.c src/emulator/ports.c)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})

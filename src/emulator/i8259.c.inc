@@ -12,7 +12,7 @@ void init8259() {
 //    memset((void *) &i8259, 0, sizeof(i8259));
 }
 
-uint8_t in8259(uint16_t portnum) {
+static inline uint8_t in8259(uint16_t portnum) {
     switch (portnum & 1) {
         case 0:
             if (i8259.readmode == 0) return (i8259.irr);
@@ -24,7 +24,7 @@ uint8_t in8259(uint16_t portnum) {
 }
 
 
-void out8259(uint16_t portnum, uint8_t value) {
+static inline void out8259(uint16_t portnum, uint8_t value) {
     //printf("out8259 %i %i\r\n", portnum, value);
     uint8_t i;
     switch (portnum & 1) {
@@ -62,16 +62,3 @@ void out8259(uint16_t portnum, uint8_t value) {
     }
 }
 
-void doirq(uint8_t irqnum) {
-    i8259.irr |= (1 << irqnum);
-}
-
- uint8_t nextintr() {
-    uint8_t tmpirr = i8259.irr & (~i8259.imr); //XOR request register with inverted mask register
-    for (uint8_t i = 0; i < 8; i++)
-        if ((tmpirr >> i) & 1) {
-            i8259.irr ^= (1 << i);
-            i8259.isr |= (1 << i);
-            return (i8259.icw[2] + i);
-        }
-}

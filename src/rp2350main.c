@@ -98,8 +98,14 @@ int main() {
     graphics_set_mode(TEXTMODE_DEFAULT);
 
 
+    int old_video_mode = videomode;
     while (true) {
-        exec86(327680 / 2);
+        exec86(327680);
+        if (old_video_mode != videomode) {
+
+            old_video_mode = videomode;
+            graphics_set_mode(videomode);
+        }
         //doirq(0);
     }
 
