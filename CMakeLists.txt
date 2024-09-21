@@ -36,6 +36,7 @@ else ()
 
     add_subdirectory(drivers/ps2)
     add_subdirectory(drivers/fatfs)
+    add_subdirectory(drivers/psram)
     add_subdirectory(drivers/sdcard)
     add_subdirectory(drivers/vga-nextgen)
     add_subdirectory(drivers/graphics)
@@ -46,6 +47,7 @@ else ()
             ps2
             sdcard
             graphics
+            psram
             vga-nextgen
 
             pico_runtime
@@ -74,6 +76,16 @@ else ()
             SDCARD_PIN_SPI0_SCK=2
             SDCARD_PIN_SPI0_MOSI=3
             SDCARD_PIN_SPI0_MISO=4
+
+            PSRAM
+            PSRAM_MUTEX=1
+            #PSRAM_SPINLOCK=1
+            #PSRAM_ASYNC=
+
+            PSRAM_PIN_CS=18
+            PSRAM_PIN_SCK=19
+            PSRAM_PIN_MOSI=20
+            PSRAM_PIN_MISO=21
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})
