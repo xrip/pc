@@ -1,6 +1,5 @@
 #include "emulator.h"
 #include "ff.h"
-#include "graphics.h"
 
 extern FATFS fs;
 
@@ -37,7 +36,7 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
     if (drivenum & 0x80) drivenum -= 126;  // Normalize hard drive numbers
 
     if (FR_OK != f_open(&file, pathname, FA_READ | FA_WRITE )) {
-        draw_text("Cant mount drive", 0, 0, 12, 0);
+        //draw_text("Cant mount drive", 0, 0, 12, 0);
         while (1);
         return 0;
     }

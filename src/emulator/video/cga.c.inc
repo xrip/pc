@@ -104,6 +104,7 @@ uint32_t cga_composite_palette[3][16] = {
 uint8_t color_burst = 0;
 
 static inline void cga_portout(uint16_t portnum, uint16_t value) {
+    // https://arachnoid.com/modelines/
     // http://www.techhelpmanual.com/901-color_graphics_adapter_i_o_ports.html
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
@@ -146,7 +147,7 @@ static inline void cga_portout(uint16_t portnum, uint16_t value) {
 }
 
 static inline uint16_t cga_portin(uint16_t portnum) {
-    port3DA ^= 1;
-    if (!(port3DA & 1)) port3DA ^= 8;
+//    port3DA ^= 1;
+//    if (!(port3DA & 1)) port3DA ^= 8;
     return port3DA;
 }

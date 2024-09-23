@@ -8,14 +8,23 @@
 extern "C" {
 #endif
 #define VIDEORAM_SIZE (64 << 10)
-#define RAM_SIZE (416 * 1024)
+#if PICO_RP2350
+#define RAM_SIZE (416 << 10)
+#else
+#if !PICO_ON_DEVICE
+#define RAM_SIZE (640 * 1024)
+#else
+#define RAM_SIZE (144 * 1024)
+#endif
+#endif
+
 #define SOUND_FREQUENCY 44100
 #define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
 
 extern uint8_t log_debug;
 extern int cursor_blink_state;
-extern uint8_t VIDEORAM[VIDEORAM_SIZE];
-extern uint8_t RAM[RAM_SIZE];
+extern uint8_t VIDEORAM[VIDEORAM_SIZE+1];
+extern uint8_t RAM[RAM_SIZE+1];
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];
@@ -35,7 +44,7 @@ extern struct i8259_s {
     uint8_t readmode; //remember what to return on read register from OCW3
     uint8_t enabled;
 } i8259;
-#define doirq(irqnum) (i8259.irr |= (1 << irqnum))
+static inline void doirq(uint8_t irqnum) { i8259.irr |= (1 << irqnum); }
 static inline uint8_t nextintr() {
     uint8_t tmpirr = i8259.irr & (~i8259.imr); //XOR request register with inverted mask register
     for (uint8_t i = 0; i < 8; i++)
@@ -68,16 +77,17 @@ extern uint32_t cga_composite_palette[3][16];
 extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking;
 
 // EGA/VGA
-#define vga_plane_size (32768)
+#define vga_plane_size (8192*2)
 extern uint32_t vga_plane_offset;
 extern uint8_t vga_planar_mode;
 // Memory
 extern void writew86(uint32_t addr32, uint16_t value);
+//#define writew86(address, value) {write86(address, (uint8_t) value & 0xFF); write86(address + 1, (uint8_t) ((value >> 8) & 0xFF));}
 
 extern void write86(uint32_t addr32, uint8_t value);
 
 extern uint16_t readw86(uint32_t addr32);
-
+//#define readw86(address) ((uint16_t) read86(address) | ((uint16_t) read86(address + 1) << 8))
 extern uint8_t read86(uint32_t addr32);
 
 extern void portout(uint16_t portnum, uint16_t value);

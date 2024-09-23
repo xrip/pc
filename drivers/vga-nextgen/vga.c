@@ -55,7 +55,8 @@ static bool is_flash_line = false;
 static bool is_flash_frame = false;
 
 //буфер 1к графической палитры
-static uint16_t palette[2][256];
+static uint16_t __scratch_y("vga_palette") palette[2][256];
+//static uint16_t palette[2][256];
 
 static uint32_t bg_color[2];
 static uint16_t palette16_mask = 0;
@@ -72,7 +73,7 @@ static uint16_t *txt_palette_fast = NULL;
 enum graphics_mode_t graphics_mode;
 
 
-void __time_critical_func() dma_handler_VGA() {
+void __scratch_y("vga") dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
     static uint32_t frame_number = 0;
     static uint32_t screen_line = 0;
@@ -110,8 +111,18 @@ void __time_critical_func() dma_handler_VGA() {
         return;
     } //если нет видеобуфера - рисуем пустую строку
 
+    if (screen_line >= 479)
+        port3DA = 8;
+    else
+        port3DA = 0;
+
+    if (screen_line & 1)
+        port3DA |= 1;
+
     uint32_t * *output_buffer = &lines_pattern[2 + (screen_line & 1)];
     switch (graphics_mode) {
+        case TEXTMODE_40x25_COLOR:
+        case TEXTMODE_40x25_BW:
         case TEXTMODE_80x25_COLOR:
         case TEXTMODE_80x25_BW:  {
             uint16_t* output_buffer_16bit = (uint16_t *)*output_buffer;
@@ -123,7 +134,7 @@ void __time_critical_func() dma_handler_VGA() {
             uint y_div_16 = screen_line / 16;
 
             //указатель откуда начать считывать символы
-            uint8_t* text_buffer_line = &text_buffer[screen_line / font_height * text_buffer_width * 2];
+            uint8_t* text_buffer_line = input_buffer + 32768 + (vram_offset << 1) + screen_line / 16 * text_buffer_width * 2;
 
             for (int x = 0; x < text_buffer_width; x++) {
                 //из таблицы символов получаем "срез" текущего символа
@@ -161,7 +172,7 @@ void __time_critical_func() dma_handler_VGA() {
     if (screen_line % 2) return;
     int y = screen_line / 2 - graphics_buffer_shift_y;
 
-    if (y < 0) {
+    if (y < 0 || y >= 400) {
         dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
         return;
     }
@@ -242,6 +253,7 @@ void __time_critical_func() dma_handler_VGA() {
                 input_buffer_8bit++;
             }
             break;
+        case CGA_320x200x4_BW:
         case CGA_320x200x4:
             //2bit buf
             for (int x = 320 / 4; x--;) {
@@ -327,10 +339,12 @@ void __time_critical_func() dma_handler_VGA() {
 
 void graphics_set_mode(enum graphics_mode_t mode) {
     switch (mode) {
+        case TEXTMODE_40x25_BW:
         case TEXTMODE_40x25_COLOR:
             text_buffer_width = 40;
             text_buffer_height = 30;
             break;
+        case TEXTMODE_80x25_BW:
         case TEXTMODE_80x25_COLOR:
         default:
             text_buffer_width = 80;
@@ -382,6 +396,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
         case VGA_320x200x256x4:
         case EGA_320x200x16x4:
         case TGA_320x200x16:
+        default:
 
             TMPL_LINE8 = 0b11000000;
             HS_SHIFT = 328 * 2;
@@ -402,8 +417,6 @@ void graphics_set_mode(enum graphics_mode_t mode) {
 
             fdiv = clock_get_hz(clk_sys) / 25175000.0; //частота пиксельклока
             break;
-        default:
-            return;
     }
 
     //корректировка  палитры по маске бит синхры

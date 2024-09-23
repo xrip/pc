@@ -10,6 +10,7 @@
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
+#include "psram_spi.h"
 
 FATFS fs;
 
@@ -50,8 +51,9 @@ void second_core() {
     sem_acquire_blocking(&vga_start_semaphore);
 
     uint64_t tick = time_us_64();
-    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
+    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick, last_raytrace_tick = tick;
     int old_video_mode = videomode;
+    int flip;
 
     while (true) {
         if (tick >= last_timer_tick + timer_period) {
@@ -63,10 +65,8 @@ void second_core() {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
-
         if (tick >= last_frame_tick + 16667) {
             if (old_video_mode != videomode) {
-
                 switch (videomode) {
                     case TGA_160x200x16:
                     case TGA_320x200x16:
@@ -100,11 +100,16 @@ void second_core() {
         }
         tick = time_us_64();
         tight_loop_contents();
+
     }
 }
 
 int main() {
+#if PICO_RP2350
     vreg_set_voltage(VREG_VOLTAGE_1_40);
+#else
+    vreg_set_voltage(VREG_VOLTAGE_1_30);
+#endif
     sleep_ms(33);
     set_sys_clock_khz(376 * 1000, true);
 
@@ -129,10 +134,12 @@ int main() {
         while (1);
     }
 
+
+    init_psram();
     reset86();
 
     while (true) {
-        exec86(327680);
+        exec86(32768);
     }
 
     return 0;

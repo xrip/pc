@@ -6,7 +6,8 @@
 #include "emulator/video/cga.c.inc"
 #include "emulator/video/tga.c.inc"
 #include "emulator/video/vga.c.inc"
-
+// https://wiki.osdev.org/I/O_Ports
+// http://www.techhelpmanual.com/892-i_o_port_map.html
 uint8_t crt_controller_idx  = 0xff , crt_controller[32];
 uint8_t port60 = 0xff, port61 = 0xff, port64 = 0xff;
 uint8_t cursor_start = 12, cursor_end = 13;
@@ -229,6 +230,7 @@ uint16_t portin(uint16_t portnum) {
         case 0x255:
         case 0x256:
         case 0x257:
+            return 0xff;
             break;
 //            return rtc_read(portnum);
 // Adlib
@@ -276,5 +278,5 @@ void portout16(uint16_t portnum, uint16_t value) {
 }
 
 uint16_t portin16(uint16_t portnum) {
-    return portin(portnum) | portin(portnum + 1) >> 8;
+    return portin(portnum) & 0xff | (portin(portnum + 1) & 0xff) << 8;
 }
