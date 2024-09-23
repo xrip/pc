@@ -3,7 +3,6 @@
 #include "emulator.h"
 
 #if PICO_ON_DEVICE
-#include "psram_spi.h"
 #endif
 
 uint8_t VIDEORAM[VIDEORAM_SIZE+1];
@@ -13,12 +12,7 @@ void write86(uint32_t address, uint8_t value) {
     if (address < RAM_SIZE) {
         RAM[address] = value;
     }
-#if PICO_ON_DEVICE
-    else if (address < (640 << 10)) {
-        write8psram(address, value);
-        return;
-    }
-#endif
+
     else if (address >= 0xA0000 && address < 0xC0000) {
             VIDEORAM[(vga_plane_offset + address - 0xA0000) % VIDEORAM_SIZE] = value;
         }
@@ -47,11 +41,7 @@ uint8_t read86(uint32_t address) {
     if (address < RAM_SIZE) {
         return RAM[address];
     }
-#if PICO_ON_DEVICE
-    else if (address < (640 << 10)) {
-        return read8psram(address);
-    }
-#endif
+
     else if (address >= 0xA0000 && address < 0xC0000) {
         return VIDEORAM[(vga_plane_offset + address - 0xA0000) % VIDEORAM_SIZE];
     } if (address == 0xFC000) { return 0x21; } else if (address >= 0xFE000) {

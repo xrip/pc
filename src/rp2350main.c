@@ -10,7 +10,6 @@
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
-#include "psram_spi.h"
 
 FATFS fs;
 
@@ -135,7 +134,6 @@ int main() {
     }
 
 
-    init_psram();
     reset86();
 
     while (true) {

@@ -36,7 +36,6 @@ else ()
 
     add_subdirectory(drivers/ps2)
     add_subdirectory(drivers/fatfs)
-    add_subdirectory(drivers/psram)
     add_subdirectory(drivers/sdcard)
     add_subdirectory(drivers/vga-nextgen)
     add_subdirectory(drivers/graphics)
@@ -47,7 +46,6 @@ else ()
             ps2
             sdcard
             graphics
-            psram
             vga-nextgen
 
             pico_runtime
