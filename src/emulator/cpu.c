@@ -233,7 +233,7 @@ void intcall86(uint8_t intnum) {
             return diskhandler();
         case 0x19:
             insertdisk(0, "fdd0.img");
-            insertdisk(2, "hdd.img");
+            insertdisk(128, "hdd.img");
             break;
     }
 

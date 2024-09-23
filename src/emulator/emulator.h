@@ -14,8 +14,8 @@ extern "C" {
 
 extern uint8_t log_debug;
 
-extern uint8_t VIDEORAM[VIDEORAM_SIZE];
-extern uint8_t RAM[RAM_SIZE];
+extern uint8_t VIDEORAM[VIDEORAM_SIZE+1];
+extern uint8_t RAM[RAM_SIZE+1];
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];
