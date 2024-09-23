@@ -95,6 +95,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         if (elapsedTime - elapsed_frame_tics >= 16'666) {
+//            port3DA = 1;
             if (1) {
                 // http://www.techhelpmanual.com/114-video_modes.html
                 // http://www.techhelpmanual.com/89-video_memory_layouts.html
@@ -108,7 +109,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
 
                 //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
-                uint8_t *vidramptr = VIDEORAM + 32768 + (vram_offset << 1);
+                uint8_t *vidramptr = VIDEORAM + 0x18000 + (vram_offset << 1);
                 const uint8_t cols = videomode <= 1 ? 40 : 80;
                 for (uint16_t y = 0; y < 400; y++) {
                     if (y >= 399)
@@ -299,7 +300,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
                         case 0x09: /* tandy 320x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
-                            uint8_t *tga_row = &vidramptr[(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
+                            uint8_t *tga_row = &VIDEORAM[tga_offset+(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
 
                             // Each byte containing 4 pixels
                             for (int x = 320 / 2; x--;) {
@@ -415,6 +416,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                     }
                 }
             }
+//            port3DA = 0b1000;
             elapsed_frame_tics = elapsedTime; // Reset the tick counter for 2Hz
         }
 

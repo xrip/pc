@@ -7,7 +7,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define VIDEORAM_SIZE (64 << 10)
+#define VIDEORAM_SIZE (256 << 10)
 #define RAM_SIZE (640 * 1024)
 #define SOUND_FREQUENCY 44100
 #define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
@@ -88,9 +88,9 @@ extern uint16_t portin(uint16_t portnum);
 extern uint16_t portin16(uint16_t portnum);
 
 // Ports
-extern uint8_t portram[0x400];
 extern uint8_t port60, port61, port64, port3DA;
 extern uint32_t vram_offset;
+extern uint32_t tga_offset;
 // CPU
 extern void exec86(uint32_t execloops);
 extern void reset86();
