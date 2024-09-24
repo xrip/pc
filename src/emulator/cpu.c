@@ -281,6 +281,20 @@ void intcall86(uint8_t intnum) {
             insertdisk(0, "fdd0.img");
             insertdisk(128, "hdd.img");
             break;
+        case 0x2F:
+            // XMS memory
+            switch (CPU_AX) {
+                case 0x4300:
+                    CPU_AL = 0x80;
+                    break;
+                case 0x4310: {
+                    CPU_ES = 0x0000; //
+                    CPU_BX = 0x03FF; //
+                    break;
+                }
+                    return;
+            }
+            break;
     }
 
     push(makeflagsword());
@@ -1161,20 +1175,15 @@ void exec86(uint32_t execloops) {
             CPU_IP &= 0xFFFF;
 //            savecs = CPU_CS;
 //            saveip = ip;
-#ifdef XMS_DRIVER
             // W/A-hack: last byte of interrupts table (actually should not be ever used as CS:IP)
             if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
                 // hook for XMS
-                opcode = xms_fn(); // always returns RET TODO: far/short ret?
+                opcode = xms_handler(); // always returns RET TODO: far/short ret?
             }
             else {
                 opcode = getmem8(CPU_CS, CPU_IP);
             }
-#else
 
-            opcode = getmem8(CPU_CS, CPU_IP);
-
-#endif
             StepIP(1);
 
             switch (opcode) {
