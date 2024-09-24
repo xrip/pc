@@ -114,7 +114,8 @@ void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel);
 
 
 extern void tandy_write(uint16_t reg, uint8_t value);
-extern void adlib_write(uint16_t reg, uint8_t value);
+
+extern void adlib_write_d(uint16_t reg, uint8_t value);
 extern void cms_write(uint16_t reg, uint8_t value);
 
 extern void dss_out(uint16_t portnum, uint8_t value);

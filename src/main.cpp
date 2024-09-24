@@ -69,6 +69,8 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     return 0;
 }
 
+extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
+
 DWORD WINAPI TicksThread(LPVOID lpParam) {
 
     LARGE_INTEGER start, current, queryperf;
@@ -107,13 +109,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         if (elapsedTime > last_sound_tick + 220) {
             static int sound_counter = 0;
             int samples[2] = { 0, 0 };
-
+            adlib_getsample(reinterpret_cast<int16_t *>(&samples[0]), 1);
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
             if (speakerenabled)
                 samples[0] += speaker_sample();
 
             samples[0] += sn76489_sample();
+
 
             samples[1] = samples[0];
 
@@ -952,7 +955,12 @@ extern "C" void tandy_write(uint16_t reg, uint8_t value) {
     Enqueue(&queue, (value & 0xff) << 8 | 0);
 }
 
-extern "C" void adlib_write(uint16_t reg, uint8_t value) {
+extern void adlib_init(uint32_t samplerate);
+
+extern void adlib_write(uintptr_t idx, uint8_t val);
+
+extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
+    adlib_write(reg, value);
     //    printf("Adlib Write %x %x", reg, value);
     uint16_t data = (reg & 0xff) << 8 | 2 << 4 | 0b0000 | (reg >> 8) & 1;
     Enqueue(&queue, data);
@@ -1066,6 +1074,7 @@ int main(int argc, char **argv) {
         Sleep(10);
     }
 
+    adlib_init(AUDIO_FREQ);
     sn76489_reset();
     reset86();
 
