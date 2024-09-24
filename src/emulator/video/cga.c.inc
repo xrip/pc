@@ -1,6 +1,6 @@
 #include "emulator/emulator.h"
 
-uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0;
+uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0, cga_hires = 0;
 uint8_t port3DA;
 
 uint32_t cga_palette[16] = {
@@ -108,9 +108,12 @@ static inline void cga_portout(uint16_t portnum, uint16_t value) {
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
         case 0x3D8: // Mode control register:
+//            printf("3d8 %x\n", value);
         // 0x13 -- 640 dot mode -- 0b10011
-            if (videomode >= 0xd) return;
+            //if (videomode >= 0xd) return;
+            cga_hires = (value >> 4) & 1;
             color_burst = (value >> 2) & 1;
+
             // the unofficial Mode 5 palette, accessed by disabling ColorBurst
             if (videomode == 4 || videomode == 5 && color_burst) {
 //                printf("colorburst!!\n");
@@ -123,7 +126,17 @@ static inline void cga_portout(uint16_t portnum, uint16_t value) {
 
             if ((value & 0x0f) == 0b0001) {
 //                printf("160x100x16");
-                videomode = 0x77;
+                videomode =     0x77;
+            }
+
+
+            if ((value & 0x1f) == 0b11010) {
+//                printf("160x100x16");
+                videomode =     0x76;
+            }
+            if (value == 0x08) {
+//                printf("80x100x16");
+//                videomode = 0x78;
             }
 
             // TODO: Включение/выключение глобального композитного режима по хоткеямы

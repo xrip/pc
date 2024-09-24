@@ -39,7 +39,8 @@ inline void tga_portout(uint16_t portnum, uint16_t value) {
                     return;
                 case 0x03: /* Mode Control */
                     if (value == 0x10) {
-                        videomode = 0x0A; //
+                        // TODO crt hires/lores
+                        videomode = cga_hires ? 0x0A : 0x08; // hires 0x0A
                     }
 
                     if (value == 8) {
@@ -60,7 +61,7 @@ inline void tga_portout(uint16_t portnum, uint16_t value) {
             break;
 
         case 0x3DF: // CRT/processor page register
-//            printf("TANDY %x %x \n", portnum, value);
+            //printf("TANDY %x %x \n", portnum, value);
 // Bit 0-2: CRT page PG0-2
 // In one- and two bank modes, bit 0-2 select the 16kB memory
 // area of system RAM that is displayed on the screen.
@@ -90,7 +91,7 @@ inline void tga_portout(uint16_t portnum, uint16_t value) {
     if (value == 0) {
         tga_offset = (6*16*1024);
     } else {
-        tga_offset  = (7*16*1024);
+        tga_offset  = 32768;
     }
             //vga_plane_offset = vram_offset >> 1;
 break;

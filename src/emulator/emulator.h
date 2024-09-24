@@ -64,7 +64,7 @@ extern void tga_portout(uint16_t portnum, uint16_t value);
 extern uint32_t cga_palette[16];
 extern const uint8_t cga_gfxpal[3][2][4];
 extern uint32_t cga_composite_palette[3][16];
-extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking;
+extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking, cga_hires;
 
 // EGA/VGA
 #define vga_plane_size (32768)

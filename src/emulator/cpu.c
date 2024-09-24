@@ -222,6 +222,52 @@ void intcall86(uint8_t intnum) {
                     vga_plane_offset = 0;
                     vga_planar_mode = 0;
                     break;
+                case 0x10:
+                    switch (CPU_AL) {
+                        case 0x02: {
+                            uint32_t memloc = CPU_ES * 16 + CPU_DX;
+                            for (int color_index = 0; color_index < 16; color_index++) {
+                                uint8_t color_byte = read86(memloc++);
+                                const uint8_t r = (((color_byte >> 2) & 1) << 1) + (color_byte >> 5 & 1);
+                                const uint8_t g = (((color_byte >> 1) & 1) << 1) + (color_byte >> 4 & 1);
+                                const uint8_t b = (((color_byte >> 0) & 1) << 1) + (color_byte >> 3 & 1);
+
+                                vga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+                            }
+                            // TODO: Overscan/Border 17th color
+                            return;
+                        }
+                        // INT 10H 1010H: Set One DAC Color Register
+                        case 0x10: {// Set One DAC Color Register
+                            vga_palette[CPU_BX & 0xFF] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2, (CPU_CL & 63) << 2);
+                            return;
+                        }
+                        case 0x12: {// set block of DAC color registers               VGA
+                            uint32_t memloc = CPU_ES * 16 + CPU_DX;
+                            for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
+                                vga_palette[color_index] = rgb(read86(memloc++) << 2, read86(memloc++) << 2, read86(memloc++) << 2);
+                            }
+                            return;
+                        }
+                        case 0x15: { // Read One DAC Color Register
+                            const uint8_t color_index = CPU_BX & 0xFF;
+                            CPU_CL = ((vga_palette[color_index] >> 2)) & 63;
+                            CPU_CH = ((vga_palette[color_index] >> 10)) & 63;
+                            CPU_DH = ((vga_palette[color_index] >> 18)) & 63;
+                            return;
+                        }
+                        case 0x17: { // Read a Block of DAC Color Registers
+                            uint32_t memloc = CPU_ES * 16 + CPU_DX;
+                            for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
+                                write86(memloc++, ((vga_palette[color_index] >> 2)) & 63);
+                                write86(memloc++, ((vga_palette[color_index] >> 10)) & 63);
+                                write86(memloc++, ((vga_palette[color_index]  >> 18)) & 63);
+                            }
+                            return;
+                        }
+                    }
+                    printf("Unhandled 10h CPU_AL: 0x%x\r\n", CPU_AL);
+                    return;
                 case 0x1A: //get display combination code (ps, vga/mcga)
                     CPU_AL = 0x1A;
                     CPU_BL = 0x08;

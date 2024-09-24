@@ -96,6 +96,10 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC7:
             return tandy_write(portnum, value);
 // GameBlaster / Creative Music System
+        case 0x210:
+        case 0x211:
+        case 0x212:
+        case 0x213:
         case 0x220:
         case 0x221:
         case 0x222:
@@ -139,7 +143,7 @@ void portout(uint16_t portnum, uint16_t value) {
             switch (crt_controller_idx) {
                 case 0x6:
                     // 160x100x16 mode TODO: Add more checks
-                    if ((value == 0x64 && (videomode == 1 || videomode == 3))) {
+                    if ((value == 0x64 && (videomode <= 3))) {
                         videomode = 0x77;
                     }
                     break;
@@ -161,7 +165,7 @@ void portout(uint16_t portnum, uint16_t value) {
                     break;
             }
 
-//            if ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F))
+//            if (((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F) && (crt_controller_idx != 0x0c) && (crt_controller_idx != 0x0d)))
 //                printf("CRT %x %x\n", crt_controller_idx, value);
 
             crt_controller[crt_controller_idx] = value;

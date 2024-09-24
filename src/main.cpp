@@ -110,7 +110,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
                 //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
                 uint8_t *vidramptr = VIDEORAM + 0x18000 + (vram_offset << 1);
-                const uint8_t cols = videomode <= 1 ? 40 : 80;
+                uint8_t cols = videomode <= 1 ? 40 : 80;
                 for (uint16_t y = 0; y < 400; y++) {
                     if (y >= 399)
                         port3DA = 8;
@@ -300,6 +300,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
                         case 0x09: /* tandy 320x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
+//                             uint8_t *tga_row = &vidramptr[(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
                             uint8_t *tga_row = &VIDEORAM[tga_offset+(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
 
                             // Each byte containing 4 pixels
@@ -312,7 +313,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
                         }
                         case 0x0a: /* tandy 640x200 16 color */ {
-                            uint32_t *pixels = (uint32_t *) &SCREEN[y][0];
+                            uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *tga_row = VIDEORAM + ((y / 2) * 320);
 
                             // Each byte contains 2 pixels
@@ -339,13 +340,24 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
+                        /*                        case 0x0D: *//* EGA 320x200 16 color *//* {
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *tga_row = VIDEORAM + (y / 2) * 40;
+                            for (int x = 320 / 2; x--;) {
+                                uint8_t tga_byte = *tga_row++;
+                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[tga_byte & 15];
+                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[(tga_byte >> 4) & 15];
+                            }
+                            break;
+
+                        }*/
                         case 0x0E: /* EGA 640x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *tga_row = VIDEORAM + (y / 2) * 80;
                             for (int x = 640 / 4; x--;) {
                                 uint8_t tga_byte = *tga_row++;
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = tga_palette[tga_byte & 15];
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = tga_palette[(tga_byte >> 4) & 15];
+                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[tga_byte & 15];
+                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[(tga_byte >> 4) & 15];
                             }
                             break;
 
@@ -406,6 +418,46 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                                         >> 4); // Foreground or background color
                                     }
 
+                                    *screenptr++ = cga_palette[pixel_color];
+                                }
+                            }
+                            break;
+                        }
+                        case 0x78: /* 80x100x16 textmode */ {
+                            uint16_t y_div_16 = y / 4; // Precompute y / 16
+                            uint8_t y_mod_8 = (y / 2) % 4; // Precompute y % 8 for font lookup
+
+                            cols = 40;
+                            for (uint8_t column = 0; column < cols; column++) {
+                                // Access vidram and font data once per character
+                                uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2]; // Character code
+                                uint8_t glyph_row = font_8x8[charcode * 8 +
+                                                              y_mod_8]; // Glyph row from font
+                                uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1]; // Color attribute
+
+                                // Calculate screen position
+                                uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column);
+
+                                // Cursor blinking check
+                                uint8_t cursor_active = (cursor_blink_state &&
+                                                         (y_div_16 == CURSOR_Y && column == CURSOR_X && y_mod_8 >= 12 &&
+                                                          y_mod_8 <= 13));
+
+                                // Unrolled bit loop: Write 8 pixels with scaling (2x horizontally)
+                                for (uint8_t bit = 0; bit < 8; bit++) {
+                                    uint8_t pixel_color;
+                                    if (cursor_active) {
+                                        pixel_color = color & 0x0F; // Cursor foreground color
+                                    } else if (cga_blinking && (color >> 7) & 1 && cursor_blink_state) {
+                                        pixel_color = (color >> 4) & 0x07; // Blinking background color
+                                    } else {
+                                        pixel_color = (glyph_row >> bit) & 1
+                                                      ? (color & 0x0f)
+                                                      : (color
+                                                        >> 4); // Foreground or background color
+                                    }
+
+                                    *screenptr++ = cga_palette[pixel_color];
                                     *screenptr++ = cga_palette[pixel_color];
                                 }
                             }
