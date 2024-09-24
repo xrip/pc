@@ -6,6 +6,8 @@
 #include "emulator/video/cga.c.inc"
 #include "emulator/video/tga.c.inc"
 #include "emulator/video/vga.c.inc"
+#include "emulator/audio/dss.c.inc"
+
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
@@ -94,18 +96,23 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC5:
         case 0xC6:
         case 0xC7:
+            sn76489_out(value);
             return tandy_write(portnum, value);
 // GameBlaster / Creative Music System
-        case 0x210:
-        case 0x211:
-        case 0x212:
-        case 0x213:
         case 0x220:
         case 0x221:
         case 0x222:
         case 0x223:
+            cms_out(portnum, value);
             return cms_write(portnum, value);
 
+        case 0x278:
+            return covox_out(portnum, value);
+
+        case 0x378:
+//            return covox_out(portnum, value);
+        case 0x37A:
+            return dss_out(portnum, value);
 // AdLib / OPL
         case 0x388:
             adlib_register = value;
@@ -208,6 +215,18 @@ uint16_t portin(uint16_t portnum) {
             return port61;
         case 0x64:
             return port64;
+        case 0x220:
+        case 0x221:
+        case 0x222:
+        case 0x223:
+        case 0x224:
+        case 0x225:
+        case 0x226:
+        case 0x227:
+        case 0x228:
+        case 0x229:
+        case 0x22a:
+            return cms_in(portnum);
 // RTC
         case 0x240:
         case 0x241:
@@ -234,6 +253,10 @@ uint16_t portin(uint16_t portnum) {
         case 0x256:
         case 0x257:
             return rtc_read(portnum);
+        case 0x27A: // LPT2 status (covox is always ready)
+            return 0;
+        case 0x379:
+            return dss_in(portnum);
 // Adlib
         case 0x388:
         case 0x389:

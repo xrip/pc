@@ -14,10 +14,11 @@ HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
 #define AUDIO_FREQ 44100
-#define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
+//#define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
+#define AUDIO_BUFFER_LENGTH (4410*4)
 
-
-int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = {0};
+int bufferN = 0;
+int16_t audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = { 0 };
 DWORD WINAPI SoundThread(LPVOID lpParam) {
     WAVEHDR waveHeaders[4];
 
@@ -34,11 +35,11 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     HWAVEOUT hWaveOut;
     waveOutOpen(&hWaveOut, WAVE_MAPPER, &format, (DWORD_PTR) waveEvent, 0, CALLBACK_EVENT);
 
-    for (size_t i = 0; i < 4; i++) {
-        int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH * 2];
+    for (size_t i = 0; i < 2; i++) {
+        //int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH * 2];
         waveHeaders[i] = {
-            .lpData = (char *) audio_buffers[i],
-            .dwBufferLength = AUDIO_BUFFER_LENGTH * 2,
+                .lpData = (char *) audio_buffer[i],
+                .dwBufferLength = AUDIO_BUFFER_LENGTH * 4,
         };
         waveOutPrepareHeader(hWaveOut, &waveHeaders[i], sizeof(WAVEHDR));
         waveHeaders[i].dwFlags |= WHDR_DONE;
@@ -59,24 +60,30 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
 
         // Wait until audio finishes playing
         while (currentHeader->dwFlags & WHDR_DONE) {
-            //            PSG_calc_stereo(&psg, audiobuffer, AUDIO_BUFFER_LENGTH);
-            memcpy(currentHeader->lpData, audiobuffer, AUDIO_BUFFER_LENGTH * 2);
             waveOutWrite(hWaveOut, currentHeader, sizeof(WAVEHDR));
 
             currentHeader++;
-            if (currentHeader == waveHeaders + 4) { currentHeader = waveHeaders; }
+            if (currentHeader == waveHeaders + 2) { currentHeader = waveHeaders; }
         }
     }
     return 0;
 }
+
 DWORD WINAPI TicksThread(LPVOID lpParam) {
-    LARGE_INTEGER start, current;
+
+    LARGE_INTEGER start, current, queryperf;
+
+    QueryPerformanceFrequency(&queryperf);
+    uint64_t hostfreq = queryperf.QuadPart;
+
     QueryPerformanceCounter(&start); // Get the starting time
 
-    uint8_t localVRAM[VIDEORAM_SIZE] = {0};
     double elapsed_system_timer = 0;
     double elapsed_blink_tics = 0;
     double elapsed_frame_tics = 0;
+    double last_dss_tick = 0;
+    double last_sound_tick = 0;
+    int16_t last_dss_sample;
 
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
@@ -87,6 +94,39 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         if (elapsedTime - elapsed_system_timer >= timer_period) {
             doirq(0);
             elapsed_system_timer = elapsedTime; // Reset the tick counter for 1Hz
+        }
+
+        // Dinse Sound Source frequency 7100
+        if (elapsedTime > last_dss_tick + 1400) {
+            last_dss_sample = dss_sample() * 32;
+
+            last_dss_tick = elapsedTime;
+        }
+
+        // Sound frequency 44100
+        if (elapsedTime > last_sound_tick + 220) {
+            static int sound_counter = 0;
+            int samples[2] = { 0, 0 };
+
+            if (last_dss_sample)
+                samples[0] += last_dss_sample;
+            if (speakerenabled)
+                samples[0] += speaker_sample();
+
+            samples[0] += sn76489_sample();
+
+            samples[1] = samples[0];
+
+            cms_samples(samples);
+
+            audio_buffer[bufferN][sound_counter * 2] = samples[0] & 0xFFFF;
+            audio_buffer[bufferN][sound_counter * 2 + 1] = samples[1] & 0xFFFF;
+
+            if (sound_counter++ >= AUDIO_BUFFER_LENGTH) {
+                sound_counter = 0;
+                bufferN ^= 1;
+            }
+            last_sound_tick = elapsedTime;
         }
 
         if (elapsedTime - elapsed_blink_tics >= 500'000'0) {
@@ -961,9 +1001,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /*    HANDLE sound_thread = CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
+    HANDLE sound_thread = CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
         if (!sound_thread)
-            return 1;*/
+            return 1;
 
     if (hComm == NULL) {
         // Open the serial port
@@ -1026,7 +1066,9 @@ int main(int argc, char **argv) {
         Sleep(10);
     }
 
+    sn76489_reset();
     reset86();
+
 
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
     while (true) {
