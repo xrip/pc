@@ -88,6 +88,8 @@ void portout(uint16_t portnum, uint16_t value) {
             port64 = value;
             break;
 // Tandy 3 voice
+        case 0x1E0:
+        case 0x2C0:
         case 0xC0:
         case 0xC1:
         case 0xC2:
