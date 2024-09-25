@@ -304,6 +304,26 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
                             break;
                         }
+                        case 0x7: {
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *cga_row = VIDEORAM + 0x10000 + (y & 3) * 8192 + y / 4 * 80;
+                            // Each byte containing 8 pixels
+                            for (int x = 640 / 8; x--;) {
+                                uint8_t cga_byte = *cga_row++;
+
+                                *pixels++ = cga_palette[((cga_byte >> 7) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 6) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 5) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 4) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 3) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 2) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 1) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 0) & 1) * 15];
+                            }
+
+                            break;
+                        }
+
                         case 0x8:
                         case 0x74: /* 160x200x16    */
                         case 0x76: /* cga composite / tandy */ {
@@ -425,6 +445,25 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                                 *pixels++ = vga_palette[plane4_pixel & 15];
                                 ega_row++;
                             }
+                            break;
+                        }
+                        case 0x11: {
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *cga_row = VIDEORAM + y * 80;
+                            // Each byte containing 8 pixels
+                            for (int x = 640 / 8; x--;) {
+                                uint8_t cga_byte = *cga_row++;
+
+                                *pixels++ = cga_palette[((cga_byte >> 7) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 6) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 5) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 4) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 3) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 2) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 1) & 1) * 15];
+                                *pixels++ = cga_palette[((cga_byte >> 0) & 1) * 15];
+                            }
+
                             break;
                         }
                         case 0x13: {

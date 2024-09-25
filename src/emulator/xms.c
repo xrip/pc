@@ -4,6 +4,7 @@
 // https://www.phatcode.net/res/218/files/limems40.txt
 // https://www.phatcode.net/res/219/files/xms20.txt
 // http://www.techhelpmanual.com/944-xms_functions.html
+// http://www.techhelpmanual.com/651-emm_functions.html
 // http://www.techhelpmanual.com/650-expanded_memory_specification__ems_.html
 // http://www.techhelpmanual.com/943-extended_memory_specification__xms_.html
 typedef struct umb {
