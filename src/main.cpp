@@ -343,8 +343,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                         }
                         case 0x09: /* tandy 320x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
-//                             uint8_t *tga_row = &vidramptr[(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
-                            uint8_t *tga_row = &VIDEORAM[tga_offset+(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
+                            uint8_t *tga_row = &vidramptr[(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
+//                            uint8_t *tga_row = &VIDEORAM[tga_offset+(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
 
                             // Each byte containing 4 pixels
                             for (int x = 320 / 2; x--;) {
