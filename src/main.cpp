@@ -85,7 +85,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     double elapsed_frame_tics = 0;
     double last_dss_tick = 0;
     double last_sound_tick = 0;
-    int16_t last_dss_sample;
+    int16_t last_dss_sample = 0;
 
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
