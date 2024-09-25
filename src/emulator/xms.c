@@ -8,9 +8,7 @@ typedef struct umb {
     bool allocated;
 } umb_t;
 
-
-#define UMB_BLOCKS_COUNT 6
-static umb_t umb_blocks[UMB_BLOCKS_COUNT] = {
+static umb_t umb_blocks[] = {
         0xC000, 0x0800, false,
         0xC800, 0x0800, false,
         0xE000, 0x0800, false,
@@ -18,101 +16,72 @@ static umb_t umb_blocks[UMB_BLOCKS_COUNT] = {
         0xF000, 0x0800, false,
         0xF800, 0x0400, false,
 };
+#define UMB_BLOCKS_COUNT (sizeof(umb_blocks) / sizeof(umb_t))
+
 uint8_t UMB[0xFC000 - 0xC000] = { 0 };
 
 static int umb_blocks_allocated = 0;
 
 
 umb_t *get_free_umb_block(uint16_t size) {
-    for (int i = umb_blocks_allocated; i < UMB_BLOCKS_COUNT; i++) {
-
+    for (int i = umb_blocks_allocated; i < UMB_BLOCKS_COUNT; i++)
         if (umb_blocks[i].allocated == false && umb_blocks[i].size <= size) {
             return &umb_blocks[i];
         }
-    }
     return NULL;
 }
 
+
+#define XMS_VERSION 0x00
+#define REQUEST_HMA 0x01
+#define RELEASE_HMA 0x02
+#define ENABLE_A20 0x05
+#define DISABLE_A20 0x06
+#define QUERY_A20 0x07
+#define ALLOCATE_EMB 0x09
+#define REQUEST_UMB 0x10
+#define RELEASE_UMB 0x11
+
 uint8_t xms_handler() {
-    printf("XMS: %04X:%04X\n", CPU_AH, CPU_DX);
     switch (CPU_AH) {
-        case 0x00: { // Get XMS Version
+        case XMS_VERSION: { // Get XMS Version
             CPU_AX = 0x0100;
             CPU_BX = 0x0001; // driver version
             CPU_DX = 0x0001; // HMA Exist
             break;
         }
-        case 0x01: { // Request HMA
+        case REQUEST_HMA: { // Request HMA
             // Stub: Implement HMA request functionality
             CPU_AX = 1; // Success
             break;
         }
-        case 0x02: { // Release HMA
+        case RELEASE_HMA: { // Release HMA
             // Stub: Implement HMA release functionality
             CPU_AX = 1; // Success
             break;
         }
-        case 0x03: { // Global Enable A20
-            // Stub: Implement A20 enabling functionality
-            break;
-        }
-        case 0x04: { // Global Disable A20
-            // Stub: Implement A20 disabling functionality
-            break;
-        }
-        case 0x05: { // Local Enable A20
-            // Stub: Implement local A20 enabling functionality
+        case ENABLE_A20: { // Local Enable A20
             CPU_AX = 0x0001; // Success
             CPU_BL = 0x00;
             break;
         }
-        case 0x06: { // Local Disable A20
-            // Stub: Implement local A20 disabling functionality
-            CPU_AX = 0; // Success
+        case DISABLE_A20: { // Local Disable A20
+            CPU_AX = 0; // Failed
             CPU_BL = 0x94;
             break;
         }
-        case 0x07: { // Query A20 (Function 07h):
+        case QUERY_A20: { // Query A20 (Function 07h):
             CPU_AX = 1; // Success
-            // Stub: Implement querying free extended memory functionality
             break;
         }
-        case 0x08: { // Query largest free extended memory block
-            // Stub: Implement querying largest free extended memory block functionality
-            break;
-        }
-        case 0x09: { // Allocate Extended Memory Block (Function 09h):
+        case ALLOCATE_EMB: { // Allocate Extended Memory Block (Function 09h):
             // Stub: Implement allocating extended memory block functionality
             CPU_DX = 0x0000;
             CPU_AX = 0x0000;
             CPU_BL = 0xA0;
             break;
         }
-        case 0x0A: { // Free extended memory block
-            // Stub: Implement freeing extended memory block functionality
-            break;
-        }
-        case 0x0B: { // Move extended memory block
-            // Stub: Implement moving extended memory block functionality
-            break;
-        }
-        case 0x0C: { // Lock extended memory block
-            // Stub: Implement locking extended memory block functionality4
-            break;
-        }
-        case 0x0D: { // Unlock extended memory block
-            // Stub: Implement unlocking extended memory block functionality
-            break;
-        }
-        case 0x0E: { // Get EMB Handle Information (Function 0Eh):
-            // Stub: Implement querying XMS driver capabilities functionality
-            break;
-        }
-        case 0x0F: { // Reallocate Extended Memory Block (Function 0Fh):
-            // Stub: Implement querying any free extended memory block functionality
-            break;
-        }
-        case 0x10: { // Request Upper Memory Block (Function 10h):
+        case REQUEST_UMB: { // Request Upper Memory Block (Function 10h):
             if (CPU_DX == 0xFFFF) {
                 if (umb_blocks_allocated < UMB_BLOCKS_COUNT) {
                     umb_t *umb_block = get_free_umb_block(CPU_DX);
@@ -140,12 +109,22 @@ uint8_t xms_handler() {
             CPU_DX = 0x0000;
             CPU_BL = umb_blocks_allocated >= UMB_BLOCKS_COUNT ? 0xB1 : 0xB0;
             break;
-
         }
-        case 0x11: { // Query DMA buffer information
-            // Stub: Implement querying DMA buffer information functionality
-            CPU_DX = 0x0000; // Most significant word (DMA buffer size)
-            CPU_AX = 0x0001; // Least significant word (DMA buffer size)
+
+        case RELEASE_UMB: { // Release Upper Memory Block (Function 11h)
+            // Stub: Release Upper Memory Block
+            for (int i = 0; i < UMB_BLOCKS_COUNT; i++)
+                if (umb_blocks[i].segment == CPU_BX && umb_blocks[i].allocated) {
+                    umb_blocks[i].allocated = false;
+                    umb_blocks_allocated--;
+                    CPU_AX = 0x0001; // Success
+                    CPU_BL = 0;
+                    break;
+                }
+
+            CPU_AX = 0x0000; // Failure
+            CPU_DX = 0x0000;
+            CPU_BL = 0xB2; // Error code
             break;
         }
         default: {
@@ -155,5 +134,5 @@ uint8_t xms_handler() {
             break;
         }
     }
-    return 0xCB;
+    return 0xCB; // RETF opcode
 }
