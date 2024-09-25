@@ -1,11 +1,44 @@
+#include <stdbool.h>
 #include "emulator.h"
 
+// https://www.phatcode.net/res/219/files/xms20.txt
+typedef struct umb {
+    uint16_t segment;
+    uint16_t size; // paragraphs
+    bool allocated;
+} umb_t;
+
+
+#define UMB_BLOCKS_COUNT 6
+static umb_t umb_blocks[UMB_BLOCKS_COUNT] = {
+        0xC000, 0x0800, false,
+        0xC800, 0x0800, false,
+        0xE000, 0x0800, false,
+        0xE800, 0x0800, false,
+        0xF000, 0x0800, false,
+        0xF800, 0x0400, false,
+};
+uint8_t UMB[0xFC000 - 0xC000] = { 0 };
+
+static int umb_blocks_allocated = 0;
+
+
+umb_t *get_free_umb_block(uint16_t size) {
+    for (int i = umb_blocks_allocated; i < UMB_BLOCKS_COUNT; i++) {
+
+        if (umb_blocks[i].allocated == false && umb_blocks[i].size <= size) {
+            return &umb_blocks[i];
+        }
+    }
+    return NULL;
+}
+
 uint8_t xms_handler() {
-//    printf("XMS: %04X:%04X\n", CPU_AH, CPU_DX);
+    printf("XMS: %04X:%04X\n", CPU_AH, CPU_DX);
     switch (CPU_AH) {
         case 0x00: { // Get XMS Version
-            CPU_AX = 0x0200;
-            CPU_BX = 0x0400; // driver version
+            CPU_AX = 0x0100;
+            CPU_BX = 0x0001; // driver version
             CPU_DX = 0x0001; // HMA Exist
             break;
         }
@@ -35,10 +68,12 @@ uint8_t xms_handler() {
         }
         case 0x06: { // Local Disable A20
             // Stub: Implement local A20 disabling functionality
-            CPU_AX = 1; // Success
+            CPU_AX = 0; // Success
+            CPU_BL = 0x94;
             break;
         }
-        case 0x07: { // Query free extended memory
+        case 0x07: { // Query A20 (Function 07h):
+            CPU_AX = 1; // Success
             // Stub: Implement querying free extended memory functionality
             break;
         }
@@ -46,8 +81,11 @@ uint8_t xms_handler() {
             // Stub: Implement querying largest free extended memory block functionality
             break;
         }
-        case 0x09: { // Allocate extended memory block
+        case 0x09: { // Allocate Extended Memory Block (Function 09h):
             // Stub: Implement allocating extended memory block functionality
+            CPU_DX = 0x0000;
+            CPU_AX = 0x0000;
+            CPU_BL = 0xA0;
             break;
         }
         case 0x0A: { // Free extended memory block
@@ -75,26 +113,34 @@ uint8_t xms_handler() {
             break;
         }
         case 0x10: { // Request Upper Memory Block (Function 10h):
-            static int i = 0;
-            if (i) {
-                CPU_DX = 0x0000;
-                CPU_AX = 0x0000; // Success
-                CPU_BX = 0x00B1; // Success
-                break;
-            }
             if (CPU_DX == 0xFFFF) {
-                CPU_DX = 0x0800;
-                CPU_AX = 0x1000; // Success
-                CPU_BX = 0x00B0; // Success
+                if (umb_blocks_allocated < UMB_BLOCKS_COUNT) {
+                    umb_t *umb_block = get_free_umb_block(CPU_DX);
+                    if (umb_block != NULL) {
+                        CPU_DX = umb_block->size;
+                        CPU_AX = 0x1000; // Success
+                        CPU_BX = 0x00B0; // Success
+                        break;
+                    }
+                }
             } else {
+                umb_t *umb_block = get_free_umb_block(CPU_DX);
+                if (umb_block != NULL) {
+                    CPU_BX = umb_block->segment;
+                    CPU_DX = umb_block->size;
+                    CPU_AX = 0x0001;
 
-                i = 1;
-                CPU_DX = 0x0800;
-                CPU_BX = 0xC000;
-                CPU_AX = 0x0001; // Success
+                    umb_block->allocated = true;
+                    umb_blocks_allocated++;
+                    break;
+                }
             }
 
+            CPU_AX = 0x0000;
+            CPU_DX = 0x0000;
+            CPU_BL = umb_blocks_allocated >= UMB_BLOCKS_COUNT ? 0xB1 : 0xB0;
             break;
+
         }
         case 0x11: { // Query DMA buffer information
             // Stub: Implement querying DMA buffer information functionality

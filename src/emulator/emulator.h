@@ -7,8 +7,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define VIDEORAM_SIZE (256 << 10)
-#define RAM_SIZE (640 * 1024)
+#define VIDEORAM_SIZE (128 << 10)
+#define RAM_SIZE (640 << 10)
 #define SOUND_FREQUENCY 44100
 #define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
 
@@ -67,7 +67,7 @@ extern uint32_t cga_composite_palette[3][16];
 extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking, cga_hires;
 
 // EGA/VGA
-#define vga_plane_size (32768)
+#define vga_plane_size (16000)
 extern uint32_t vga_plane_offset;
 extern uint8_t vga_planar_mode;
 // Memory
