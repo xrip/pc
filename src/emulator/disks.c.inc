@@ -83,7 +83,7 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
 
     disk[drivenum].diskfile = file;
     disk[drivenum].filesize = size;
-    disk[drivenum].inserted = 1;  // Using 1 instead of true for consistency with uint8_t
+    disk[drivenum].inserted = true;  // Using 1 instead of true for consistency with uint8_t
     disk[drivenum].readonly = 0;  // Default to read-write
     disk[drivenum].cyls = cyls;
     disk[drivenum].heads = heads;

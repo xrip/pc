@@ -405,8 +405,30 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             break;
 
                         }
+                        case 0x10: {
+                            if (y >= 350) break;
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *ega_row = VIDEORAM + y * 80;
+                            for (int x = 640 / 8; x--;) {
+                                uint8_t plane1_pixel = *ega_row + vga_plane_size * 0;
+                                uint8_t plane2_pixel = *ega_row + vga_plane_size * 1;
+                                uint8_t plane3_pixel = *ega_row + vga_plane_size * 2;
+                                uint8_t plane4_pixel = *ega_row + vga_plane_size * 3;
 
+                                *pixels++ = vga_palette[plane1_pixel];
+                                *pixels++ = vga_palette[plane1_pixel & 15];
+                                *pixels++ = vga_palette[plane2_pixel];
+                                *pixels++ = vga_palette[plane2_pixel & 15];
+                                *pixels++ = vga_palette[plane3_pixel];
+                                *pixels++ = vga_palette[plane3_pixel & 15];
+                                *pixels++ = vga_palette[plane4_pixel];
+                                *pixels++ = vga_palette[plane4_pixel & 15];
+                                ega_row++;
+                            }
+                            break;
+                        }
                         case 0x13: {
+                            // wtf
                             uint32_t *pixels = &SCREEN[y][0];
                             if (vga_planar_mode) {
                                 for (int x = 0; x < 320; x++) {
@@ -1010,8 +1032,8 @@ int main(int argc, char **argv) {
     }
 
     HANDLE sound_thread = CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
-        if (!sound_thread)
-            return 1;
+    if (!sound_thread)
+        return 1;
 
     if (hComm == NULL) {
         // Open the serial port
@@ -1091,6 +1113,5 @@ int main(int argc, char **argv) {
     // Clean up
     CloseHandle(hThread);
     DestroyQueue(&queue);
-    //    CloseHandle(sound_thread);
-    mfb_close();
+    //    CloseHandle(
 }
