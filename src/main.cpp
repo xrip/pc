@@ -304,6 +304,29 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
                             break;
                         }
+                        case 0x1e:
+                            //log_debug = 1;
+                        {
+                            if (y >= 348) break;
+                            uint32_t *pixels = &SCREEN[y][0];
+                            uint8_t *cga_row = VIDEORAM + 0x10000 + (y & 3) * 8192 + y / 4 * 90;
+                            cga_row += 5; //
+                            // Each byte containing 8 pixels
+                            for (int x = 640 / 8; x--;) {
+                                uint8_t cga_byte = *cga_row++;
+
+                                *pixels++ = cga_palette[((cga_byte >> 7) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 6) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 5) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 4) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 3) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 2) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 1) & 1) * 7];
+                                *pixels++ = cga_palette[((cga_byte >> 0) & 1) * 7];
+                            }
+
+                            break;
+                        }
                         case 0x7: {
                             uint32_t *pixels = &SCREEN[y][0];
                             uint8_t *cga_row = VIDEORAM + 0x10000 + (y & 3) * 8192 + y / 4 * 80;
@@ -403,24 +426,18 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                             }
                             break;
                         }
-                        /*                        case 0x0D: *//* EGA 320x200 16 color *//* {
-                            uint32_t *pixels = &SCREEN[y][0];
-                            uint8_t *tga_row = VIDEORAM + (y / 2) * 40;
-                            for (int x = 320 / 2; x--;) {
-                                uint8_t tga_byte = *tga_row++;
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[tga_byte & 15];
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[(tga_byte >> 4) & 15];
-                            }
-                            break;
-
-                        }*/
                         case 0x0E: /* EGA 640x200 16 color */ {
                             uint32_t *pixels = &SCREEN[y][0];
-                            uint8_t *tga_row = VIDEORAM + (y / 2) * 80;
-                            for (int x = 640 / 4; x--;) {
-                                uint8_t tga_byte = *tga_row++;
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[tga_byte & 15];
-                                *pixels++ = *pixels++ = *pixels++ = *pixels++ = vga_palette[(tga_byte >> 4) & 15];
+                            vidramptr = VIDEORAM + vram_offset;
+                            for (int x = 0; x < 640; x++) {
+                                uint32_t divy = y >> 1;
+                                uint32_t vidptr = divy * 80 + (x >> 3);
+                                int x1 = 7 - (x & 7);
+                                uint32_t color = (vidramptr[vidptr] >> x1) & 1;
+                                color |= (((vidramptr[vga_plane_size + vidptr] >> x1) & 1) << 1);
+                                color |= (((vidramptr[vga_plane_size * 2 + vidptr] >> x1) & 1) << 2);
+                                color |= (((vidramptr[vga_plane_size * 3 + vidptr] >> x1) & 1) << 3);
+                                *pixels++ = vga_palette[color];
                             }
                             break;
 
@@ -466,8 +483,19 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
                             break;
                         }
+                        case 0x12: {
+                            uint32_t *pixels = &SCREEN[y][0];
+                            for (int x = 0; x < 640; x++) {
+                                uint32_t ptr = x / 8 + y * 80;
+                                uint8_t color = ((VIDEORAM[ptr] >> (~x & 7)) & 1);
+                                color |= ((VIDEORAM[ptr + vga_plane_size] >> (~x & 7)) & 1) << 1;
+                                color |= ((VIDEORAM[ptr + vga_plane_size * 2] >> (~x & 7)) & 1) << 2;
+                                color |= ((VIDEORAM[ptr + vga_plane_size * 3] >> (~x & 7)) & 1) << 3;
+                                *pixels++ = vga_palette[color];
+                            }
+                            break;
+                        }
                         case 0x13: {
-                            // wtf
                             uint32_t *pixels = &SCREEN[y][0];
                             if (vga_planar_mode) {
                                 for (int x = 0; x < 320; x++) {

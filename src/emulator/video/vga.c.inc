@@ -305,6 +305,9 @@ void vga_portout(uint16_t portnum, uint16_t value) {
         case 0x3C5: {
             if (sequencer_register == 2) {
                 switch (value & 0b1111) {
+                    case 1:
+                        vga_plane_offset = 0;
+                        break;
                     case 2:
                         vga_plane_offset = vga_plane_size * 1;
                         break;
@@ -316,9 +319,10 @@ void vga_portout(uint16_t portnum, uint16_t value) {
                         break;
                     default:
                         vga_plane_offset = 0;
+                        break;
                 }
 
-                //printf("vga_plane_offset %x\n",vga_plane_offset);
+                //printf("vga_plane_offset %x\n",value);
             }
             if (sequencer_register == 4) {
                 vga_planar_mode = value & 6;
@@ -345,6 +349,8 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             }
             break;
         }
+
+            // http://www.osdever.net/FreeVGA/vga/graphreg.htm
         case 0x3CE: { // Graphics 1 and 2 Address Register
             /*
              * The Graphics 1 and 2 Address Register selects which register
