@@ -19,7 +19,7 @@ static void *s_buffer;
 BITMAPINFO *s_bitmapInfo;
 static char key_status[512] = {0};
 RECT rect = {0};
-
+HMENU hOptionsMenu;
 POINT lastPos = {0, 0};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,11 +27,23 @@ extern void HandleInput(WPARAM wParam, BOOL isKeyDown);
 
 extern void HandleMouse(int x, int y, int buttons);
 
+extern BOOL HanldeMenu(int menu_id, BOOL checked);
+
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     LRESULT res = 0;
     POINT currentPos;
 
     switch (message) {
+        case WM_COMMAND: {
+            int menu_id = LOWORD(wParam);
+            unsigned int checked = GetMenuState(hOptionsMenu, menu_id, MF_BYCOMMAND) & MF_CHECKED;
+            if (HanldeMenu(menu_id, checked)) {
+                CheckMenuItem(hOptionsMenu, menu_id, MF_BYCOMMAND | MF_CHECKED);
+            } else {
+                CheckMenuItem(hOptionsMenu, menu_id, MF_BYCOMMAND | MF_UNCHECKED);
+            }
+            break;
+        }
         case WM_PAINT: {
             if (s_buffer) {
                 StretchDIBits(s_hdc,
@@ -153,6 +165,16 @@ int mfb_open(const char *title, int width, int height, int scale) {
     if (!s_wnd)
         return 0;
 
+// Create a menu with checkable items "Tandy Enabled" and "Switch to composite"
+    HMENU hMenu = CreateMenu();
+    hOptionsMenu = CreateMenu();
+
+    AppendMenu(hOptionsMenu, MF_STRING | MF_UNCHECKED, 1, "Tandy Enabled");
+    AppendMenu(hOptionsMenu, MF_STRING | MF_UNCHECKED, 2, "Switch to composite");
+
+    AppendMenu(hMenu, MF_POPUP, (UINT_PTR) hOptionsMenu, "Options");
+
+    SetMenu(s_wnd, hMenu);
     ShowWindow(s_wnd, SW_NORMAL);
 
     s_bitmapInfo = (BITMAPINFO *) malloc(sizeof(BITMAPINFO) + sizeof(RGBQUAD) * 256);

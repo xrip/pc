@@ -13,16 +13,16 @@ uint8_t log_debug = 0;
 HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
-#define AUDIO_FREQ 44100
-//#define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
-#define AUDIO_BUFFER_LENGTH (4410*4)
 
-int bufferN = 0;
-int16_t audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = { 0 };
+#define AUDIO_FREQ 44100
+#define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
+
+int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = { 0 };
+
 DWORD WINAPI SoundThread(LPVOID lpParam) {
     WAVEHDR waveHeaders[4];
 
-    WAVEFORMATEX format = {0};
+    WAVEFORMATEX format = { 0 };
     format.wFormatTag = WAVE_FORMAT_PCM;
     format.nChannels = 2;
     format.nSamplesPerSec = AUDIO_FREQ;
@@ -35,11 +35,11 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     HWAVEOUT hWaveOut;
     waveOutOpen(&hWaveOut, WAVE_MAPPER, &format, (DWORD_PTR) waveEvent, 0, CALLBACK_EVENT);
 
-    for (size_t i = 0; i < 2; i++) {
-        //int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH * 2];
+    for (size_t i = 0; i < 4; i++) {
+        int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH];
         waveHeaders[i] = {
-                .lpData = (char *) audio_buffer[i],
-                .dwBufferLength = AUDIO_BUFFER_LENGTH * 4,
+                .lpData = (char *) audio_buffers[i],
+                .dwBufferLength = AUDIO_BUFFER_LENGTH * 2,
         };
         waveOutPrepareHeader(hWaveOut, &waveHeaders[i], sizeof(WAVEHDR));
         waveHeaders[i].dwFlags |= WHDR_DONE;
@@ -58,12 +58,14 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
             return 1;
         }
 
-        // Wait until audio finishes playing
+// Wait until audio finishes playing
         while (currentHeader->dwFlags & WHDR_DONE) {
+            memcpy(currentHeader->lpData, audiobuffer, AUDIO_BUFFER_LENGTH * 2);
+            //currentHeader->lpData = (char *) audiobuffer;
             waveOutWrite(hWaveOut, currentHeader, sizeof(WAVEHDR));
 
             currentHeader++;
-            if (currentHeader == waveHeaders + 2) { currentHeader = waveHeaders; }
+            if (currentHeader == waveHeaders + 4) { currentHeader = waveHeaders; }
         }
     }
     return 0;
@@ -106,7 +108,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         // Sound frequency 44100
-        if (elapsedTime > last_sound_tick + 220) {
+        if (elapsedTime - last_sound_tick > hostfreq / 44100) {
             static int sound_counter = 0;
             int samples[2] = { 0, 0 };
             adlib_getsample(reinterpret_cast<int16_t *>(&samples[0]), 1);
@@ -122,12 +124,11 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             cms_samples(samples);
 
-            audio_buffer[bufferN][sound_counter * 2] = samples[0] & 0xFFFF;
-            audio_buffer[bufferN][sound_counter * 2 + 1] = samples[1] & 0xFFFF;
+            audiobuffer[sound_counter++] = (int16_t) samples[1];
+            audiobuffer[sound_counter++] = (int16_t) samples[0];
 
-            if (sound_counter++ >= AUDIO_BUFFER_LENGTH) {
+            if (sound_counter >= AUDIO_BUFFER_LENGTH) {
                 sound_counter = 0;
-                bufferN ^= 1;
             }
             last_sound_tick = elapsedTime;
         }
@@ -1081,6 +1082,20 @@ extern "C" void cms_write(uint16_t reg, uint8_t val) {
     }
 }
 
+extern "C" BOOL HanldeMenu(int menu_id, BOOL checked) {
+    if (menu_id == 2) {
+        static uint8_t old_vm;
+        if (videomode == 4 || videomode == 6) {
+            old_vm = videomode;
+            videomode += 0x70;
+            return TRUE;
+        } else if (videomode >= 0x74) {
+            videomode = old_vm;
+        }
+        return FALSE;
+    }
+    return !checked;
+}
 
 int main(int argc, char **argv) {
     int scale = 2;

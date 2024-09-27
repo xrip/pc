@@ -23,8 +23,6 @@ static umb_t umb_blocks[] = {
 };
 #define UMB_BLOCKS_COUNT (sizeof(umb_blocks) / sizeof(umb_t))
 
-uint8_t UMB[0xFC000 - 0xC000] = { 0 };
-
 static int umb_blocks_allocated = 0;
 
 
