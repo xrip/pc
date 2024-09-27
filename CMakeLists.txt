@@ -12,8 +12,17 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
+# INCLUDE FILES THAT SHOULD BE COMPILED:
+file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c")
+
+message(STATUS "Add source files:")
+foreach(SRC_FILE IN LISTS SRC)
+    message(STATUS "${SRC_FILE}")
+endforeach()
+message(STATUS "")
+
 if (PICO_PLATFORM STREQUAL "host")
-    add_executable(${PROJECT_NAME} src/win32main.cpp src/WinMiniFB.c src/emulator/memory.c src/emulator/cpu.c src/emulator/ports.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/win32main.cpp src/WinMiniFB.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
     pico_sdk_init()
@@ -23,8 +32,7 @@ else ()
 #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
-    add_executable(${PROJECT_NAME} src/rp2350main.c src/emulator/memory.c src/emulator/i8253.c.inc
-            src/emulator/i8259.c.inc src/emulator/cpu.c src/emulator/ports.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/rp2350main.c)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
@@ -39,6 +47,7 @@ else ()
     add_subdirectory(drivers/sdcard)
     add_subdirectory(drivers/vga-nextgen)
     add_subdirectory(drivers/graphics)
+    add_subdirectory(drivers/psram)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
 
@@ -47,6 +56,7 @@ else ()
             sdcard
             graphics
             vga-nextgen
+            psram
 
             pico_runtime
             pico_stdlib
@@ -76,9 +86,9 @@ else ()
             SDCARD_PIN_SPI0_MISO=4
 
             PSRAM
-            PSRAM_MUTEX=1
-            #PSRAM_SPINLOCK=1
-            #PSRAM_ASYNC=
+            #PSRAM_MUTEX=1
+            PSRAM_SPINLOCK=1
+            PSRAM_ASYNC=1
 
             PSRAM_PIN_CS=18
             PSRAM_PIN_SCK=19

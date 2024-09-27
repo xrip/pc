@@ -10,6 +10,7 @@
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
+#include "psram_spi.h"
 
 FATFS fs;
 
@@ -128,6 +129,8 @@ int main() {
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
 
+    init_psram();
+
     if (FR_OK != f_mount(&fs, "0", 1)) {
         draw_text("SD Card not inserted or SD Card error!", 0, 0, 12, 0);
         while (1);
@@ -138,6 +141,7 @@ int main() {
 
     while (true) {
         exec86(32768);
+        tight_loop_contents();
     }
 
     return 0;

@@ -1,6 +1,9 @@
 #include "emulator.h"
-#include "disks.c.inc"
-
+#if PICO_ON_DEVICE
+#include "disks-rp2350.c.inc"
+#else
+#include "disks-win32.c.inc"
+#endif
 int videomode = 0;
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
@@ -266,7 +269,7 @@ void intcall86(uint8_t intnum) {
                             return;
                         }
                     }
-                    printf("Unhandled 10h CPU_AL: 0x%x\r\n", CPU_AL);
+                    //printf("Unhandled 10h CPU_AL: 0x%x\r\n", CPU_AL);
                     return;
                 case 0x1A: //get display combination code (ps, vga/mcga)
                     CPU_AL = 0x1A;
@@ -278,8 +281,13 @@ void intcall86(uint8_t intnum) {
         case 0x13:
             return diskhandler();
         case 0x19:
+#if PICO_ON_DEVICE
+            insertdisk(0, "\\XT\\fdd0.img");
+            insertdisk(128, "\\XT\\hdd.img");
+#else
             insertdisk(0, "fdd0.img");
             insertdisk(128, "hdd.img");
+#endif
             break;
         case 0x2F:
             // XMS memory
@@ -3274,7 +3282,7 @@ void exec86(uint32_t execloops) {
 
             default: {
 //                char tmp[40];
-                printf("Unexpected opcode: %02Xh ignored", opcode);
+//                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 //intcall86(6);
                 break;

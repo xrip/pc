@@ -26,7 +26,7 @@ const struct pio_program pio_program_VGA = {
         .origin = -1,
 };
 
-
+extern int cursor_blink_state;
 static uint32_t *lines_pattern[4];
 static uint32_t *lines_pattern_data = NULL;
 static int _SM_VGA = -1;
