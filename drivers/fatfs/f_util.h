@@ -12,18 +12,19 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
 #pragma once
+
 #include "ff.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    const char *FRESULT_str(FRESULT i);
-    FRESULT delete_node (
-        TCHAR* path,    /* Path name buffer with the sub-directory to delete */
+const char *FRESULT_str(FRESULT i);
+FRESULT delete_node(
+        TCHAR *path,    /* Path name buffer with the sub-directory to delete */
         UINT sz_buff,   /* Size of path name buffer (items) */
-        FILINFO* fno    /* Name read buffer */
-    );
+        FILINFO *fno    /* Name read buffer */
+);
 
 #ifdef __cplusplus
 }

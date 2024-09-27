@@ -1,11 +1,7 @@
 #include "emulator.h"
-#if PICO_ON_DEVICE
-#include "disks-rp2350.c.inc"
-#else
-#include "disks-win32.c.inc"
-#endif
+#include "disks.c.inc"
 
-int videomode = 3;
+int videomode = 0;
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;
@@ -226,6 +222,52 @@ void intcall86(uint8_t intnum) {
                     vga_plane_offset = 0;
                     vga_planar_mode = 0;
                     break;
+                case 0x10:
+                    switch (CPU_AL) {
+                        case 0x02: {
+                            uint32_t memloc = CPU_ES * 16 + CPU_DX;
+                            for (int color_index = 0; color_index < 16; color_index++) {
+                                uint8_t color_byte = read86(memloc++);
+                                const uint8_t r = (((color_byte >> 2) & 1) << 1) + (color_byte >> 5 & 1);
+                                const uint8_t g = (((color_byte >> 1) & 1) << 1) + (color_byte >> 4 & 1);
+                                const uint8_t b = (((color_byte >> 0) & 1) << 1) + (color_byte >> 3 & 1);
+
+                                vga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+                            }
+                            // TODO: Overscan/Border 17th color
+                            return;
+                        }
+                        // INT 10H 1010H: Set One DAC Color Register
+                        case 0x10: {// Set One DAC Color Register
+                            vga_palette[CPU_BX & 0xFF] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2, (CPU_CL & 63) << 2);
+                            return;
+                        }
+                        case 0x12: {// set block of DAC color registers               VGA
+                            uint32_t memloc = CPU_ES * 16 + CPU_DX;
+                            for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
+                                vga_palette[color_index] = rgb(read86(memloc++) << 2, read86(memloc++) << 2, read86(memloc++) << 2);
+                            }
+                            return;
+                        }
+                        case 0x15: { // Read One DAC Color Register
+                            const uint8_t color_index = CPU_BX & 0xFF;
+                            CPU_CL = ((vga_palette[color_index] >> 2)) & 63;
+                            CPU_CH = ((vga_palette[color_index] >> 10)) & 63;
+                            CPU_DH = ((vga_palette[color_index] >> 18)) & 63;
+                            return;
+                        }
+                        case 0x17: { // Read a Block of DAC Color Registers
+                            uint32_t memloc = CPU_ES * 16 + CPU_DX;
+                            for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
+                                write86(memloc++, ((vga_palette[color_index] >> 2)) & 63);
+                                write86(memloc++, ((vga_palette[color_index] >> 10)) & 63);
+                                write86(memloc++, ((vga_palette[color_index]  >> 18)) & 63);
+                            }
+                            return;
+                        }
+                    }
+                    printf("Unhandled 10h CPU_AL: 0x%x\r\n", CPU_AL);
+                    return;
                 case 0x1A: //get display combination code (ps, vga/mcga)
                     CPU_AL = 0x1A;
                     CPU_BL = 0x08;
@@ -236,14 +278,22 @@ void intcall86(uint8_t intnum) {
         case 0x13:
             return diskhandler();
         case 0x19:
-#if PICO_ON_DEVICE
-            insertdisk(0, "\\XT\\fdd0.img");
-            insertdisk(128, "\\XT\\hdd.img");
-#else
             insertdisk(0, "fdd0.img");
-            insertdisk(2, "hdd.img");
-
-#endif
+            insertdisk(128, "hdd.img");
+            break;
+        case 0x2F:
+            // XMS memory
+            switch (CPU_AX) {
+                case 0x4300:
+                    CPU_AL = 0x80;
+                    break;
+                case 0x4310: {
+                    CPU_ES = 0x0000; //
+                    CPU_BX = 0x03FF; //
+                    break;
+                }
+                    return;
+            }
             break;
     }
 
@@ -1099,9 +1149,7 @@ void reset86() {
     CPU_SS = 0x0000;
     CPU_SP = 0x0000;
 
-    memset(RAM, 0x0, RAM_SIZE);
-    memset(VIDEORAM, 0x0, VIDEORAM_SIZE);
-
+    memset(RAM, 0xFF, RAM_SIZE);
 
     ip = 0x0000;
 }
@@ -1127,20 +1175,15 @@ void exec86(uint32_t execloops) {
             CPU_IP &= 0xFFFF;
 //            savecs = CPU_CS;
 //            saveip = ip;
-#ifdef XMS_DRIVER
             // W/A-hack: last byte of interrupts table (actually should not be ever used as CS:IP)
             if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
                 // hook for XMS
-                opcode = xms_fn(); // always returns RET TODO: far/short ret?
+                opcode = xms_handler(); // always returns RET TODO: far/short ret?
             }
             else {
                 opcode = getmem8(CPU_CS, CPU_IP);
             }
-#else
 
-            opcode = getmem8(CPU_CS, CPU_IP);
-
-#endif
             StepIP(1);
 
             switch (opcode) {
@@ -3231,7 +3274,7 @@ void exec86(uint32_t execloops) {
 
             default: {
 //                char tmp[40];
-//                printf("Unexpected opcode: %02Xh ignored", opcode);
+                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 //intcall86(6);
                 break;

@@ -26,15 +26,19 @@ static uint32_t palette[256];
 
 #define SCREEN_WIDTH (320)
 #define SCREEN_HEIGHT (240)
+
 //графический буфер
-static uint8_t* __scratch_y("hdmi_ptr_1") graphics_buffer = NULL;
+static uint8_t *__scratch_y(
+
+"hdmi_ptr_1")
+graphics_buffer = NULL;
 static int graphics_buffer_width = 0;
 static int graphics_buffer_height = 0;
 static int graphics_buffer_shift_x = 0;
 static int graphics_buffer_shift_y = 0;
 
 //текстовый буфер
-uint8_t* text_buffer = NULL;
+uint8_t *text_buffer = NULL;
 
 
 //DMA каналы
@@ -47,8 +51,13 @@ static int dma_chan_pal_conv;
 
 //DMA буферы
 //основные строчные данные
-static uint32_t* __scratch_y("hdmi_ptr_3") dma_lines[2] = { NULL,NULL };
-static uint32_t* __scratch_y("hdmi_ptr_4") DMA_BUF_ADDR[2];
+static uint32_t *__scratch_y(
+
+"hdmi_ptr_3") dma_lines[2] = { NULL,NULL };
+
+static uint32_t *__scratch_y(
+
+"hdmi_ptr_4") DMA_BUF_ADDR[2];
 
 //ДМА палитра для конвертации
 //в хвосте этой памяти выделяется dma_data
@@ -65,39 +74,39 @@ static uint32_t irq_inx = 0;
 //программа конвертации адреса
 
 uint16_t pio_program_instructions_conv_HDMI[] = {
-    //         //     .wrap_target
-    0x80a0, //  0: pull   block
-    0x40e8, //  1: in     osr, 8
-    0x4034, //  2: in     x, 20
-    0x8020, //  3: push   block
-    //     .wrap
+        //         //     .wrap_target
+        0x80a0, //  0: pull   block
+        0x40e8, //  1: in     osr, 8
+        0x4034, //  2: in     x, 20
+        0x8020, //  3: push   block
+        //     .wrap
 };
 
 
 const struct pio_program pio_program_conv_addr_HDMI = {
-    .instructions = pio_program_instructions_conv_HDMI,
-    .length = 4,
-    .origin = -1,
+        .instructions = pio_program_instructions_conv_HDMI,
+        .length = 4,
+        .origin = -1,
 };
 
 //программа видеовывода
 static const uint16_t instructions_PIO_HDMI[] = {
-    0x7006, //  0: out    pins, 6         side 2
-    0x7006, //  1: out    pins, 6         side 2
-    0x7006, //  2: out    pins, 6         side 2
-    0x7006, //  3: out    pins, 6         side 2
-    0x7006, //  4: out    pins, 6         side 2
-    0x6806, //  5: out    pins, 6         side 1
-    0x6806, //  6: out    pins, 6         side 1
-    0x6806, //  7: out    pins, 6         side 1
-    0x6806, //  8: out    pins, 6         side 1
-    0x6806, //  9: out    pins, 6         side 1
+        0x7006, //  0: out    pins, 6         side 2
+        0x7006, //  1: out    pins, 6         side 2
+        0x7006, //  2: out    pins, 6         side 2
+        0x7006, //  3: out    pins, 6         side 2
+        0x7006, //  4: out    pins, 6         side 2
+        0x6806, //  5: out    pins, 6         side 1
+        0x6806, //  6: out    pins, 6         side 1
+        0x6806, //  7: out    pins, 6         side 1
+        0x6806, //  8: out    pins, 6         side 1
+        0x6806, //  9: out    pins, 6         side 1
 };
 
 static const struct pio_program program_PIO_HDMI = {
-    .instructions = instructions_PIO_HDMI,
-    .length = 10,
-    .origin = -1,
+        .instructions = instructions_PIO_HDMI,
+        .length = 10,
+        .origin = -1,
 };
 
 static uint64_t get_ser_diff_data(const uint16_t dataR, const uint16_t dataG, const uint16_t dataB) {
@@ -121,8 +130,7 @@ static uint64_t get_ser_diff_data(const uint16_t dataR, const uint16_t dataG, co
         uint8_t d6;
         if (HDMI_PIN_RGB_notBGR) {
             d6 = (bR << 4) | (bG << 2) | (bB << 0);
-        }
-        else {
+        } else {
             d6 = (bB << 4) | (bG << 2) | (bR << 0);
         }
 
@@ -163,7 +171,11 @@ static void pio_set_x(PIO pio, const int sm, uint32_t v) {
 }
 
 
-static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
+static void __scratch_y(
+
+"hdmi_driver")
+
+dma_handler_HDMI() {
     static uint32_t inx_buf_dma;
     static uint line = 0;
     irq_inx++;
@@ -178,11 +190,11 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
     inx_buf_dma++;
 
 
-    uint8_t* activ_buf = (uint8_t *)dma_lines[inx_buf_dma & 1];
+    uint8_t *activ_buf = (uint8_t *) dma_lines[inx_buf_dma & 1];
 
-    if (graphics_buffer && line < 480 ) {
+    if (graphics_buffer && line < 480) {
         //область изображения
-        uint8_t* output_buffer = activ_buf + 72; //для выравнивания синхры;
+        uint8_t *output_buffer = activ_buf + 72; //для выравнивания синхры;
 
         switch (graphics_mode) {
             case GRAPHICSMODE_DEFAULT:
@@ -196,21 +208,21 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
                 }
                 if (false || (graphics_buffer_shift_y > y) || (y >= (graphics_buffer_shift_y + graphics_buffer_height))
                     || (graphics_buffer_shift_x >= SCREEN_WIDTH) || (
-                        (graphics_buffer_shift_x + graphics_buffer_width) < 0)) {
-                    memset(output_buffer, 255,SCREEN_WIDTH);
+                            (graphics_buffer_shift_x + graphics_buffer_width) < 0)) {
+                    memset(output_buffer, 255, SCREEN_WIDTH);
                     break;
-                        }
+                }
 
-                uint8_t* activ_buf_end = output_buffer + SCREEN_WIDTH;
+                uint8_t *activ_buf_end = output_buffer + SCREEN_WIDTH;
                 //рисуем пространство слева от буфера
                 for (int i = graphics_buffer_shift_x; i-- > 0;) {
                     *output_buffer++ = 255;
                 }
 
                 //рисуем сам видеобуфер+пространство справа
-                uint8_t* input_buffer = &graphics_buffer[(y - graphics_buffer_shift_y) * graphics_buffer_width];
+                uint8_t *input_buffer = &graphics_buffer[(y - graphics_buffer_shift_y) * graphics_buffer_width];
 
-                const uint8_t* input_buffer_end = input_buffer + graphics_buffer_width;
+                const uint8_t *input_buffer_end = input_buffer + graphics_buffer_width;
 
                 if (graphics_buffer_shift_x < 0) input_buffer -= graphics_buffer_shift_x;
 
@@ -219,8 +231,7 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
                         uint8_t i_color = *input_buffer++;
                         i_color = ((i_color & 0xf0) == 0xf0) ? 255 : i_color;
                         *output_buffer++ = i_color;
-                    }
-                    else
+                    } else
                         *output_buffer++ = 255;
                 }
 
@@ -239,8 +250,8 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
 
                     for (int bit = 6; bit--;) {
                         *output_buffer++ = glyph_row & 1
-                                               ? textmode_palette[colorIndex & 0xf] //цвет шрифта
-                                               : textmode_palette[colorIndex >> 4]; //цвет фона
+                                           ? textmode_palette[colorIndex & 0xf] //цвет шрифта
+                                           : textmode_palette[colorIndex >> 4]; //цвет фона
 
                         glyph_row >>= 1;
                     }
@@ -265,9 +276,9 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
 
         // --|_|---|_|---|_|----
         //---|___________|-----
-        memset(activ_buf + 48,BASE_HDMI_CTRL_INX, 24);
-        memset(activ_buf,BASE_HDMI_CTRL_INX + 1, 48);
-        memset(activ_buf + 392,BASE_HDMI_CTRL_INX, 8);
+        memset(activ_buf + 48, BASE_HDMI_CTRL_INX, 24);
+        memset(activ_buf, BASE_HDMI_CTRL_INX + 1, 48);
+        memset(activ_buf + 392, BASE_HDMI_CTRL_INX, 8);
 
         //без выравнивания
         // --|_|---|_|---|_|----
@@ -275,15 +286,14 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
         //   memset(activ_buf+320,BASE_HDMI_CTRL_INX,8);
         //   memset(activ_buf+328,BASE_HDMI_CTRL_INX+1,48);
         //   memset(activ_buf+376,BASE_HDMI_CTRL_INX,24);
-    }
-    else {
+    } else {
         if ((line >= 490) && (line < 492)) {
             //кадровый синхроимпульс
             //для выравнивания синхры
             // --|_|---|_|---|_|----
             //---|___________|-----
-            memset(activ_buf + 48,BASE_HDMI_CTRL_INX + 2, 352);
-            memset(activ_buf,BASE_HDMI_CTRL_INX + 3, 48);
+            memset(activ_buf + 48, BASE_HDMI_CTRL_INX + 2, 352);
+            memset(activ_buf, BASE_HDMI_CTRL_INX + 3, 48);
             //без выравнивания
             // --|_|---|_|---|_|----
             //-------|___________|----
@@ -291,13 +301,12 @@ static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
             // memset(activ_buf,BASE_HDMI_CTRL_INX+2,328);
             // memset(activ_buf+328,BASE_HDMI_CTRL_INX+3,48);
             // memset(activ_buf+376,BASE_HDMI_CTRL_INX+2,24);
-        }
-        else {
+        } else {
             //ССИ без изображения
             //для выравнивания синхры
 
-            memset(activ_buf + 48,BASE_HDMI_CTRL_INX, 352);
-            memset(activ_buf,BASE_HDMI_CTRL_INX + 1, 48);
+            memset(activ_buf + 48, BASE_HDMI_CTRL_INX, 352);
+            memset(activ_buf, BASE_HDMI_CTRL_INX + 1, 48);
 
             // memset(activ_buf,BASE_HDMI_CTRL_INX,328);
             // memset(activ_buf+328,BASE_HDMI_CTRL_INX+1,48);
@@ -327,8 +336,7 @@ static inline bool hdmi_init() {
     //выключение прерывания DMA
     if (VIDEO_DMA_IRQ == DMA_IRQ_0) {
         dma_channel_set_irq0_enabled(dma_chan_ctrl, false);
-    }
-    else {
+    } else {
         dma_channel_set_irq1_enabled(dma_chan_ctrl, false);
     }
 
@@ -337,7 +345,7 @@ static inline bool hdmi_init() {
 
     //остановка всех каналов DMA
     dma_hw->abort = (1 << dma_chan_ctrl) | (1 << dma_chan) | (1 << dma_chan_pal_conv) | (
-                        1 << dma_chan_pal_conv_ctrl);
+            1 << dma_chan_pal_conv_ctrl);
     while (dma_hw->abort) tight_loop_contents();
 
     //выключение SM основной и конвертора
@@ -356,7 +364,7 @@ static inline bool hdmi_init() {
 
     offs_prg1 = pio_add_program(PIO_VIDEO_ADDR, &pio_program_conv_addr_HDMI);
     offs_prg0 = pio_add_program(PIO_VIDEO, &program_PIO_HDMI);
-    pio_set_x(PIO_VIDEO_ADDR, SM_conv, ((uint32_t)conv_color >> 12));
+    pio_set_x(PIO_VIDEO_ADDR, SM_conv, ((uint32_t) conv_color >> 12));
 
     //заполнение палитры
     for (int ci = 0; ci < 240; ci++) graphics_set_palette(ci, palette[ci]); //
@@ -366,7 +374,7 @@ static inline bool hdmi_init() {
 
 
     //240-243 служебные данные(синхра) напрямую вносим в массив -конвертер
-    uint64_t* conv_color64 = (uint64_t *)conv_color;
+    uint64_t *conv_color64 = (uint64_t *) conv_color;
     const uint16_t b0 = 0b1101010100;
     const uint16_t b1 = 0b0010101011;
     const uint16_t b2 = 0b0101010100;
@@ -399,8 +407,8 @@ static inline bool hdmi_init() {
     sm_config_set_wrap(&c_c, offs_prg0, offs_prg0 + (program_PIO_HDMI.length - 1));
 
     //настройка side set
-    sm_config_set_sideset_pins(&c_c,beginHDMI_PIN_clk);
-    sm_config_set_sideset(&c_c, 2,false,false);
+    sm_config_set_sideset_pins(&c_c, beginHDMI_PIN_clk);
+    sm_config_set_sideset(&c_c, 2, false, false);
     for (int i = 0; i < 2; i++) {
         pio_gpio_init(PIO_VIDEO, beginHDMI_PIN_clk + i);
         gpio_set_drive_strength(beginHDMI_PIN_clk + i, GPIO_DRIVE_STRENGTH_12MA);
@@ -448,12 +456,12 @@ static inline bool hdmi_init() {
     channel_config_set_dreq(&cfg_dma, dreq);
 
     dma_channel_configure(
-        dma_chan,
-        &cfg_dma,
-        &PIO_VIDEO_ADDR->txf[SM_conv], // Write address
-        &dma_lines[0][0], // read address
-        400, //
-        false // Don't start yet
+            dma_chan,
+            &cfg_dma,
+            &PIO_VIDEO_ADDR->txf[SM_conv], // Write address
+            &dma_lines[0][0], // read address
+            400, //
+            false // Don't start yet
     );
 
     //контрольный канал для основного
@@ -468,12 +476,12 @@ static inline bool hdmi_init() {
     DMA_BUF_ADDR[1] = &dma_lines[1][0];
 
     dma_channel_configure(
-        dma_chan_ctrl,
-        &cfg_dma,
-        &dma_hw->ch[dma_chan].read_addr, // Write address
-        &DMA_BUF_ADDR[0], // read address
-        1, //
-        false // Don't start yet
+            dma_chan_ctrl,
+            &cfg_dma,
+            &dma_hw->ch[dma_chan].read_addr, // Write address
+            &DMA_BUF_ADDR[0], // read address
+            1, //
+            false // Don't start yet
     );
 
     //канал - конвертер палитры
@@ -491,12 +499,12 @@ static inline bool hdmi_init() {
     channel_config_set_dreq(&cfg_dma, dreq);
 
     dma_channel_configure(
-        dma_chan_pal_conv,
-        &cfg_dma,
-        &PIO_VIDEO->txf[SM_video], // Write address
-        &conv_color[0], // read address
-        4, //
-        false // Don't start yet
+            dma_chan_pal_conv,
+            &cfg_dma,
+            &PIO_VIDEO->txf[SM_video], // Write address
+            &conv_color[0], // read address
+            4, //
+            false // Don't start yet
     );
 
     //канал управления конвертером палитры
@@ -514,20 +522,19 @@ static inline bool hdmi_init() {
     channel_config_set_dreq(&cfg_dma, dreq);
 
     dma_channel_configure(
-        dma_chan_pal_conv_ctrl,
-        &cfg_dma,
-        &dma_hw->ch[dma_chan_pal_conv].read_addr, // Write address
-        &PIO_VIDEO_ADDR->rxf[SM_conv], // read address
-        1, //
-        true // start yet
+            dma_chan_pal_conv_ctrl,
+            &cfg_dma,
+            &dma_hw->ch[dma_chan_pal_conv].read_addr, // Write address
+            &PIO_VIDEO_ADDR->rxf[SM_conv], // read address
+            1, //
+            true // start yet
     );
 
     //стартуем прерывание и канал
     if (VIDEO_DMA_IRQ == DMA_IRQ_0) {
         dma_channel_acknowledge_irq0(dma_chan_ctrl);
         dma_channel_set_irq0_enabled(dma_chan_ctrl, true);
-    }
-    else {
+    } else {
         dma_channel_acknowledge_irq1(dma_chan_ctrl);
         dma_channel_set_irq1_enabled(dma_chan_ctrl, true);
     }
@@ -538,6 +545,7 @@ static inline bool hdmi_init() {
 
     return true;
 };
+
 //выбор видеорежима
 inline void graphics_set_mode(enum graphics_mode_t mode) {
     graphics_mode = mode;
@@ -550,7 +558,7 @@ void graphics_set_palette(uint8_t i, uint32_t color888) {
 
     if ((i >= BASE_HDMI_CTRL_INX) && (i != 255)) return; //не записываем "служебные" цвета
 
-    uint64_t* conv_color64 = (uint64_t *)conv_color;
+    uint64_t *conv_color64 = (uint64_t *) conv_color;
     const uint8_t R = (color888 >> 16) & 0xff;
     const uint8_t G = (color888 >> 8) & 0xff;
     const uint8_t B = (color888 >> 0) & 0xff;
@@ -558,7 +566,7 @@ void graphics_set_palette(uint8_t i, uint32_t color888) {
     conv_color64[i * 2 + 1] = conv_color64[i * 2] ^ 0x0003ffffffffffffl;
 };
 
-void graphics_set_buffer(uint8_t* buffer, uint16_t width, uint16_t height) {
+void graphics_set_buffer(uint8_t *buffer, uint16_t width, uint16_t height) {
     graphics_buffer = buffer;
     graphics_buffer_width = width;
     graphics_buffer_height = height;
@@ -608,7 +616,7 @@ void graphics_set_offset(int x, int y) {
     graphics_buffer_shift_y = y;
 };
 
-void graphics_set_textbuffer(uint8_t* buffer) {
+void graphics_set_textbuffer(uint8_t *buffer) {
     text_buffer = buffer;
 };
 

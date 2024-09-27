@@ -7,17 +7,17 @@
 #include "ff.h"
 
 
-#if FF_USE_LFN == 3	/* Dynamic memory allocation */
+#if FF_USE_LFN == 3    /* Dynamic memory allocation */
 
 /*------------------------------------------------------------------------*/
 /* Allocate a memory block                                                */
 /*------------------------------------------------------------------------*/
 
 void* ff_memalloc (	/* Returns pointer to the allocated memory block (null if not enough core) */
-	UINT msize		/* Number of bytes to allocate */
+    UINT msize		/* Number of bytes to allocate */
 )
 {
-	return malloc(msize);	/* Allocate a new memory block with POSIX API */
+    return malloc(msize);	/* Allocate a new memory block with POSIX API */
 }
 
 
@@ -26,17 +26,16 @@ void* ff_memalloc (	/* Returns pointer to the allocated memory block (null if no
 /*------------------------------------------------------------------------*/
 
 void ff_memfree (
-	void* mblock	/* Pointer to the memory block to free (nothing to do if null) */
+    void* mblock	/* Pointer to the memory block to free (nothing to do if null) */
 )
 {
-	free(mblock);	/* Free the memory block with POSIX API */
+    free(mblock);	/* Free the memory block with POSIX API */
 }
 
 #endif
 
 
-
-#if FF_FS_REENTRANT	/* Mutal exclusion */
+#if FF_FS_REENTRANT    /* Mutal exclusion */
 
 /*------------------------------------------------------------------------*/
 /* Create a Synchronization Object                                        */
@@ -50,29 +49,29 @@ void ff_memfree (
 
 
 int ff_cre_syncobj (	/* 1:Function succeeded, 0:Could not create the sync object */
-	BYTE vol,			/* Corresponding volume (logical drive number) */
-	FF_SYNC_t* sobj		/* Pointer to return the created sync object */
+    BYTE vol,			/* Corresponding volume (logical drive number) */
+    FF_SYNC_t* sobj		/* Pointer to return the created sync object */
 )
 {
-	/* Win32 */
-	*sobj = CreateMutex(NULL, FALSE, NULL);
-	return (int)(*sobj != INVALID_HANDLE_VALUE);
+    /* Win32 */
+    *sobj = CreateMutex(NULL, FALSE, NULL);
+    return (int)(*sobj != INVALID_HANDLE_VALUE);
 
-	/* uITRON */
+    /* uITRON */
 //	T_CSEM csem = {TA_TPRI,1,1};
 //	*sobj = acre_sem(&csem);
 //	return (int)(*sobj > 0);
 
-	/* uC/OS-II */
+    /* uC/OS-II */
 //	OS_ERR err;
 //	*sobj = OSMutexCreate(0, &err);
 //	return (int)(err == OS_NO_ERR);
 
-	/* FreeRTOS */
+    /* FreeRTOS */
 //	*sobj = xSemaphoreCreateMutex();
 //	return (int)(*sobj != NULL);
 
-	/* CMSIS-RTOS */
+    /* CMSIS-RTOS */
 //	*sobj = osMutexCreate(&Mutex[vol]);
 //	return (int)(*sobj != NULL);
 }
@@ -87,25 +86,25 @@ int ff_cre_syncobj (	/* 1:Function succeeded, 0:Could not create the sync object
 */
 
 int ff_del_syncobj (	/* 1:Function succeeded, 0:Could not delete due to an error */
-	FF_SYNC_t sobj		/* Sync object tied to the logical drive to be deleted */
+    FF_SYNC_t sobj		/* Sync object tied to the logical drive to be deleted */
 )
 {
-	/* Win32 */
-	return (int)CloseHandle(sobj);
+    /* Win32 */
+    return (int)CloseHandle(sobj);
 
-	/* uITRON */
+    /* uITRON */
 //	return (int)(del_sem(sobj) == E_OK);
 
-	/* uC/OS-II */
+    /* uC/OS-II */
 //	OS_ERR err;
 //	OSMutexDel(sobj, OS_DEL_ALWAYS, &err);
 //	return (int)(err == OS_NO_ERR);
 
-	/* FreeRTOS */
+    /* FreeRTOS */
 //  vSemaphoreDelete(sobj);
 //	return 1;
 
-	/* CMSIS-RTOS */
+    /* CMSIS-RTOS */
 //	return (int)(osMutexDelete(sobj) == osOK);
 }
 
@@ -118,24 +117,24 @@ int ff_del_syncobj (	/* 1:Function succeeded, 0:Could not delete due to an error
 */
 
 int ff_req_grant (	/* 1:Got a grant to access the volume, 0:Could not get a grant */
-	FF_SYNC_t sobj	/* Sync object to wait */
+    FF_SYNC_t sobj	/* Sync object to wait */
 )
 {
-	/* Win32 */
-	return (int)(WaitForSingleObject(sobj, FF_FS_TIMEOUT) == WAIT_OBJECT_0);
+    /* Win32 */
+    return (int)(WaitForSingleObject(sobj, FF_FS_TIMEOUT) == WAIT_OBJECT_0);
 
-	/* uITRON */
+    /* uITRON */
 //	return (int)(wai_sem(sobj) == E_OK);
 
-	/* uC/OS-II */
+    /* uC/OS-II */
 //	OS_ERR err;
 //	OSMutexPend(sobj, FF_FS_TIMEOUT, &err));
 //	return (int)(err == OS_NO_ERR);
 
-	/* FreeRTOS */
+    /* FreeRTOS */
 //	return (int)(xSemaphoreTake(sobj, FF_FS_TIMEOUT) == pdTRUE);
 
-	/* CMSIS-RTOS */
+    /* CMSIS-RTOS */
 //	return (int)(osMutexWait(sobj, FF_FS_TIMEOUT) == osOK);
 }
 
@@ -147,22 +146,22 @@ int ff_req_grant (	/* 1:Got a grant to access the volume, 0:Could not get a gran
 */
 
 void ff_rel_grant (
-	FF_SYNC_t sobj	/* Sync object to be signaled */
+    FF_SYNC_t sobj	/* Sync object to be signaled */
 )
 {
-	/* Win32 */
-	ReleaseMutex(sobj);
+    /* Win32 */
+    ReleaseMutex(sobj);
 
-	/* uITRON */
+    /* uITRON */
 //	sig_sem(sobj);
 
-	/* uC/OS-II */
+    /* uC/OS-II */
 //	OSMutexPost(sobj);
 
-	/* FreeRTOS */
+    /* FreeRTOS */
 //	xSemaphoreGive(sobj);
 
-	/* CMSIS-RTOS */
+    /* CMSIS-RTOS */
 //	osMutexRelease(sobj);
 }
 

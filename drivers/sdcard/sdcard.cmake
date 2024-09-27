@@ -10,4 +10,4 @@ if (NOT TARGET sdcard)
 
     target_link_libraries(sdcard INTERFACE fatfs pico_stdlib hardware_clocks hardware_spi hardware_pio)
     target_include_directories(sdcard INTERFACE ${CMAKE_CURRENT_LIST_DIR})
-endif()
+endif ()

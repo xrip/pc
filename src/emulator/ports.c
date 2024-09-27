@@ -1,21 +1,15 @@
 #include <time.h>
 #include "emulator.h"
-#include "emulator/mouse.c.inc"
-#include "emulator/i8253.c.inc"
-#include "emulator/i8259.c.inc"
-#include "emulator/video/cga.c.inc"
-#include "emulator/video/tga.c.inc"
-#include "emulator/video/vga.c.inc"
-// https://wiki.osdev.org/I/O_Ports
-// http://www.techhelpmanual.com/892-i_o_port_map.html
-uint8_t crt_controller_idx  = 0xff , crt_controller[32];
-uint8_t port60 = 0xff, port61 = 0xff, port64 = 0xff;
+
+
+uint8_t crt_controller_idx, crt_controller[32];
+uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
-#if 0
+
 static inline uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
@@ -61,7 +55,7 @@ static inline uint8_t rtc_read(uint16_t addr) {
 
     return ret;
 }
-#endif
+
 void portout(uint16_t portnum, uint16_t value) {
     switch (portnum) {
         case 0x20:
@@ -87,6 +81,8 @@ void portout(uint16_t portnum, uint16_t value) {
             port64 = value;
             break;
 // Tandy 3 voice
+        case 0x1E0:
+        case 0x2C0:
         case 0xC0:
         case 0xC1:
         case 0xC2:
@@ -95,14 +91,23 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC5:
         case 0xC6:
         case 0xC7:
+            sn76489_out(value);
             return tandy_write(portnum, value);
 // GameBlaster / Creative Music System
         case 0x220:
         case 0x221:
         case 0x222:
         case 0x223:
+            cms_out(portnum, value);
             return cms_write(portnum, value);
 
+        case 0x278:
+            return covox_out(portnum, value);
+
+        case 0x378:
+//            return covox_out(portnum, value);
+        case 0x37A:
+            return dss_out(portnum, value);
 // AdLib / OPL
         case 0x388:
             adlib_register = value;
@@ -117,7 +122,7 @@ void portout(uint16_t portnum, uint16_t value) {
                 }
             }
 
-            return adlib_write(adlib_register, value);
+            return adlib_write_d(adlib_register, value);
 // EGA/VGA
         case 0x3C0:
         case 0x3C4:
@@ -140,7 +145,7 @@ void portout(uint16_t portnum, uint16_t value) {
             switch (crt_controller_idx) {
                 case 0x6:
                     // 160x100x16 mode TODO: Add more checks
-                    if ((value == 0x64 && (videomode == 1 || videomode == 3))) {
+                    if ((value == 0x64 && (videomode <= 3))) {
                         videomode = 0x77;
                     }
                     break;
@@ -158,11 +163,11 @@ void portout(uint16_t portnum, uint16_t value) {
                     break;
                 case 0x0D: // Start address (LSB)
                     vram_offset = (uint32_t) vram_offset << 8 | (uint32_t) value;
-//                    printf("vram offset %04X\n", vram_offset);
+                    //printf("vram offset %04X\n", vram_offset);
                     break;
             }
 
-//            if ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F))
+//            if (((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F) && (crt_controller_idx != 0x0c) && (crt_controller_idx != 0x0d)))
 //                printf("CRT %x %x\n", crt_controller_idx, value);
 
             crt_controller[crt_controller_idx] = value;
@@ -205,6 +210,18 @@ uint16_t portin(uint16_t portnum) {
             return port61;
         case 0x64:
             return port64;
+        case 0x220:
+        case 0x221:
+        case 0x222:
+        case 0x223:
+        case 0x224:
+        case 0x225:
+        case 0x226:
+        case 0x227:
+        case 0x228:
+        case 0x229:
+        case 0x22a:
+            return cms_in(portnum);
 // RTC
         case 0x240:
         case 0x241:
@@ -230,9 +247,11 @@ uint16_t portin(uint16_t portnum) {
         case 0x255:
         case 0x256:
         case 0x257:
-            return 0xff;
-            break;
-//            return rtc_read(portnum);
+            return rtc_read(portnum);
+        case 0x27A: // LPT2 status (covox is always ready)
+            return 0;
+        case 0x379:
+            return dss_in(portnum);
 // Adlib
         case 0x388:
         case 0x389:
@@ -278,5 +297,5 @@ void portout16(uint16_t portnum, uint16_t value) {
 }
 
 uint16_t portin16(uint16_t portnum) {
-    return portin(portnum) & 0xff | (portin(portnum + 1) & 0xff) << 8;
+    return portin(portnum) | portin(portnum + 1) >> 8;
 }

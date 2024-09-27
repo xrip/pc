@@ -11,4 +11,4 @@ if (NOT TARGET fatfs)
     target_link_libraries(fatfs INTERFACE pico_stdlib hardware_clocks hardware_spi)
     target_include_directories(fatfs INTERFACE ${CMAKE_CURRENT_LIST_DIR})
 
-endif()
+endif ()

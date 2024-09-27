@@ -267,7 +267,7 @@ uint32_t vga_palette[256] = {
         rgb (0, 0, 0),
 };
 
-void vga_portout(uint16_t portnum, uint16_t value) {
+ void vga_portout(uint16_t portnum, uint16_t value) {
 //    http://www.techhelpmanual.com/900-video_graphics_array_i_o_ports.html
 //    if (portnum != 0x3c8 && portnum != 0x3c9)
 //        printf("vga_portout %x %x\n", portnum, value);
@@ -305,6 +305,9 @@ void vga_portout(uint16_t portnum, uint16_t value) {
         case 0x3C5: {
             if (sequencer_register == 2) {
                 switch (value & 0b1111) {
+                    case 1:
+                        vga_plane_offset = 0;
+                        break;
                     case 2:
                         vga_plane_offset = vga_plane_size * 1;
                         break;
@@ -316,9 +319,10 @@ void vga_portout(uint16_t portnum, uint16_t value) {
                         break;
                     default:
                         vga_plane_offset = 0;
+                        break;
                 }
 
-                //printf("vga_plane_offset %x\n",vga_plane_offset);
+                //printf("vga_plane_offset %x\n",value);
             }
             if (sequencer_register == 4) {
                 vga_planar_mode = value & 6;
@@ -345,6 +349,8 @@ void vga_portout(uint16_t portnum, uint16_t value) {
             }
             break;
         }
+
+            // http://www.osdever.net/FreeVGA/vga/graphreg.htm
         case 0x3CE: { // Graphics 1 and 2 Address Register
             /*
              * The Graphics 1 and 2 Address Register selects which register
@@ -372,7 +378,7 @@ void vga_portout(uint16_t portnum, uint16_t value) {
 
 }
 
-uint16_t vga_portin(uint16_t portnum) {
+ uint16_t vga_portin(uint16_t portnum) {
     //printf("vga_portin %x\n", portnum);
 
     switch (portnum) {

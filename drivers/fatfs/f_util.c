@@ -62,12 +62,11 @@ const char *FRESULT_str(FRESULT i) {
     }
 }
 
-FRESULT delete_node (
-    TCHAR* path,    /* Path name buffer with the sub-directory to delete */
-    UINT sz_buff,   /* Size of path name buffer (items) */
-    FILINFO* fno    /* Name read buffer */
-)
-{
+FRESULT delete_node(
+        TCHAR *path,    /* Path name buffer with the sub-directory to delete */
+        UINT sz_buff,   /* Size of path name buffer (items) */
+        FILINFO *fno    /* Name read buffer */
+) {
     UINT i, j;
     FRESULT fr;
     DIR dir;
@@ -76,7 +75,7 @@ FRESULT delete_node (
     fr = f_opendir(&dir, path); /* Open the sub-directory to make it empty */
     if (fr != FR_OK) return fr;
 
-    for (i = 0; path[i]; i++) ; /* Get current path length */
+    for (i = 0; path[i]; i++); /* Get current path length */
     path[i++] = '/';
 
     for (;;) {
@@ -85,7 +84,8 @@ FRESULT delete_node (
         j = 0;
         do {    /* Make a path name */
             if (i + j >= sz_buff) { /* Buffer over flow? */
-                fr = 100; break;    /* Fails with 100 when buffer overflow */
+                fr = 100;
+                break;    /* Fails with 100 when buffer overflow */
             }
             path[i + j] = fno->fname[j];
         } while (fno->fname[j++]);

@@ -12,7 +12,7 @@ void init8259() {
 //    memset((void *) &i8259, 0, sizeof(i8259));
 }
 
-static inline uint8_t in8259(uint16_t portnum) {
+ uint8_t in8259(uint16_t portnum) {
     switch (portnum & 1) {
         case 0:
             if (i8259.readmode == 0) return (i8259.irr);
@@ -24,7 +24,7 @@ static inline uint8_t in8259(uint16_t portnum) {
 }
 
 
-static inline void out8259(uint16_t portnum, uint8_t value) {
+ void out8259(uint16_t portnum, uint8_t value) {
     //printf("out8259 %i %i\r\n", portnum, value);
     uint8_t i;
     switch (portnum & 1) {
