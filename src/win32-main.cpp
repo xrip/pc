@@ -4,7 +4,7 @@
 #include "emulator/emulator.h"
 #include "emulator/includes/font8x16.h"
 #include "emulator/includes/font8x8.h"
-
+#pragma comment(lib, "winmm.lib")  // Link with Windows multimedia library
 static uint32_t SCREEN[400][640];
 
 int cursor_blink_state = 0;
@@ -14,66 +14,31 @@ HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
 
-#define AUDIO_FREQ 44100
-#define AUDIO_BUFFER_LENGTH ((AUDIO_FREQ /60 +1) * 2)
-
-int16_t audiobuffer[AUDIO_BUFFER_LENGTH] = { 0 };
-
-DWORD WINAPI SoundThread(LPVOID lpParam) {
-    WAVEHDR waveHeaders[4];
-
-    WAVEFORMATEX format = { 0 };
-    format.wFormatTag = WAVE_FORMAT_PCM;
-    format.nChannels = 2;
-    format.nSamplesPerSec = AUDIO_FREQ;
-    format.wBitsPerSample = 16;
-    format.nBlockAlign = format.nChannels * format.wBitsPerSample / 8;
-    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
-
-    HANDLE waveEvent = CreateEvent(NULL, 1, 0, NULL);
-
-    HWAVEOUT hWaveOut;
-    waveOutOpen(&hWaveOut, WAVE_MAPPER, &format, (DWORD_PTR) waveEvent, 0, CALLBACK_EVENT);
-
-    for (size_t i = 0; i < 4; i++) {
-        int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH];
-        waveHeaders[i] = {
-                .lpData = (char *) audio_buffers[i],
-                .dwBufferLength = AUDIO_BUFFER_LENGTH * 2,
-        };
-        waveOutPrepareHeader(hWaveOut, &waveHeaders[i], sizeof(WAVEHDR));
-        waveHeaders[i].dwFlags |= WHDR_DONE;
-    }
-    WAVEHDR *currentHeader = waveHeaders;
-
-
-    while (true) {
-        if (WaitForSingleObject(waveEvent, INFINITE)) {
-            fprintf(stderr, "Failed to wait for event.\n");
-            return 1;
-        }
-
-        if (!ResetEvent(waveEvent)) {
-            fprintf(stderr, "Failed to reset event.\n");
-            return 1;
-        }
-
-// Wait until audio finishes playing
-        while (currentHeader->dwFlags & WHDR_DONE) {
-            memcpy(currentHeader->lpData, audiobuffer, AUDIO_BUFFER_LENGTH * 2);
-            //currentHeader->lpData = (char *) audiobuffer;
-            waveOutWrite(hWaveOut, currentHeader, sizeof(WAVEHDR));
-
-            currentHeader++;
-            if (currentHeader == waveHeaders + 4) { currentHeader = waveHeaders; }
-        }
-    }
-    return 0;
-}
+#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY /60 +1))
+static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int sample_index = 0;
 
 extern "C" void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
 
 DWORD WINAPI TicksThread(LPVOID lpParam) {
+
+    WAVEFORMATEX format = { 0 };
+    format.wFormatTag = WAVE_FORMAT_PCM;
+    format.nChannels = 2;
+    format.nSamplesPerSec = SOUND_FREQUENCY;
+    format.wBitsPerSample = 16;
+    format.nBlockAlign = 4;
+    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+
+    HWAVEOUT hWaveOut;
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &format, 0, 0, CALLBACK_NULL);
+
+    WAVEHDR waveHeader = {
+            .lpData = (LPSTR) audio_buffer,
+            .dwBufferLength = AUDIO_BUFFER_LENGTH * sizeof(int16_t),
+            .dwFlags = 0,
+    };
+    waveOutPrepareHeader(hWaveOut, &waveHeader, sizeof(WAVEHDR));
 
     LARGE_INTEGER start, current, queryperf;
 
@@ -110,8 +75,9 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Sound frequency 44100
         if (elapsedTime - last_sound_tick > hostfreq / 44100) {
             static int sound_counter = 0;
-            int samples[2] = { 0, 0 };
-            adlib_getsample(reinterpret_cast<int16_t *>(&samples[0]), 1);
+            int16_t samples[2];
+            samples[0] = samples[1] = 0;
+            adlib_getsample(samples, 1);
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
             if (speakerenabled)
@@ -124,12 +90,16 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             cms_samples(samples);
 
-            audiobuffer[sound_counter++] = (int16_t) samples[1];
-            audiobuffer[sound_counter++] = (int16_t) samples[0];
 
-            if (sound_counter >= AUDIO_BUFFER_LENGTH) {
-                sound_counter = 0;
+            audio_buffer[sample_index++] = (int16_t) samples[1];
+            audio_buffer[sample_index++] = (int16_t) samples[0];
+
+
+            if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
+                sample_index = 0;
+                waveOutWrite(hWaveOut, &waveHeader, sizeof(WAVEHDR));
             }
+
             last_sound_tick = elapsedTime;
         }
 
@@ -139,7 +109,6 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         if (elapsedTime - elapsed_frame_tics >= 16'666) {
-//            port3DA = 1;
             if (1) {
                 // http://www.techhelpmanual.com/114-video_modes.html
                 // http://www.techhelpmanual.com/89-video_memory_layouts.html
@@ -601,11 +570,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                     }
                 }
             }
-//            port3DA = 0b1000;
             elapsed_frame_tics = elapsedTime; // Reset the tick counter for 2Hz
         }
-
-        //Sleep(1);
     }
 }
 
@@ -1100,7 +1066,7 @@ extern "C" BOOL HanldeMenu(int menu_id, BOOL checked) {
 int main(int argc, char **argv) {
     int scale = 2;
 
-    if (!mfb_open("PC", 640, 400, scale))
+    if (!mfb_open("PC", 640, 410, scale))
         return 1;
 
     // Initialize the message queue
@@ -1112,10 +1078,6 @@ int main(int argc, char **argv) {
         printf("Error creating thread\n");
         return 1;
     }
-
-    HANDLE sound_thread = CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
-    if (!sound_thread)
-        return 1;
 
     if (hComm == NULL) {
         // Open the serial port
@@ -1178,7 +1140,7 @@ int main(int argc, char **argv) {
         Sleep(10);
     }
 
-    adlib_init(AUDIO_FREQ);
+    adlib_init(SOUND_FREQUENCY);
     sn76489_reset();
     reset86();
 

@@ -121,8 +121,7 @@ void portout(uint16_t portnum, uint16_t value) {
                     adlibregmem[4] = 0;
                 }
             }
-            return;
-            //return adlib_write_d(adlib_register, value);
+            return adlib_write_d(adlib_register, value);
 // EGA/VGA
         case 0x3C0:
         case 0x3C4:

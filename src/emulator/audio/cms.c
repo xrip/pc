@@ -75,7 +75,7 @@ static inline void cms_update() {
     }
 }
 
-void cms_samples(int *output) {
+void cms_samples(int16_t *output) {
     // core #1
     cms_update();
     output[0] += out_l << 2;

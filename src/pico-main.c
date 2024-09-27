@@ -96,7 +96,7 @@ void __time_critical_func() second_core() {
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             static int sound_counter = 0;
-            int samples[2] = { 0, 0 };
+            int16_t samples[2] = { 0, 0 };
             //adlib_getsample((int16_t *) &samples, 1);
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
@@ -112,8 +112,8 @@ void __time_critical_func() second_core() {
             cms_samples(samples);
 
 
-            audio_buffer[sample_index++] = (int16_t) samples[1];
-            audio_buffer[sample_index++] = (int16_t) samples[0];
+            audio_buffer[sample_index++] = samples[1];
+            audio_buffer[sample_index++] = samples[0];
 
 
             if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {

@@ -18,7 +18,7 @@ extern "C" {
 #define VIDEORAM_SIZE (128 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
-#define SOUND_FREQUENCY 44100
+#define SOUND_FREQUENCY (44100)
 #define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
 
 extern uint8_t log_debug;
@@ -166,9 +166,8 @@ extern void cms_out(uint16_t portnum, uint16_t value);
 
 extern uint8_t cms_in(uint16_t addr);
 
-extern void cms_samples(int *output);;
+extern void cms_samples(int16_t *output);;
 
-#define XMS_DRIVER 1
 #define XMS_FN_CS 0x0000
 #define XMS_FN_IP 0x03FF
 
