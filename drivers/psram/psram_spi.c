@@ -8,6 +8,7 @@ void init_psram() {
     psram_spi = psram_spi_init_clkdiv(pio0, -1, 2.0f, true);
     psram_write32(&psram_spi, 0x313373, 0xDEADBEEF);
     PSRAM_AVAILABLE = 0xDEADBEEF == psram_read32(&psram_spi, 0x313373);
+    psram_cleanup();
 }
 
 void psram_cleanup() {
@@ -17,19 +18,19 @@ void psram_cleanup() {
     }
 }
 
-void write8psram(uint32_t addr32, uint8_t v) {
+__force_inline void write8psram(uint32_t addr32, uint8_t v) {
     psram_write8(&psram_spi, addr32, v);
 }
 
-void write16psram(uint32_t addr32, uint16_t v) {
+__force_inline void write16psram(uint32_t addr32, uint16_t v) {
     psram_write16(&psram_spi, addr32, v);
 }
 
-uint8_t read8psram(uint32_t addr32) {
+__force_inline uint8_t read8psram(uint32_t addr32) {
     return psram_read8(&psram_spi, addr32);
 }
 
-uint16_t read16psram(uint32_t addr32) {
+__force_inline uint16_t read16psram(uint32_t addr32) {
     return psram_read16(&psram_spi, addr32);
 }
 

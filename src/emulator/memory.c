@@ -3,7 +3,6 @@
 #include "includes/bios.h"
 #include "emulator.h"
 
-
 #define VIDEORAM_START (0xA0000)
 #define VIDEORAM_END (0xC0000)
 
