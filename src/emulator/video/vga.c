@@ -267,7 +267,7 @@ uint32_t vga_palette[256] = {
         rgb (0, 0, 0),
 };
 
-void vga_portout(uint16_t portnum, uint16_t value) {
+ void vga_portout(uint16_t portnum, uint16_t value) {
 //    http://www.techhelpmanual.com/900-video_graphics_array_i_o_ports.html
 //    if (portnum != 0x3c8 && portnum != 0x3c9)
 //        printf("vga_portout %x %x\n", portnum, value);
@@ -378,7 +378,7 @@ void vga_portout(uint16_t portnum, uint16_t value) {
 
 }
 
-uint16_t vga_portin(uint16_t portnum) {
+ uint16_t vga_portin(uint16_t portnum) {
     //printf("vga_portin %x\n", portnum);
 
     switch (portnum) {

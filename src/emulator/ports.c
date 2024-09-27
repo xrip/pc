@@ -1,12 +1,5 @@
 #include <time.h>
 #include "emulator.h"
-#include "emulator/i8253.c.inc"
-#include "emulator/i8259.c.inc"
-#include "emulator/mouse.c.inc"
-#include "emulator/video/cga.c.inc"
-#include "emulator/video/tga.c.inc"
-#include "emulator/video/vga.c.inc"
-#include "emulator/audio/dss.c.inc"
 
 
 uint8_t crt_controller_idx, crt_controller[32];

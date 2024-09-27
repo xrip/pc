@@ -8,7 +8,7 @@ struct sermouse_s {
 } sermouse;
 
 
-static void bufsermousedata(uint8_t value) {
+static inline void bufsermousedata(uint8_t value) {
     if (sermouse.bufptr == 16)
         return;
     if (sermouse.bufptr == 0)
@@ -16,7 +16,7 @@ static void bufsermousedata(uint8_t value) {
     sermouse.buf[sermouse.bufptr++] = value;
 }
 
-static inline void mouse_portout(uint16_t portnum, uint8_t value) {
+ void mouse_portout(uint16_t portnum, uint8_t value) {
     uint8_t oldreg;
     // printf("[DEBUG] Serial mouse, port %X out: %02X\n", portnum, value);
     portnum &= 7;
@@ -38,7 +38,7 @@ static inline void mouse_portout(uint16_t portnum, uint8_t value) {
     }
 }
 
-static inline uint8_t mouse_portin(uint16_t portnum) {
+ uint8_t mouse_portin(uint16_t portnum) {
     uint8_t temp;
     // printf("[DEBUG] Serial mouse, port %X in\n", portnum);
     portnum &= 7;

@@ -13,7 +13,7 @@ void init8253() {
     memset(&i8253, 0, sizeof(i8253));
 }
 
-static inline void out8253(uint16_t portnum, uint8_t value) {
+void out8253(uint16_t portnum, uint8_t value) {
     uint8_t curbyte = 0;
     portnum &= 3;
     switch (portnum) {
@@ -78,7 +78,7 @@ static inline void out8253(uint16_t portnum, uint8_t value) {
     }
 }
 
-static inline uint8_t in8253(uint16_t portnum) {
+uint8_t in8253(uint16_t portnum) {
     uint8_t curbyte;
     portnum &= 3;
     switch (portnum) {

@@ -48,6 +48,9 @@ static inline uint8_t nextintr() {
         }
 }
 
+void out8259(uint16_t portnum, uint8_t value);
+
+uint8_t in8259(uint16_t portnum);
 // Video
 extern int videomode;
 #define CURSOR_X RAM[0x450]
@@ -66,10 +69,19 @@ extern const uint8_t cga_gfxpal[3][2][4];
 extern uint32_t cga_composite_palette[3][16];
 extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking, cga_hires;
 
+void cga_portout(uint16_t portnum, uint16_t value);
+
+uint16_t cga_portin(uint16_t portnum);
+
 // EGA/VGA
 #define vga_plane_size (16000)
 extern uint32_t vga_plane_offset;
 extern uint8_t vga_planar_mode;
+
+void vga_portout(uint16_t portnum, uint16_t value);
+
+uint16_t vga_portin(uint16_t portnum);
+
 // Memory
 extern void writew86(uint32_t addr32, uint16_t value);
 
@@ -106,12 +118,19 @@ extern struct i8253_s {
     uint16_t counter[3];
 } i8253;
 
+void out8253(uint16_t portnum, uint8_t value);
+
+uint8_t in8253(uint16_t portnum);
+
 extern int timer_period;
 extern int speakerenabled;
 
 // Mouse
 void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel);
 
+uint8_t mouse_portin(uint16_t portnum);
+
+void mouse_portout(uint16_t portnum, uint8_t value);
 
 extern void tandy_write(uint16_t reg, uint8_t value);
 
