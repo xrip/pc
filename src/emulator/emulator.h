@@ -19,8 +19,8 @@ extern "C" {
 
 extern uint8_t log_debug;
 
-extern uint8_t VIDEORAM[VIDEORAM_SIZE+1];
-extern uint8_t RAM[RAM_SIZE+1];
+extern uint8_t VIDEORAM[VIDEORAM_SIZE+2];
+extern uint8_t RAM[RAM_SIZE+2];
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];
@@ -69,7 +69,7 @@ extern void tga_portout(uint16_t portnum, uint16_t value);
 
 
 // CGA
-extern uint32_t cga_palette[16];
+extern const uint32_t cga_palette[16];
 extern const uint8_t cga_gfxpal[3][2][4];
 extern uint32_t cga_composite_palette[3][16];
 extern uint8_t cga_intensity, cga_colorset, cga_foreground_color, cga_blinking, cga_hires;

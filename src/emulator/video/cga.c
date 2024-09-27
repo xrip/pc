@@ -3,7 +3,7 @@
 uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0, cga_hires = 0;
 uint8_t port3DA;
 
-uint32_t cga_palette[16] = {
+const uint32_t cga_palette[16] = {
         //R, G, B
         0x000000, //black
         0x0000C4, //blue

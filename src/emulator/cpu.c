@@ -291,6 +291,7 @@ void intcall86(uint8_t intnum) {
             break;
         case 0x2F:
             // XMS memory
+            if (0)
             switch (CPU_AX) {
                 case 0x4300:
                     CPU_AL = 0x80;
@@ -1157,7 +1158,8 @@ void reset86() {
     CPU_SS = 0x0000;
     CPU_SP = 0x0000;
 
-    memset(RAM, 0xFF, RAM_SIZE);
+    memset(RAM, 0x00, RAM_SIZE);
+    memset(VIDEORAM, 0x00, VIDEORAM_SIZE);
 
     ip = 0x0000;
 }

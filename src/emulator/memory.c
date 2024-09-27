@@ -16,8 +16,8 @@
 #define BIOS_START (0xFE000)
 
 #if PICO_ON_DEVICE
-uint8_t VIDEORAM[VIDEORAM_SIZE + 1];
-uint8_t RAM[RAM_SIZE + 1];
+uint8_t VIDEORAM[VIDEORAM_SIZE + 2] = { 0 };
+uint8_t RAM[RAM_SIZE + 2] = { 0 };
 
 // Writes a byte to the virtual memory
 void write86(uint32_t address, uint8_t value) {
@@ -36,7 +36,7 @@ void write86(uint32_t address, uint8_t value) {
 
 // Writes a word to the virtual memory
 void writew86(uint32_t address, uint16_t value) {
-    if (address & 1) {
+    if (1 || address & 1) {
         write86(address, (uint8_t) (value & 0xFF));
         write86(address + 1, (uint8_t) ((value >> 8) & 0xFF));
     } else {
@@ -71,12 +71,12 @@ uint8_t read86(uint32_t address) {
     } else if (address >= HMA_START && address < HMA_END) {
         return read8psram(address);
     }
-    return 0;
+    return 0xFF;
 }
 
 // Reads a word from the virtual memory
 uint16_t readw86(uint32_t address) {
-    if (address & 1) {
+    if (1 || address & 1) {
         return (uint16_t) read86(address) | ((uint16_t) read86(address + 1) << 8);
     } else {
         if (address < RAM_SIZE) {

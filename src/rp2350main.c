@@ -7,12 +7,14 @@
 
 #include "emulator/emulator.h"
 
+#include "audio.h"
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
 #include "psram_spi.h"
 
 FATFS fs;
+i2s_config_t i2s_config;
 
 void tandy_write(uint16_t reg, uint8_t value) {
 }
@@ -33,14 +35,26 @@ bool handleScancode(uint32_t ps2scancode) {
 }
 int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
+
+#define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
+static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int active_buffer = 0;
+static int sample_index = 0;
+
 /* Renderer loop on Pico's second core */
-void second_core() {
+void __time_critical_func() second_core() {
+    i2s_config.sample_freq = SOUND_FREQUENCY;
+    i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
+    i2s_volume(&i2s_config, 0);
+    i2s_init(&i2s_config);
+    sleep_ms(100);
+
     graphics_init();
     graphics_set_buffer(VIDEORAM, 320, 200);
     graphics_set_textbuffer(VIDEORAM + 32768);
     graphics_set_bgcolor(0);
     graphics_set_offset(0, 0);
-    graphics_set_flashmode(true, true);
+    graphics_set_flashmode(false, false);
 
     for (int i = 0; i < 256; ++i) {
         graphics_set_palette(i, vga_palette[i]);
@@ -55,6 +69,9 @@ void second_core() {
     int old_video_mode = videomode;
     int flip;
 
+    uint64_t last_dss_tick = 0;
+    int16_t last_dss_sample = 0;
+
     while (true) {
         if (tick >= last_timer_tick + timer_period) {
             doirq(0);
@@ -65,6 +82,44 @@ void second_core() {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
+
+        // Dinse Sound Source frequency 7100
+        if (tick > last_dss_tick + 140) {
+            last_dss_sample = dss_sample() * 32;
+
+            last_dss_tick = tick;
+        }
+
+        // Sound frequency 44100
+        if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
+            static int sound_counter = 0;
+            int samples[2] = { 0, 0 };
+            if (last_dss_sample)
+                samples[0] += last_dss_sample;
+            if (speakerenabled)
+                samples[0] += speaker_sample();
+
+            samples[0] += sn76489_sample();
+
+
+            samples[1] = samples[0];
+
+            cms_samples(samples);
+
+
+            audio_buffer[sample_index++] = (int16_t) samples[1];
+            audio_buffer[sample_index++] = (int16_t) samples[0];
+
+
+            if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
+                sample_index = 0;
+                i2s_dma_write(&i2s_config, audio_buffer);
+                //active_buffer ^= 1;
+            }
+
+            last_sound_tick = tick;
+        }
+
         if (tick >= last_frame_tick + 16667) {
             if (old_video_mode != videomode) {
                 switch (videomode) {
@@ -90,7 +145,11 @@ void second_core() {
                         }
                         break;
                     }
-
+                    default: {
+                        for (int i = 0; i < 16; ++i) {
+                            graphics_set_palette(i, cga_palette[i]);
+                        }
+                    }
                 }
 
                 graphics_set_mode(videomode);
@@ -124,6 +183,7 @@ int main() {
     }
 
     keyboard_init();
+    i2s_config = i2s_get_default_config();
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
@@ -135,8 +195,7 @@ int main() {
         draw_text("SD Card not inserted or SD Card error!", 0, 0, 12, 0);
         while (1);
     }
-
-
+    sn76489_reset();
     reset86();
 
     while (true) {

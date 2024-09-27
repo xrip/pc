@@ -21,6 +21,8 @@ foreach(SRC_FILE IN LISTS SRC)
 endforeach()
 message(STATUS "")
 
+set(PICO_BOARD pico2 CACHE STRING "Board type")
+
 if (PICO_PLATFORM STREQUAL "host")
     add_executable(${PROJECT_NAME} ${SRC} src/win32main.cpp src/WinMiniFB.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
@@ -47,6 +49,7 @@ else ()
     add_subdirectory(drivers/sdcard)
     add_subdirectory(drivers/vga-nextgen)
     add_subdirectory(drivers/graphics)
+    add_subdirectory(drivers/audio)
     add_subdirectory(drivers/psram)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
@@ -54,6 +57,7 @@ else ()
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
+            audio
             graphics
             vga-nextgen
             psram
@@ -74,6 +78,8 @@ else ()
     )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
+            PICO_HEAP_SIZE=0
+            USE_ZONE_FOR_MALLOC=1
             PICO_FLASH_SIZE_BYTES=16777216
 
             # VGA 8 pins starts from pin:
