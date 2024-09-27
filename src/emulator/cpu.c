@@ -291,7 +291,7 @@ void intcall86(uint8_t intnum) {
             break;
         case 0x2F:
             // XMS memory
-            if (0)
+#if !PICO_RP2350
             switch (CPU_AX) {
                 case 0x4300:
                     CPU_AL = 0x80;
@@ -303,6 +303,7 @@ void intcall86(uint8_t intnum) {
                 }
                     return;
             }
+#endif
             break;
     }
 
@@ -1134,7 +1135,7 @@ void op_grp5() {
             getea(rm);
             ip = (uint16_t) read86(ea) + (uint16_t) read86(ea + 1) * 256;
             CPU_CS = (uint16_t) read86(ea + 2) + (uint16_t) read86(ea + 3) * 256;
-            break;
+           break;
 
         case 4: /* JMP Ev */
             ip = oper1;
@@ -1186,11 +1187,14 @@ void exec86(uint32_t execloops) {
 //            savecs = CPU_CS;
 //            saveip = ip;
             // W/A-hack: last byte of interrupts table (actually should not be ever used as CS:IP)
+#if !PICO_RP2350
             if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
                 // hook for XMS
                 opcode = xms_handler(); // always returns RET TODO: far/short ret?
             }
-            else {
+            else
+#endif
+            {
                 opcode = getmem8(CPU_CS, CPU_IP);
             }
 

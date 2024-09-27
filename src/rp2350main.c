@@ -77,7 +77,7 @@ void __time_critical_func() second_core() {
     int16_t last_dss_sample = 0;
 
     while (true) {
-        if (tick >= last_timer_tick + timer_period) {
+        if (tick >= last_timer_tick + (1000000 / timer_period)) {
             doirq(0);
             last_timer_tick = tick;
         }
@@ -168,7 +168,7 @@ void __time_critical_func() second_core() {
 
     }
 }
-
+extern bool PSRAM_AVAILABLE;
 int main() {
 #if PICO_RP2350
     vreg_set_voltage(VREG_VOLTAGE_1_40);
@@ -210,5 +210,5 @@ int main() {
         tight_loop_contents();
     }
 
-    return 0;
+
 }

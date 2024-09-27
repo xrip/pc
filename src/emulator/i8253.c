@@ -67,7 +67,7 @@ void out8253(uint16_t portnum, uint8_t value) {
 #if 1
             if (portnum == 0) {
                 // Timer freq 1,193,180
-                timer_period = 1000000 / i8253.chanfreq[portnum];
+                timer_period =  i8253.chanfreq[portnum];
             }
 #endif
             break;

@@ -71,7 +71,7 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     return 0;
 }
 
-extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
+extern "C" void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
 
 DWORD WINAPI TicksThread(LPVOID lpParam) {
 
@@ -95,7 +95,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Calculate elapsed time in ticks since the start
         auto elapsedTime = (double) (current.QuadPart - start.QuadPart);
 
-        if (elapsedTime - elapsed_system_timer >= timer_period) {
+        if (elapsedTime - elapsed_system_timer >= hostfreq / timer_period) {
             doirq(0);
             elapsed_system_timer = elapsedTime; // Reset the tick counter for 1Hz
         }
@@ -1045,9 +1045,9 @@ extern "C" void tandy_write(uint16_t reg, uint8_t value) {
     Enqueue(&queue, (value & 0xff) << 8 | 0);
 }
 
-extern void adlib_init(uint32_t samplerate);
+extern "C" void adlib_init(uint32_t samplerate);
 
-extern void adlib_write(uintptr_t idx, uint8_t val);
+extern "C" void adlib_write(uintptr_t idx, uint8_t val);
 
 extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
     adlib_write(reg, value);

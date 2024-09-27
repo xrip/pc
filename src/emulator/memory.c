@@ -2,7 +2,7 @@
 
 #include "includes/bios.h"
 #include "emulator.h"
-#include "psram_spi.h"
+
 
 #define VIDEORAM_START (0xA0000)
 #define VIDEORAM_END (0xC0000)
@@ -16,12 +16,9 @@
 #define BIOS_START (0xFE000)
 
 #if PICO_ON_DEVICE
+#include "psram_spi.h"
 uint8_t RAM[RAM_SIZE + 2]  __attribute__((aligned(2*sizeof(uint32_t *))))= { 0 };
 uint8_t VIDEORAM[VIDEORAM_SIZE + 2]  __attribute__((aligned(2*sizeof(uint32_t *)))) = { 0 };
-
-//uint8_t RAM[RAM_SIZE + 2] = { 0 };
-//uint8_t VIDEORAM[VIDEORAM_SIZE + 2] = { 0 };
-
 
 
 // Writes a byte to the virtual memory
@@ -76,7 +73,7 @@ uint8_t read86(uint32_t address) {
     } else if (address >= HMA_START && address < HMA_END) {
         return read8psram(address);
     }
-    return 0xFF;
+    return 0x00;
 }
 
 // Reads a word from the virtual memory
@@ -101,8 +98,8 @@ uint16_t readw86(uint32_t address) {
     }
 }
 #else
-uint8_t VIDEORAM[VIDEORAM_SIZE + 1];
-uint8_t RAM[RAM_SIZE + 1];
+uint8_t VIDEORAM[VIDEORAM_SIZE + 2];
+uint8_t RAM[RAM_SIZE + 2];
 uint8_t UMB[UMB_END - UMB_START] = { 0 };
 uint8_t HMA[HMA_END - HMA_START];
 
