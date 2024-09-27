@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdint.h>
 
 #define MASTER_CLOCK 7159090

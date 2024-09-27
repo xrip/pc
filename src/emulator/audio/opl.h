@@ -26,6 +26,7 @@
 
 
 #define fltype double
+#define bool int
 
 /*
 	define Bits, Bitu, int32_t, uint32_t, int16_t, uint16_t, int8_t, uint8_t here
@@ -175,7 +176,7 @@ uint32_t tremtab_add;
 
 
 // enable an operator
-void enable_operator(Bitu regbase, op_type *op_pt);
+void enable_operator(Bitu regbase, op_type *op_pt, uint32_t act_type);
 
 // functions to change parameters of an operator
 void change_frequency(Bitu chanbase, Bitu regbase, op_type *op_pt);

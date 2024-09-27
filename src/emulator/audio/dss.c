@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 #include "emulator/emulator.h"
 
 #define FIFO_BUFFER_SIZE 16

@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 /*
  *  Copyright (C) 2002-2021  The DOSBox Team
  *  OPL2/OPL3 emulation library
@@ -212,7 +213,7 @@ void operator_output(op_type *op_pt, int32_t modulator, int32_t trem) {
 
 
 // no action, operator is off
-void operator_off(op_type * /*op_pt*/) {
+void operator_off(op_type * op_pt) {
 }
 
 // output level is sustained, mode changes only when operator is turned off (->release)
@@ -537,7 +538,7 @@ void adlib_init(uint32_t samplerate) {
     for (i = 4; i < VIBTAB_SIZE; i++) vib_table[i] = vib_table[i - 4] * -1;
 
     // vibrato at ~6.1 ?? (opl3 docs say 6.1, opl4 docs say 6.0, y8950 docs say 6.4)
-    vibtab_add = static_cast<uint32_t>(VIBTAB_SIZE * FIXEDPT_LFO / 8192 * INTFREQU / int_samplerate);
+    vibtab_add = (uint32_t)(VIBTAB_SIZE * FIXEDPT_LFO / 8192 * INTFREQU / int_samplerate);
     vibtab_pos = 0;
 
     for (i = 0; i < BLOCKBUF_SIZE; i++) vibval_const[i] = 0;

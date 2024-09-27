@@ -29,8 +29,8 @@ if (PICO_PLATFORM STREQUAL "host")
 else ()
     pico_sdk_init()
 
-#    add_compile_options(-flto -fwhole-program)
     add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -O2)
+#    add_compile_options(-flto -fwhole-program )
 #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 

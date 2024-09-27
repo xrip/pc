@@ -19,8 +19,12 @@ i2s_config_t i2s_config;
 void tandy_write(uint16_t reg, uint8_t value) {
 }
 
-void adlib_write(uint16_t reg, uint8_t value) {
+extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
+extern void adlib_init(uint32_t samplerate);
+extern void adlib_write(uintptr_t idx, uint8_t val);
 
+void adlib_write_d(uint16_t reg, uint8_t value) {
+    //adlib_write(reg, value);
 }
 
 void cms_write(uint16_t reg, uint8_t val) {
@@ -94,12 +98,14 @@ void __time_critical_func() second_core() {
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             static int sound_counter = 0;
             int samples[2] = { 0, 0 };
+            //adlib_getsample((int16_t *) &samples, 1);
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
             if (speakerenabled)
                 samples[0] += speaker_sample();
 
             samples[0] += sn76489_sample();
+
 
 
             samples[1] = samples[0];
@@ -195,6 +201,7 @@ int main() {
         draw_text("SD Card not inserted or SD Card error!", 0, 0, 12, 0);
         while (1);
     }
+   // adlib_init(SOUND_FREQUENCY);
     sn76489_reset();
     reset86();
 

@@ -1,4 +1,4 @@
-#pragma GCC optimize("Ofast")
+#pragma GCC optimize("O3")
 
 #include "includes/bios.h"
 #include "emulator.h"
@@ -16,8 +16,13 @@
 #define BIOS_START (0xFE000)
 
 #if PICO_ON_DEVICE
-uint8_t VIDEORAM[VIDEORAM_SIZE + 2] = { 0 };
-uint8_t RAM[RAM_SIZE + 2] = { 0 };
+uint8_t RAM[RAM_SIZE + 2]  __attribute__((aligned(2*sizeof(uint32_t *))))= { 0 };
+uint8_t VIDEORAM[VIDEORAM_SIZE + 2]  __attribute__((aligned(2*sizeof(uint32_t *)))) = { 0 };
+
+//uint8_t RAM[RAM_SIZE + 2] = { 0 };
+//uint8_t VIDEORAM[VIDEORAM_SIZE + 2] = { 0 };
+
+
 
 // Writes a byte to the virtual memory
 void write86(uint32_t address, uint8_t value) {
@@ -36,7 +41,7 @@ void write86(uint32_t address, uint8_t value) {
 
 // Writes a word to the virtual memory
 void writew86(uint32_t address, uint16_t value) {
-    if (1 || address & 1) {
+    if (address & 1) {
         write86(address, (uint8_t) (value & 0xFF));
         write86(address + 1, (uint8_t) ((value >> 8) & 0xFF));
     } else {
@@ -76,7 +81,7 @@ uint8_t read86(uint32_t address) {
 
 // Reads a word from the virtual memory
 uint16_t readw86(uint32_t address) {
-    if (1 || address & 1) {
+    if (address & 1) {
         return (uint16_t) read86(address) | ((uint16_t) read86(address + 1) << 8);
     } else {
         if (address < RAM_SIZE) {
