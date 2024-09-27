@@ -21,10 +21,8 @@ foreach(SRC_FILE IN LISTS SRC)
 endforeach()
 message(STATUS "")
 
-set(PICO_BOARD pico2 CACHE STRING "Board type")
-
 if (PICO_PLATFORM STREQUAL "host")
-    add_executable(${PROJECT_NAME} ${SRC} src/win32main.cpp src/WinMiniFB.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
     pico_sdk_init()
@@ -34,11 +32,17 @@ else ()
 #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
-    add_executable(${PROJECT_NAME} ${SRC} src/rp2350main.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
+    if (PICO_PLATFORM STREQUAL "rp2040")
+        SET(BUILD_NAME "${BUILD_NAME}-RP2040")
     target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
+    else()
+        SET(BUILD_NAME "${BUILD_NAME}-RP2350")
+    target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=3)
+    endif ()
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
     pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/186/286 emulator")
@@ -104,8 +108,6 @@ else ()
 
     pico_add_extra_outputs(${PROJECT_NAME})
 endif ()
-
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
 target_include_directories(${PROJECT_NAME} PRIVATE src)
-
-
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)
