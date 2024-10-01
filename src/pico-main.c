@@ -136,6 +136,17 @@ void __time_critical_func() second_core() {
                         }
                         break;
                     }
+                    case COMPOSITE_160x200x16:
+                        for (int i = 0; i < 16; ++i) {
+                            graphics_set_palette(i, cga_composite_palette[0][i]);
+                        }
+                        break;
+
+                    case COMPOSITE_160x200x16_force:
+                        for (int i = 0; i < 16; ++i) {
+                            graphics_set_palette(i, cga_composite_palette[cga_intensity << 1][i]);
+                        }
+                        break;
 
                     case CGA_320x200x4: {
                         for (int i = 0; i < 4; ++i) {
@@ -151,8 +162,8 @@ void __time_critical_func() second_core() {
                         break;
                     }
                     default: {
-                        for (int i = 0; i < 16; ++i) {
-                            graphics_set_palette(i, cga_palette[i]);
+                        for (int i = 0; i < 256; ++i) {
+                            graphics_set_palette(i, vga_palette[i]);
                         }
                     }
                 }
@@ -171,12 +182,19 @@ void __time_critical_func() second_core() {
 extern bool PSRAM_AVAILABLE;
 int main() {
 #if PICO_RP2350
-    vreg_set_voltage(VREG_VOLTAGE_1_40);
+    volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
+    vreg_disable_voltage_limit();
+    vreg_set_voltage(VREG_VOLTAGE_1_50);
+    sleep_ms(10);
+    *qmi_m0_timing = 0x60007204;
+    set_sys_clock_hz(460000000, 0);
+    *qmi_m0_timing = 0x60007303;
 #else
     vreg_set_voltage(VREG_VOLTAGE_1_30);
-#endif
     sleep_ms(33);
     set_sys_clock_khz(376 * 1000, true);
+#endif
+
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);

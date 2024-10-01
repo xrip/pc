@@ -1,8 +1,9 @@
 #include "emulator.h"
 
-#define CPU_CLEAR_ZF_ON_MUL
+//#define CPU_LIMIT_SHIFT_COUNT
 #define CPU_NO_SALC
 #define CPU_SET_HIGH_FLAGS
+#define CPU_286_STYLE_PUSH_SP
 #define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
 #include "disks-rp2350.c.inc"
@@ -1890,7 +1891,11 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x54: /* 54 PUSH eSP */
+#ifdef CPU_286_STYLE_PUSH_SP
+                push(CPU_SP);
+#else
                 push(CPU_SP - 2);
+#endif
                 break;
 
             case 0x55: /* 55 PUSH eBP */
@@ -3298,7 +3303,7 @@ void exec86(uint32_t execloops) {
 			 * cases, but for our pursoses, that's accurate enough.
 			 */
 #endif
-                printf("Unexpected opcode: %02Xh ignored", opcode);
+                //printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 //intcall86(6);
                 break;

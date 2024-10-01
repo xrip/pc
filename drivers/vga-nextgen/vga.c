@@ -55,7 +55,7 @@ static bool is_flash_line = false;
 static bool is_flash_frame = false;
 
 //буфер 1к графической палитры
-static uint16_t __scratch_y("vga_palette") palette[2][256];
+static uint16_t palette[2][256];
 //static uint16_t palette[2][256];
 
 static uint32_t bg_color[2];
@@ -238,30 +238,50 @@ void __scratch_y("vga") dma_handler_VGA() {
 
     uint8_t *output_buffer_8bit;
     switch (graphics_mode) {
+        case CGA_320x200x4:
+        case CGA_320x200x4_BW:
+            //2bit buf
+            for (int x = 320 / 4; x--;) {
+                uint8_t cga_byte = *input_buffer_8bit++;
+
+                *output_buffer_16bit++ = current_palette[cga_byte >> 6 & 3];
+                *output_buffer_16bit++ = current_palette[cga_byte >> 4 & 3];
+                *output_buffer_16bit++ = current_palette[cga_byte >> 2 & 3];
+                *output_buffer_16bit++ = current_palette[cga_byte >> 0 & 3];
+            }
+            break;
         case CGA_640x200x2:
             output_buffer_8bit = (uint8_t *) output_buffer_16bit;
             //1bit buf
-            for (int x = width / 4; x--;) {
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 7 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 6 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 5 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 4 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 3 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 2 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 1 & 1];
-                *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 0 & 1];
-                input_buffer_8bit++;
+            for (int x = 640 / 8; x--;) {
+                uint8_t cga_byte = *input_buffer_8bit++;
+
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 7) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 6) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 5) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 4) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 3) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 2) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 1) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 0) & 1) * cga_foreground_color];
             }
             break;
-        case CGA_320x200x4_BW:
-        case CGA_320x200x4:
-            //2bit buf
-            for (int x = 320 / 4; x--;) {
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 6 & 3];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 3];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 2 & 3];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 0 & 3];
-                input_buffer_8bit++;
+        case HERC_640x480x2:
+            //4bit buf
+            output_buffer_8bit = (uint8_t *) output_buffer_16bit;
+            input_buffer_8bit = input_buffer + (screen_line & 3) * 8192 + screen_line / 4 * 80;
+            // Each byte containing 8 pixels
+            for (int x = 640 / 8; x--;) {
+                uint8_t cga_byte = *input_buffer_8bit++;
+
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 7) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 6) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 5) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 4) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 3) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 2) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 1) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 0) & 1) * 15];
             }
             break;
         case COMPOSITE_160x200x16_force:
@@ -269,18 +289,24 @@ void __scratch_y("vga") dma_handler_VGA() {
         case TGA_160x200x16:
             //input_buffer_8bit = 32768 + input_buffer + (y & 1) * 8192 + y / 4 * 80;
             //4bit buf
-            for (int x = width / 4; x--;) {
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
-                input_buffer_8bit++;
+            for (int x = 640 / 4; x--;) {
+                uint8_t cga_byte = *input_buffer_8bit++; // Fetch 8 pixels from TGA memory
+                uint8_t color1 = ((cga_byte >> 4) & 15);
+                uint8_t color2 = (cga_byte & 15);
+
+                if (!color1 && videomode == 0x8) color1 = cga_foreground_color;
+                if (!color2 && videomode == 0x8) color2 = cga_foreground_color;
+
+                *output_buffer_16bit++ = current_palette[color1];
+                *output_buffer_16bit++ = current_palette[color1];
+                *output_buffer_16bit++ = current_palette[color2];
+                *output_buffer_16bit++ = current_palette[color2];
             }
             break;
         case TGA_320x200x16: {
             //4bit buf
             input_buffer_8bit = 32768 + input_buffer + (y & 3) * 8192 + y / 4 * 160;
-            for (int x = width / 2; x--;) {
+            for (int x = 320 / 2; x--;) {
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
                 input_buffer_8bit++;
@@ -292,13 +318,47 @@ void __scratch_y("vga") dma_handler_VGA() {
             input_buffer_8bit = input_buffer + y * 320;
             output_buffer_8bit = (uint8_t *) output_buffer_16bit;
 
-            for (int x = 320; x--;) {
+            for (int x = 640 / 2; x--;) {
                 *output_buffer_8bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
                 *output_buffer_8bit++ = current_palette[*input_buffer_8bit & 15];
                 input_buffer_8bit++;
             }
             break;
         }
+        case VGA_640x480x2:
+            input_buffer_8bit = input_buffer + y * 80;
+            output_buffer_8bit = (uint8_t *) output_buffer_16bit;
+            for (int x = 640 / 8; x--;) {
+                //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
+                uint8_t cga_byte = *input_buffer_8bit++;
+
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 7) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 6) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 5) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 4) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 3) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 2) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 1) & 1) * 15];
+                *output_buffer_8bit++ = current_palette[((cga_byte >> 0) & 1) * 15];
+            }
+            break;
+        case VGA_320x200x256:
+            input_buffer_8bit = input_buffer + y * width;
+            for (int x = 640 / 2; x--;) {
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
+            }
+            break;
+        case VGA_320x200x256x4:
+            input_buffer_8bit = input_buffer + y * (width / 4);
+            for (int x = 640 / 2; x--;) {
+                //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit];
+                *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 16000)];
+                *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 32000)];
+                *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 48000)];
+                input_buffer_8bit++;
+            }
+            break;
         case EGA_320x200x16x4: {
             input_buffer_8bit = input_buffer + y * 40;
             for (int x = 0; x < 40; x++) {
@@ -313,24 +373,6 @@ void __scratch_y("vga") dma_handler_VGA() {
             }
             break;
         }
-        case VGA_320x200x256:
-            input_buffer_8bit = input_buffer + y * width;
-            for (int i = width; i--;) {
-                //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
-            }
-            break;
-        case VGA_320x200x256x4:
-            input_buffer_8bit = input_buffer + y * (width / 4);
-            for (int x = width / 2; x--;) {
-                //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
-                *output_buffer_16bit++ = current_palette[*input_buffer_8bit];
-                *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 16000)];
-                *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 32000)];
-                *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 48000)];
-                input_buffer_8bit++;
-            }
-            break;
         default:
             break;
     }
