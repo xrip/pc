@@ -142,11 +142,28 @@ void portout(uint16_t portnum, uint16_t value) {
             break;
         case 0x3D5:
             switch (crt_controller_idx) {
-                case 0x6:
-                    // 160x100x16 mode TODO: Add more checks
-                    if ((value == 0x64 && (videomode <= 3))) {
-                        videomode = 0x77;
+                case 0x4: {
+                    if (value == 0x3e/* && videomode == 1*/) {
+                        videomode = 0x79;
+
                     }
+                    break;
+                }
+
+                case 0x6:
+                    printf("!!! Y = %i\n", value);
+                    // 160x100x16 or 160x200x16 mode TODO: Add more checks
+                    if (value == 0x64 && (videomode <= 3)) {
+                        videomode = cga_hires ? 0x76 : 0x77;
+                    }
+
+                    // 160x46x16 mode TODO: Add more checks
+                    if (value == 0x2e/* && (videomode <= 3))*/) {
+                        videomode = 0x87;
+                    }
+                    break;
+
+                case 0x8:
                     break;
 // Cursor pos
                 case 0x0A:
@@ -166,8 +183,8 @@ void portout(uint16_t portnum, uint16_t value) {
                     break;
             }
 
-//            if (((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F) && (crt_controller_idx != 0x0c) && (crt_controller_idx != 0x0d)))
-//                printf("CRT %x %x\n", crt_controller_idx, value);
+            if ((crt_controller_idx != 0x03) && ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F) && (crt_controller_idx != 0x0c) && (crt_controller_idx != 0x0d)))
+                printf("CRT %x %x\n", crt_controller_idx, value);
 
             crt_controller[crt_controller_idx] = value;
 

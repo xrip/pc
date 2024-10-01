@@ -166,6 +166,7 @@ void __time_critical_func() second_core() {
         tight_loop_contents();
 
     }
+    __unreachable();
 }
 extern bool PSRAM_AVAILABLE;
 int main() {
@@ -208,6 +209,6 @@ int main() {
         exec86(32768);
         tight_loop_contents();
     }
-
+    __unreachable();
 
 }

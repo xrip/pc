@@ -104,11 +104,12 @@ uint32_t cga_composite_palette[3][16] = {
 uint8_t color_burst = 0;
 
 void cga_portout(uint16_t portnum, uint16_t value) {
+    // https://nerdlypleasures.blogspot.com/2016/05/ibms-cga-hardware-explained.html
     // http://www.techhelpmanual.com/901-color_graphics_adapter_i_o_ports.html
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
         case 0x3D8: // Mode control register:
-//            printf("3d8 %x\n", value);
+         printf("3d8 %x\n", value);
         // 0x13 -- 640 dot mode -- 0b10011
             //if (videomode >= 0xd) return;
             cga_hires = (value >> 4) & 1;
@@ -125,23 +126,23 @@ void cga_portout(uint16_t portnum, uint16_t value) {
             }
 
             if ((value & 0x0f) == 0b0001) {
-//                printf("160x100x16");
+                //printf("160x100x16\n");
                 videomode =     0x77;
             }
 
 
             if ((value & 0x1f) == 0b11010) {
-//                printf("160x100x16");
+                //printf("160x100x16");
                 videomode =     0x76;
             }
             if (value == 0x08) {
 //                printf("80x100x16");
-//                videomode = 0x78;
+//                videomode = 0x76;
             }
 
             // TODO: Включение/выключение глобального композитного режима по хоткеямы
             if (videomode == 6 && (value & 0x0f) == 0b1010) {
-//                printf("160x200x16 %i", videomode);
+                //printf("160x200x16 %i", videomode);
                 videomode = 0x76;
             }
             cga_blinking = (value >> 5) & 1;
