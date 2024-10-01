@@ -109,7 +109,7 @@ void cga_portout(uint16_t portnum, uint16_t value) {
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
         case 0x3D8: // Mode control register:
-         printf("3d8 %x\n", value);
+         //printf("3d8 %x\n", value);
         // 0x13 -- 640 dot mode -- 0b10011
             //if (videomode >= 0xd) return;
             cga_hires = (value >> 4) & 1;

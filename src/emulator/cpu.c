@@ -1,9 +1,17 @@
 #include "emulator.h"
+
+#define CPU_CLEAR_ZF_ON_MUL
+#define CPU_NO_SALC
+#define CPU_SET_HIGH_FLAGS
+#define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
 #include "disks-rp2350.c.inc"
 #else
+
 #include "disks-win32.c.inc"
+
 #endif
+
 int videomode = 0;
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
@@ -240,15 +248,17 @@ void intcall86(uint8_t intnum) {
                             // TODO: Overscan/Border 17th color
                             return;
                         }
-                        // INT 10H 1010H: Set One DAC Color Register
+                            // INT 10H 1010H: Set One DAC Color Register
                         case 0x10: {// Set One DAC Color Register
-                            vga_palette[CPU_BX & 0xFF] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2, (CPU_CL & 63) << 2);
+                            vga_palette[CPU_BX & 0xFF] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2,
+                                                             (CPU_CL & 63) << 2);
                             return;
                         }
                         case 0x12: {// set block of DAC color registers               VGA
                             uint32_t memloc = CPU_ES * 16 + CPU_DX;
                             for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
-                                vga_palette[color_index] = rgb(read86(memloc++) << 2, read86(memloc++) << 2, read86(memloc++) << 2);
+                                vga_palette[color_index] = rgb(read86(memloc++) << 2, read86(memloc++) << 2,
+                                                               read86(memloc++) << 2);
                             }
                             return;
                         }
@@ -264,7 +274,7 @@ void intcall86(uint8_t intnum) {
                             for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
                                 write86(memloc++, ((vga_palette[color_index] >> 2)) & 63);
                                 write86(memloc++, ((vga_palette[color_index] >> 10)) & 63);
-                                write86(memloc++, ((vga_palette[color_index]  >> 18)) & 63);
+                                write86(memloc++, ((vga_palette[color_index] >> 18)) & 63);
                             }
                             return;
                         }
@@ -316,51 +326,31 @@ void intcall86(uint8_t intnum) {
     tf = 0;
 }
 
-static void flag_szp8(uint8_t value) {
-    if (!value) {
-        zf = 1;
-    } else {
-        zf = 0; /* set or clear zero flag */
-    }
-
-    if (value & 0x80) {
-        sf = 1;
-    } else {
-        sf = 0; /* set or clear sign flag */
-    }
-
-    pf = parity[value]; /* retrieve parity state from lookup table */
+static inline void flag_szp8(uint8_t value) {
+    zf = value ? 0 : 1;
+    sf = value >> 7;
+    pf = parity[value];
 }
 
-static void flag_szp16(uint16_t value) {
-    if (!value) {
-        zf = 1;
-    } else {
-        zf = 0; /* set or clear zero flag */
-    }
-
-    if (value & 0x8000) {
-        sf = 1;
-    } else {
-        sf = 0; /* set or clear sign flag */
-    }
-
-    pf = parity[value & 255]; /* retrieve parity state from lookup table */
+static inline void flag_szp16(uint16_t value) {
+    zf = value ? 0 : 1;
+    sf = value >> 15;
+    pf = parity[value & 255];
 }
 
-static void flag_log8(uint8_t value) {
+static inline void flag_log8(uint8_t value) {
     flag_szp8(value);
     cf = 0;
     of = 0; /* bitwise logic ops always clear carry and overflow */
 }
 
-static void flag_log16(uint16_t value) {
+static inline void flag_log16(uint16_t value) {
     flag_szp16(value);
     cf = 0;
     of = 0; /* bitwise logic ops always clear carry and overflow */
 }
 
-static void flag_adc8(uint8_t v1, uint8_t v2, uint8_t v3) {
+static inline void flag_adc8(uint8_t v1, uint8_t v2, uint8_t v3) {
     /* v1 = destination operand, v2 = source operand, v3 = carry flag */
     uint16_t dst;
 
@@ -385,7 +375,7 @@ static void flag_adc8(uint8_t v1, uint8_t v2, uint8_t v3) {
     }
 }
 
-static void flag_adc16(uint16_t v1, uint16_t v2, uint16_t v3) {
+static inline void flag_adc16(uint16_t v1, uint16_t v2, uint16_t v3) {
     uint32_t dst;
 
     dst = (uint32_t) v1 + (uint32_t) v2 + (uint32_t) v3;
@@ -409,7 +399,7 @@ static void flag_adc16(uint16_t v1, uint16_t v2, uint16_t v3) {
     }
 }
 
-static void flag_add8(uint8_t v1, uint8_t v2) {
+static inline void flag_add8(uint8_t v1, uint8_t v2) {
     /* v1 = destination operand, v2 = source operand */
     uint16_t dst;
 
@@ -434,7 +424,7 @@ static void flag_add8(uint8_t v1, uint8_t v2) {
     }
 }
 
-static void flag_add16(uint16_t v1, uint16_t v2) {
+static inline void flag_add16(uint16_t v1, uint16_t v2) {
     /* v1 = destination operand, v2 = source operand */
     uint32_t dst;
 
@@ -459,7 +449,7 @@ static void flag_add16(uint16_t v1, uint16_t v2) {
     }
 }
 
-static void flag_sbb8(uint8_t v1, uint8_t v2, uint8_t v3) {
+static inline void flag_sbb8(uint8_t v1, uint8_t v2, uint8_t v3) {
     /* v1 = destination operand, v2 = source operand, v3 = carry flag */
     uint16_t dst;
 
@@ -485,7 +475,7 @@ static void flag_sbb8(uint8_t v1, uint8_t v2, uint8_t v3) {
     }
 }
 
-static void flag_sbb16(uint16_t v1, uint16_t v2, uint16_t v3) {
+static inline void flag_sbb16(uint16_t v1, uint16_t v2, uint16_t v3) {
     /* v1 = destination operand, v2 = source operand, v3 = carry flag */
     uint32_t dst;
 
@@ -511,7 +501,7 @@ static void flag_sbb16(uint16_t v1, uint16_t v2, uint16_t v3) {
     }
 }
 
-static void flag_sub8(uint8_t v1, uint8_t v2) {
+static inline void flag_sub8(uint8_t v1, uint8_t v2) {
     /* v1 = destination operand, v2 = source operand */
     uint16_t dst;
 
@@ -536,7 +526,7 @@ static void flag_sub8(uint8_t v1, uint8_t v2) {
     }
 }
 
-static void flag_sub16(uint16_t v1, uint16_t v2) {
+static inline void flag_sub16(uint16_t v1, uint16_t v2) {
     /* v1 = destination operand, v2 = source operand */
     uint32_t dst;
 
@@ -561,87 +551,84 @@ static void flag_sub16(uint16_t v1, uint16_t v2) {
     }
 }
 
-static void op_adc8() {
+static inline void op_adc8() {
     res8 = oper1b + oper2b + cf;
     flag_adc8(oper1b, oper2b, cf);
 }
 
-static void op_adc16() {
+static inline void op_adc16() {
     res16 = oper1 + oper2 + cf;
     flag_adc16(oper1, oper2, cf);
 }
 
-static void op_add8() {
+static inline void op_add8() {
     res8 = oper1b + oper2b;
     flag_add8(oper1b, oper2b);
 }
 
-static void op_add16() {
+static inline void op_add16() {
     res16 = oper1 + oper2;
     flag_add16(oper1, oper2);
 }
 
-static void op_and8() {
+static inline void op_and8() {
     res8 = oper1b & oper2b;
     flag_log8(res8);
 }
 
-static void op_and16() {
+static inline void op_and16() {
     res16 = oper1 & oper2;
     flag_log16(res16);
 }
 
-static void op_or8() {
+static inline void op_or8() {
     res8 = oper1b | oper2b;
     flag_log8(res8);
 }
 
-static void op_or16() {
+static inline void op_or16() {
     res16 = oper1 | oper2;
     flag_log16(res16);
 }
 
-static void op_xor8() {
+static inline void op_xor8() {
     res8 = oper1b ^ oper2b;
     flag_log8(res8);
 }
 
-static void op_xor16() {
+static inline void op_xor16() {
     res16 = oper1 ^ oper2;
     flag_log16(res16);
 }
 
-static void op_sub8() {
+static inline void op_sub8() {
     res8 = oper1b - oper2b;
     flag_sub8(oper1b, oper2b);
 }
 
-static void op_sub16() {
+static inline void op_sub16() {
     res16 = oper1 - oper2;
     flag_sub16(oper1, oper2);
 }
 
-static void op_sbb8() {
+static inline void op_sbb8() {
     res8 = oper1b - (oper2b + cf);
     flag_sbb8(oper1b, oper2b, cf);
 }
 
-static void op_sbb16() {
+static inline void op_sbb16() {
     res16 = oper1 - (oper2 + cf);
     flag_sbb16(oper1, oper2, cf);
 }
 
-static uint8_t op_grp2_8(uint8_t cnt) {
-    uint16_t s;
-    uint16_t shift;
-    uint16_t oldcf;
-    uint16_t msb;
-
-    s = oper1b;
-    oldcf = cf;
+static inline uint8_t op_grp2_8(uint8_t cnt) {
+    uint16_t s = oper1b;
+#ifdef CPU_LIMIT_SHIFT_COUNT
+    cnt &= 0x1F;
+#endif
     switch (reg) {
         case 0: /* ROL r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 if (s & 0x80) {
                     cf = 1;
                 } else {
@@ -653,14 +640,17 @@ static uint8_t op_grp2_8(uint8_t cnt) {
             }
 
             if (cnt == 1) {
-                //of = cf ^ ( (s >> 7) & 1);
-                if ((s & 0x80) && cf) of = 1;
-                else of = 0;
-            } else of = 0;
+                // of = cf ^ ( (s >> 7) & 1);
+                if ((s & 0x80) && cf)
+                    of = 1;
+                else
+                    of = 0;
+            } else
+                of = 0;
             break;
 
         case 1: /* ROR r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 cf = s & 1;
                 s = (s >> 1) | (cf << 7);
             }
@@ -671,7 +661,7 @@ static uint8_t op_grp2_8(uint8_t cnt) {
             break;
 
         case 2: /* RCL r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 oldcf = cf;
                 if (s & 0x80) {
                     cf = 1;
@@ -689,7 +679,7 @@ static uint8_t op_grp2_8(uint8_t cnt) {
             break;
 
         case 3: /* RCR r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 oldcf = cf;
                 cf = s & 1;
                 s = (s >> 1) | (oldcf << 7);
@@ -702,7 +692,7 @@ static uint8_t op_grp2_8(uint8_t cnt) {
 
         case 4:
         case 6: /* SHL r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 if (s & 0x80) {
                     cf = 1;
                 } else {
@@ -728,7 +718,7 @@ static uint8_t op_grp2_8(uint8_t cnt) {
                 of = 0;
             }
 
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int a = 1; a <= cnt; a++) {
                 cf = s & 1;
                 s = s >> 1;
             }
@@ -737,8 +727,8 @@ static uint8_t op_grp2_8(uint8_t cnt) {
             break;
 
         case 7: /* SAR r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
-                msb = s & 0x80;
+            for (int a = 1; a <= cnt; a++) {
+                unsigned int msb = s & 0x80;
                 cf = s & 1;
                 s = (s >> 1) | msb;
             }
@@ -751,17 +741,15 @@ static uint8_t op_grp2_8(uint8_t cnt) {
     return s & 0xFF;
 }
 
-static uint16_t op_grp2_16(uint8_t cnt) {
-    uint32_t s;
-    uint32_t shift;
-    uint32_t oldcf;
-    uint32_t msb;
+static inline uint16_t op_grp2_16(uint8_t cnt) {
 
-    s = oper1;
-    oldcf = cf;
+    uint32_t s = oper1;
+#ifdef CPU_LIMIT_SHIFT_COUNT
+    cnt &= 0x1F;
+#endif
     switch (reg) {
         case 0: /* ROL r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 if (s & 0x8000) {
                     cf = 1;
                 } else {
@@ -778,7 +766,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
             break;
 
         case 1: /* ROR r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 cf = s & 1;
                 s = (s >> 1) | (cf << 15);
             }
@@ -789,7 +777,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
             break;
 
         case 2: /* RCL r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 oldcf = cf;
                 if (s & 0x8000) {
                     cf = 1;
@@ -807,7 +795,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
             break;
 
         case 3: /* RCR r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 oldcf = cf;
                 cf = s & 1;
                 s = (s >> 1) | (oldcf << 15);
@@ -820,7 +808,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
 
         case 4:
         case 6: /* SHL r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (unsigned int shift = 1; shift <= cnt; shift++) {
                 if (s & 0x8000) {
                     cf = 1;
                 } else {
@@ -846,7 +834,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
                 of = 0;
             }
 
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1; shift <= cnt; shift++) {
                 cf = s & 1;
                 s = s >> 1;
             }
@@ -855,7 +843,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
             break;
 
         case 7: /* SAR r/m8 */
-            for (shift = 1; shift <= cnt; shift++) {
+            for (int shift = 1, msb; shift <= cnt; shift++) {
                 msb = s & 0x8000;
                 cf = s & 1;
                 s = (s >> 1) | msb;
@@ -869,7 +857,7 @@ static uint16_t op_grp2_16(uint8_t cnt) {
     return (uint16_t) s & 0xFFFF;
 }
 
-static void op_div8(uint16_t valdiv, uint8_t divisor) {
+static inline void op_div8(uint16_t valdiv, uint8_t divisor) {
     if (divisor == 0) {
         intcall86(0);
         return;
@@ -884,7 +872,7 @@ static void op_div8(uint16_t valdiv, uint8_t divisor) {
     CPU_AL = valdiv / (uint16_t) divisor;
 }
 
-static void op_idiv8(uint16_t valdiv, uint8_t divisor) {
+static inline void op_idiv8(uint16_t valdiv, uint8_t divisor) {
     uint16_t s1;
     uint16_t s2;
     uint16_t d1;
@@ -917,7 +905,7 @@ static void op_idiv8(uint16_t valdiv, uint8_t divisor) {
     CPU_AL = (uint8_t) d1;
 }
 
-static void op_grp3_8() {
+static inline void op_grp3_8() {
     oper1 = signext(oper1b);
     oper2 = signext(oper2b);
     switch (reg) {
@@ -952,6 +940,9 @@ static void op_grp3_8() {
                 cf = 0;
                 of = 0;
             }
+#ifdef CPU_CLEAR_ZF_ON_MUL
+            zf = 0;
+#endif
             break;
 
         case 5: /* IMUL */
@@ -975,6 +966,9 @@ static void op_grp3_8() {
                 cf = 0;
                 of = 0;
             }
+#ifdef CPU_CLEAR_ZF_ON_MUL
+            zf = 0;
+#endif
             break;
 
         case 6: /* DIV */
@@ -988,7 +982,7 @@ static void op_grp3_8() {
 }
 
 
-void op_div16(uint32_t valdiv, uint16_t divisor) {
+static inline void op_div16(uint32_t valdiv, uint16_t divisor) {
     if (divisor == 0) {
         intcall86(0);
         return;
@@ -1003,7 +997,7 @@ void op_div16(uint32_t valdiv, uint16_t divisor) {
     CPU_AX = valdiv / (uint32_t) divisor;
 }
 
-void op_idiv16(uint32_t valdiv, uint16_t divisor) {
+static inline void op_idiv16(uint32_t valdiv, uint16_t divisor) {
     uint32_t d1;
     uint32_t d2;
     uint32_t s1;
@@ -1037,7 +1031,7 @@ void op_idiv16(uint32_t valdiv, uint16_t divisor) {
     CPU_DX = d2;
 }
 
-void op_grp3_16() {
+static inline void op_grp3_16() {
     switch (reg) {
         case 0:
         case 1: /* TEST */
@@ -1071,6 +1065,9 @@ void op_grp3_16() {
                 cf = 0;
                 of = 0;
             }
+#ifdef CPU_CLEAR_ZF_ON_MUL
+            zf = 0;
+#endif
             break;
 
         case 5: /* IMUL */
@@ -1094,6 +1091,9 @@ void op_grp3_16() {
                 cf = 0;
                 of = 0;
             }
+#ifdef CPU_CLEAR_ZF_ON_MUL
+            zf = 0;
+#endif
             break;
 
         case 6: /* DIV */
@@ -1106,7 +1106,7 @@ void op_grp3_16() {
     }
 }
 
-void op_grp5() {
+static inline void op_grp5() {
     switch (reg) {
         case 0: /* INC Ev */
             oper2 = 1;
@@ -1135,7 +1135,7 @@ void op_grp5() {
             getea(rm);
             ip = (uint16_t) read86(ea) + (uint16_t) read86(ea + 1) * 256;
             CPU_CS = (uint16_t) read86(ea + 2) + (uint16_t) read86(ea + 3) * 256;
-           break;
+            break;
 
         case 4: /* JMP Ev */
             ip = oper1;
@@ -1191,8 +1191,7 @@ void exec86(uint32_t execloops) {
             if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
                 // hook for XMS
                 opcode = xms_handler(); // always returns RET TODO: far/short ret?
-            }
-            else
+            } else
 #endif
             {
                 opcode = getmem8(CPU_CS, CPU_IP);
@@ -1350,11 +1349,9 @@ void exec86(uint32_t execloops) {
                 push(CPU_CS);
                 break;
 
-                /*
-                case 0xF: //0F POP CS only the 8086/8088 does this.
-                    CPU_CS = pop();
-                    break;
-                    */
+            case 0xF: //0F POP CS only the 8086/8088 does this.
+                CPU_CS = pop();
+                break;
 
             case 0x10: /* 10 ADC Eb Gb */
                 modregrm();
@@ -1893,7 +1890,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x54: /* 54 PUSH eSP */
-                push(CPU_SP-2);
+                push(CPU_SP - 2);
                 break;
 
             case 0x55: /* 55 PUSH eBP */
@@ -1958,7 +1955,7 @@ void exec86(uint32_t execloops) {
                 CPU_DI = pop();
                 CPU_SI = pop();
                 CPU_BP = pop();
-                uint16_t dummy = pop();
+                pop();
                 CPU_BX = pop();
                 CPU_DX = pop();
                 CPU_CX = pop();
@@ -2041,7 +2038,7 @@ void exec86(uint32_t execloops) {
                     break;
                 }
 
-                putmem8(CPU_ES, CPU_DI, portin(CPU_DX));
+                putmem8(useseg, CPU_SI, portin(CPU_DX));
                 if (df) {
                     CPU_SI = CPU_SI - 1;
                     CPU_DI = CPU_DI - 1;
@@ -2067,7 +2064,7 @@ void exec86(uint32_t execloops) {
                     break;
                 }
 
-                putmem16(CPU_ES, CPU_DI, portin16(CPU_DX));
+                putmem16(useseg, CPU_SI, portin16(CPU_DX));
                 if (df) {
                     CPU_SI = CPU_SI - 2;
                     CPU_DI = CPU_DI - 2;
@@ -2499,7 +2496,11 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x9C: /* 9C PUSHF */
+#ifdef CPU_SET_HIGH_FLAGS
                 push(makeflagsword() | 0xF800);
+#else
+                push(makeflagsword() | 0x0800);
+#endif
                 break;
 
             case 0x9D: /* 9D POPF */
@@ -3080,8 +3081,10 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0xD6: /* D6 XLAT on V20/V30, SALC on 8086/8088 */
-//                CPU_AL = cf ? 0xFF : 0x00;
-//                break;
+#ifndef CPU_NO_SALC
+                CPU_AL = CPU_FL_CF ? 0xFF : 0x00;
+                break;
+#endif
 
             case 0xD7: /* D7 XLAT */
                 CPU_AL = read86(useseg * 16 + (CPU_BX) + CPU_AL);
@@ -3287,8 +3290,15 @@ void exec86(uint32_t execloops) {
                 break;
 
             default: {
-//                char tmp[40];
-//                printf("Unexpected opcode: %02Xh ignored", opcode);
+#ifdef CPU_ALLOW_ILLEGAL_OP_EXCEPTION
+                intcall86(6); /* trip invalid opcode exception (this
+					 occurs on the 80186+, 8086/8088 CPUs
+					 treat them as NOPs. */
+			/* technically they aren't exactly like NOPs in most
+			 * cases, but for our pursoses, that's accurate enough.
+			 */
+#endif
+                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 //intcall86(6);
                 break;
