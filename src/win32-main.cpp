@@ -60,19 +60,11 @@ static inline void renderer() {
                         // Calculate screen position
                         uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column) * 2;
 
-                        // Cursor blinking check
-                        uint8_t cursor_active =
-                                cursor_blink_state && y_div_16 == CURSOR_Y && column == CURSOR_X &&
-                                (cursor_start > cursor_end
-                                 ? !(y_mod_8 >= cursor_end << 1 &&
-                                     y_mod_8 <= cursor_start << 1)
-                                 : y_mod_8 >= cursor_start << 1 && y_mod_8 <= cursor_end << 1);
-
-                        /*                                // Cursor blinking check
+                                                        // Cursor blinking check
                         uint8_t cursor_active = (cursor_blink_state &&
                                                  (y_div_16 == CURSOR_Y && column == CURSOR_X &&
                                                   y_mod_8 >= cursor_start &&
-                                                  y_mod_8 <= cursor_end));*/
+                                                  y_mod_8 <= cursor_end));
 
                         // Unrolled bit loop: Write 8 pixels with scaling (2x horizontally)
                         for (uint8_t bit = 0; bit < 8; bit++) {
