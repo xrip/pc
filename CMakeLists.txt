@@ -52,18 +52,22 @@ else ()
     add_subdirectory(drivers/fatfs)
     add_subdirectory(drivers/sdcard)
     add_subdirectory(drivers/vga-nextgen)
+    add_subdirectory(drivers/hdmi)
     add_subdirectory(drivers/graphics)
     add_subdirectory(drivers/audio)
     add_subdirectory(drivers/psram)
 
-    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+#    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
+
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
             audio
             graphics
-            vga-nextgen
             psram
 
             pico_runtime
@@ -80,6 +84,7 @@ else ()
 
             #            tinyusb_host tinyusb_board
     )
+    SET(BUILD_NAME "${BUILD_NAME}-HDMI")
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
 #            PICO_HEAP_SIZE=0
@@ -88,6 +93,10 @@ else ()
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6
+
+            # HDMI 8 pins starts from pin:
+            HDMI_BASE_PIN=6
+
 
             # SDCARD
             SDCARD_PIN_SPI0_CS=5
