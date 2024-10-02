@@ -57,20 +57,12 @@ void __time_critical_func() second_core() {
     graphics_set_textbuffer(VIDEORAM + 32768);
     graphics_set_bgcolor(0);
     graphics_set_offset(0, 0);
-    graphics_set_flashmode(false, false);
-
-    for (int i = 0; i < 256; ++i) {
-        graphics_set_palette(i, vga_palette[i]);
-    }
-
-    graphics_set_mode(videomode);
+    graphics_set_flashmode(true, true);
 
     sem_acquire_blocking(&vga_start_semaphore);
 
     uint64_t tick = time_us_64();
     uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick, last_raytrace_tick = tick;
-    int old_video_mode = videomode;
-    int flip;
 
     uint64_t last_dss_tick = 0;
     int16_t last_dss_sample = 0;
@@ -126,50 +118,56 @@ void __time_critical_func() second_core() {
         }
 
         if (tick >= last_frame_tick + 16667) {
+            static uint8_t old_video_mode;
             if (old_video_mode != videomode) {
-                switch (videomode) {
-                    case TGA_160x200x16:
-                    case TGA_320x200x16:
-                    case TGA_640x200x16: {
-                        for (int i = 0; i < 16; ++i) {
-                            graphics_set_palette(i, tga_palette[i]);
-                        }
-                        break;
-                    }
-                    case COMPOSITE_160x200x16:
-                        for (int i = 0; i < 16; ++i) {
-                            graphics_set_palette(i, cga_composite_palette[0][i]);
-                        }
-                        break;
 
-                    case COMPOSITE_160x200x16_force:
-                        for (int i = 0; i < 16; ++i) {
-                            graphics_set_palette(i, cga_composite_palette[cga_intensity << 1][i]);
+                if (1) {
+                    switch (videomode) {
+                        case TGA_160x200x16:
+                        case TGA_320x200x16:
+                        case TGA_640x200x16: {
+                            for (uint8_t i = 0; i < 15; i++) {
+                                graphics_set_palette(i, tga_palette[i]);
+                            }
+                            break;
                         }
-                        break;
+                        case COMPOSITE_160x200x16:
+                            for (uint8_t i = 0; i < 15; i++) {
+                                graphics_set_palette(i, cga_composite_palette[0][i]);
+                            }
+                            break;
 
-                    case CGA_320x200x4: {
-                        for (int i = 0; i < 4; ++i) {
-                            graphics_set_palette(i, cga_palette[cga_gfxpal[cga_colorset][cga_intensity][i]]);
+                        case COMPOSITE_160x200x16_force:
+                            for (uint8_t i = 0; i < 15; i++) {
+                                graphics_set_palette(i, cga_composite_palette[cga_intensity << 1][i]);
+                            }
+                            break;
+
+                        case CGA_320x200x4_BW:
+                        case CGA_320x200x4: {
+                            for (uint8_t i = 0; i < 4; i++) {
+                                graphics_set_palette(i, cga_palette[cga_gfxpal[cga_colorset][cga_intensity][i]]);
+                            }
+                            break;
                         }
-                        break;
-                    }
-                    case VGA_320x200x256:
-                    case VGA_320x200x256x4: {
-                        for (int i = 0; i < 256; ++i) {
-                            graphics_set_palette(i, vga_palette[i]);
+                        case VGA_320x200x256:
+                        case VGA_320x200x256x4: {
+                            for (uint8_t i = 0; i < 255; i++) {
+                                graphics_set_palette(i, vga_palette[i]);
+                            }
+                            break;
                         }
-                        break;
-                    }
-                    default: {
-                        for (int i = 0; i < 256; ++i) {
-                            graphics_set_palette(i, vga_palette[i]);
+                        default: {
+                            for (uint8_t i = 0; i < 255; i++) {
+                                graphics_set_palette(i, vga_palette[i]);
+                            }
                         }
                     }
+                    graphics_set_mode(videomode);
+                    old_video_mode = videomode;
                 }
 
-                graphics_set_mode(videomode);
-                old_video_mode = videomode;
+
             }
             last_frame_tick = tick;
         }
@@ -212,6 +210,10 @@ int main() {
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
+
+    sleep_ms(50);
+
+    graphics_set_mode(TEXTMODE_80x25_COLOR);
 
     init_psram();
 

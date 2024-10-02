@@ -61,8 +61,8 @@ static uint16_t palette[2][256];
 static uint32_t bg_color[2];
 static uint16_t palette16_mask = 0;
 
-static uint text_buffer_width = 0;
-static uint text_buffer_height = 0;
+static uint8_t text_buffer_width = 80;
+static uint8_t text_buffer_height = 0;
 
 static uint16_t txt_palette[16];
 
@@ -73,7 +73,7 @@ static uint16_t *txt_palette_fast = NULL;
 enum graphics_mode_t graphics_mode;
 
 
-void __scratch_y("vga") dma_handler_VGA() {
+void __time_critical_func() dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
     static uint32_t frame_number = 0;
     static uint32_t screen_line = 0;
@@ -199,7 +199,7 @@ void __scratch_y("vga") dma_handler_VGA() {
     // uint8_t* vbuf8=vbuf+(line*g_buf_width/2); //4bit buf
     //uint8_t* vbuf8=vbuf+(line*g_buf_width/4); //2bit buf
     //uint8_t* vbuf8=vbuf+((line&1)*8192+(line>>1)*g_buf_width/4);
-    uint8_t *input_buffer_8bit = input_buffer + 32768 + (vram_offset << 1) + y / 2 * 80 + (y & 1) * 8192;
+    uint8_t *input_buffer_8bit = input_buffer + 0x8000 + (vram_offset << 1) + y / 2 * 80 + (y & 1) * 8192;
 
 
     //output_buffer = &lines_pattern[2 + ((line_number) & 1)];
@@ -239,17 +239,22 @@ void __scratch_y("vga") dma_handler_VGA() {
     uint8_t *output_buffer_8bit;
     switch (graphics_mode) {
         case CGA_320x200x4:
-        case CGA_320x200x4_BW:
+        case CGA_320x200x4_BW: {
             //2bit buf
             for (int x = 320 / 4; x--;) {
                 uint8_t cga_byte = *input_buffer_8bit++;
 
-                *output_buffer_16bit++ = current_palette[cga_byte >> 6 & 3];
-                *output_buffer_16bit++ = current_palette[cga_byte >> 4 & 3];
-                *output_buffer_16bit++ = current_palette[cga_byte >> 2 & 3];
-                *output_buffer_16bit++ = current_palette[cga_byte >> 0 & 3];
+                uint8_t color = (cga_byte >> 6) & 3;
+                *output_buffer_16bit++ = current_palette[color ? color : cga_foreground_color];
+                color = (cga_byte >> 4) & 3;
+                *output_buffer_16bit++ = current_palette[color ? color : cga_foreground_color];
+                color = (cga_byte >> 2) & 3;
+                *output_buffer_16bit++ = current_palette[color ? color : cga_foreground_color];
+                color = (cga_byte >> 0) & 3;
+                *output_buffer_16bit++ = current_palette[color ? color : cga_foreground_color];
             }
             break;
+        }
         case CGA_640x200x2:
             output_buffer_8bit = (uint8_t *) output_buffer_16bit;
             //1bit buf
@@ -343,14 +348,14 @@ void __scratch_y("vga") dma_handler_VGA() {
             }
             break;
         case VGA_320x200x256:
-            input_buffer_8bit = input_buffer + y * width;
+            input_buffer_8bit = input_buffer + y * 320;
             for (int x = 640 / 2; x--;) {
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
             }
             break;
         case VGA_320x200x256x4:
             input_buffer_8bit = input_buffer + y * (width / 4);
-            for (int x = 640 / 2; x--;) {
+            for (int x = 640 / 4; x--;) {
                 //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit];
                 *output_buffer_16bit++ = current_palette[*(input_buffer_8bit + 16000)];
@@ -374,6 +379,10 @@ void __scratch_y("vga") dma_handler_VGA() {
             break;
         }
         default:
+            input_buffer_8bit = input_buffer + y * width;
+            for (int x = 640 / 2; x--;) {
+                *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
+            }
             break;
     }
     dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
@@ -392,7 +401,8 @@ void graphics_set_mode(enum graphics_mode_t mode) {
             text_buffer_width = 80;
             text_buffer_height = 30;
     }
-    memset(graphics_buffer, 0, graphics_buffer_height * graphics_buffer_width);
+
+    //memset(graphics_buffer, 0, graphics_buffer_height * graphics_buffer_width);
     if (_SM_VGA < 0) return; // если  VGA не инициализирована -
 
     graphics_mode = mode;
@@ -412,6 +422,8 @@ void graphics_set_mode(enum graphics_mode_t mode) {
     int HS_SHIFT = 100;
 
     switch (graphics_mode) {
+        case TEXTMODE_40x25_BW:
+        case TEXTMODE_40x25_COLOR:
         case TEXTMODE_80x25_BW:
         case TEXTMODE_80x25_COLOR:
             //текстовая палитра
@@ -438,8 +450,6 @@ void graphics_set_mode(enum graphics_mode_t mode) {
         case VGA_320x200x256x4:
         case EGA_320x200x16x4:
         case TGA_320x200x16:
-        default:
-
             TMPL_LINE8 = 0b11000000;
             HS_SHIFT = 328 * 2;
             HS_SIZE = 48 * 2;
@@ -459,6 +469,8 @@ void graphics_set_mode(enum graphics_mode_t mode) {
 
             fdiv = clock_get_hz(clk_sys) / 25175000.0; //частота пиксельклока
             break;
+        default:
+            return;
     }
 
     //корректировка  палитры по маске бит синхры
@@ -658,7 +670,7 @@ void graphics_init() {
     );
     //dma_channel_set_read_addr(dma_chan, &DMA_BUF_ADDR[0], false);
 
-    graphics_set_mode(VGA_320x200x256);
+    graphics_set_mode(TGA_320x200x16);
 
     irq_set_exclusive_handler(VGA_DMA_IRQ, dma_handler_VGA);
 

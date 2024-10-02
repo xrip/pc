@@ -82,8 +82,8 @@ else ()
     )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-            PICO_HEAP_SIZE=0
-            USE_ZONE_FOR_MALLOC=1
+#            PICO_HEAP_SIZE=0
+#            USE_ZONE_FOR_MALLOC=1
             PICO_FLASH_SIZE_BYTES=16777216
 
             # VGA 8 pins starts from pin:
