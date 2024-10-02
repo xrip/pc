@@ -105,6 +105,7 @@ uint8_t color_burst = 0;
 
 void cga_portout(uint16_t portnum, uint16_t value) {
     // https://www.youtube.com/watch?v=ttPhnUUxy94
+    // https://www.youtube.com/watch?v=44eNkE1YoiI
     // https://nerdlypleasures.blogspot.com/2016/05/ibms-cga-hardware-explained.html
     // http://www.techhelpmanual.com/901-color_graphics_adapter_i_o_ports.html
     // https://www.seasip.info/VintagePC/cga.html
