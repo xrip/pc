@@ -14,7 +14,7 @@ HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
 
-#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY /60 +1))
+#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 50))
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
 static int sample_index = 0;
 
@@ -486,31 +486,71 @@ static inline void renderer() {
         }
     }
 }
-extern "C" uint32_t sb_samplerate;
-DWORD WINAPI TicksThread(LPVOID lpParam) {
+extern "C" uint64_t sb_samplerate;
+HANDLE updateEvent;
+
+DWORD WINAPI SoundThread(LPVOID lpParam) {
+    WAVEHDR waveHeaders[4];
 
     WAVEFORMATEX format = { 0 };
     format.wFormatTag = WAVE_FORMAT_PCM;
     format.nChannels = 2;
     format.nSamplesPerSec = SOUND_FREQUENCY;
     format.wBitsPerSample = 16;
-    format.nBlockAlign = 4;
+    format.nBlockAlign = format.nChannels * format.wBitsPerSample / 8;
     format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
 
+    HANDLE waveEvent = CreateEvent(NULL, 1, 0, NULL);
+
     HWAVEOUT hWaveOut;
-    waveOutOpen(&hWaveOut, WAVE_MAPPER, &format, 0, 0, CALLBACK_NULL);
+    waveOutOpen(&hWaveOut, WAVE_MAPPER, &format, (DWORD_PTR) waveEvent, 0, CALLBACK_EVENT);
 
-    WAVEHDR waveHeader = {
-            .lpData = (LPSTR) audio_buffer,
-            .dwBufferLength = AUDIO_BUFFER_LENGTH * sizeof(int16_t),
-            .dwFlags = 0,
-    };
-    waveOutPrepareHeader(hWaveOut, &waveHeader, sizeof(WAVEHDR));
+    for (size_t i = 0; i < 4; i++) {
+        int16_t audio_buffers[4][AUDIO_BUFFER_LENGTH * 2];
+        waveHeaders[i] = {
+                .lpData = (char *) audio_buffers[i],
+                .dwBufferLength = AUDIO_BUFFER_LENGTH * 2,
+        };
+        waveOutPrepareHeader(hWaveOut, &waveHeaders[i], sizeof(WAVEHDR));
+        waveHeaders[i].dwFlags |= WHDR_DONE;
+    }
+    WAVEHDR *currentHeader = waveHeaders;
 
+
+    while (true) {
+        if (WaitForSingleObject(waveEvent, INFINITE)) {
+            fprintf(stderr, "Failed to wait for event.\n");
+            return 1;
+        }
+
+        if (!ResetEvent(waveEvent)) {
+            fprintf(stderr, "Failed to reset event.\n");
+            return 1;
+        }
+
+// Wait until audio finishes playing
+        while (currentHeader->dwFlags & WHDR_DONE) {
+            WaitForSingleObject(updateEvent, INFINITE);
+            ResetEvent(updateEvent);
+//            PSG_calc_stereo(&psg, audiobuffer, AUDIO_BUFFER_LENGTH);
+            memcpy(currentHeader->lpData, audio_buffer, AUDIO_BUFFER_LENGTH * 2);
+            waveOutWrite(hWaveOut, currentHeader, sizeof(WAVEHDR));
+            //waveOutPrepareHeader(hWaveOut, currentHeader, sizeof(WAVEHDR));
+            currentHeader++;
+            if (currentHeader == waveHeaders + 4) { currentHeader = waveHeaders; }
+        }
+    }
+    return 0;
+}
+
+
+DWORD WINAPI TicksThread(LPVOID lpParam) {
+    timeBeginPeriod(1); // Increase timer resolution to 1ms
     LARGE_INTEGER start, current, queryperf;
 
+
     QueryPerformanceFrequency(&queryperf);
-    LONGLONG hostfreq = queryperf.QuadPart;
+    uint32_t hostfreq = (uint32_t) queryperf.QuadPart;
 
     QueryPerformanceCounter(&start); // Get the starting time
 
@@ -523,6 +563,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
     int z = 1;
+
+    updateEvent = CreateEvent(NULL, 1, 1, NULL);
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
 
@@ -550,7 +592,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
 
         // Sound frequency 44100
-        if (elapsedTime - last_sound_tick > hostfreq / 44100) {
+        if (elapsedTime - last_sound_tick >=  hostfreq / (44100)) {
             static int sound_counter = 0;
             int16_t samples[2];
             samples[0] = samples[1] = 0;
@@ -572,14 +614,13 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             cms_samples(samples);
 
-
             audio_buffer[sample_index++] = (int16_t) samples[1];
             audio_buffer[sample_index++] = (int16_t) samples[0];
 
 
-            if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
+            if (sample_index >= AUDIO_BUFFER_LENGTH) {
+                SetEvent(updateEvent);
                 sample_index = 0;
-                waveOutWrite(hWaveOut, &waveHeader, sizeof(WAVEHDR));
             }
 
             last_sound_tick = elapsedTime;
@@ -1174,7 +1215,7 @@ int main(int argc, char **argv) {
     sn76489_reset();
     reset86();
 
-
+    CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
     while (true) {
 

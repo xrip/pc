@@ -31,7 +31,7 @@ uint8_t readlen;
 uint8_t readready;
 uint8_t writebuf;
 uint8_t timeconst;
-uint32_t sb_samplerate = 22050;
+uint64_t sb_samplerate = 220500;
 uint32_t timer;
 uint32_t dmalen;
 uint8_t dmachan = 1;
@@ -102,11 +102,12 @@ static inline void blaster_writecmd(uint8_t value) {
             return;
         case 0x40: //set time constant
 //            timeconst = value;
-            sb_samplerate = 1000000.0 / (256.0 - (double) value);
+//            sb_samplerate = value;
+            sb_samplerate = 1000000 / (256 - value);
             //timing_updateIntervalFreq(timer, samplerate);
             lastcmd = 0;
 #ifdef DEBUG_BLASTER
-            printf("[BLASTER] Set time constant: %u (Sample rate: %lu Hz)\r\n", value, sb_samplerate);
+            printf("[BLASTER] Set time constant: %u (Sample rate: %lu Hz)\r\n", value, 1000000 / (256 - value));
 #endif
             return;
         case 0x48: //set DMA block size
@@ -204,7 +205,7 @@ static inline void blaster_writecmd(uint8_t value) {
             break;
         case 0xE1: //DSP version (SB 2.0 is DSP 2.01)
             blaster_putreadbuf(2);
-            blaster_putreadbuf(0);
+            blaster_putreadbuf(1);
             break;
         case 0xE2: //DMA identification write
             break;

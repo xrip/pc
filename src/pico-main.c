@@ -44,7 +44,7 @@ struct semaphore vga_start_semaphore;
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
 static int sample_index = 0;
-extern uint32_t sb_samplerate;
+extern uint64_t sb_samplerate;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
     i2s_config.sample_freq = SOUND_FREQUENCY;

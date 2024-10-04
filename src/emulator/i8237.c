@@ -223,7 +223,7 @@ uint8_t i8237_read(uint8_t channel) {
     uint8_t result = 128;
     //TODO: fix commented out stuff
 //    if (dma_channel[channel].enable && !dma_channel[channel].terminal)
-    if (!dma_channels[channel].masked)
+//    if (!dma_channels[channel].masked)
     {
 //        printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
       result = read86(dma_channels[channel].page | dma_channels[channel].address);
