@@ -64,29 +64,36 @@ void i8237_writeport(uint16_t portnum, uint8_t value) {
         case 4:
         case 5:
         case 6:
-        case 7:
+        case 7: {
+            static uint16_t count = 0;
+            static uint32_t address = 0;
+
             channel = (portnum >> 1) & 3;
             if (portnum & 0x01) { //write terminal count
                 if (flipflop) {
-                    dma_channels[channel].count = (dma_channels[channel].count & 0x00FF) | ((uint16_t) value << 8);
+                    dma_channels[channel].count = (count & 0x00FF) | ((uint16_t) value << 8);
+                    dma_channels[channel].reloadcount = dma_channels[channel].count;
                 } else {
-                    dma_channels[channel].count = (dma_channels[channel].count & 0xFF00) | (uint16_t) value;
+                    count = (dma_channels[channel].count & 0xFF00) | (uint16_t) value;
                 }
-                dma_channels[channel].reloadcount = dma_channels[channel].count;
+
             } else {
                 if (flipflop) {
-                    dma_channels[channel].address = (dma_channels[channel].address & 0x00FF) | ((uint16_t) value << 8);
+                    dma_channels[channel].address = (address & 0x00FF) | ((uint16_t) value << 8);
+                    dma_channels[channel].reloadaddr = dma_channels[channel].address;
                 } else {
-                    dma_channels[channel].address = (dma_channels[channel].address & 0xFF00) | (uint16_t) value;
+                    address = (dma_channels[channel].address & 0xFF00) | (uint16_t) value;
                 }
-                dma_channels[channel].reloadaddr = dma_channels[channel].address;
-#ifdef DEBUG_DMA
-                printf("[DMA] Channel %u addr set to %08X\r\n", channel, dma_channels[channel].address);
-#endif
             }
+            #ifdef DEBUG_DMA
+            printf("[DMA] Channel %u addr set to %08X %d\r\n", channel, dma_channels[channel].address,
+                   dma_channels[channel].count);
+            #endif
+
             dma_channels[channel].finished = 0;
             flipflop ^= 1;
             break;
+        }
         case 0x08: //DMA channel 0-3 command register
             memtomem = value & 1;
             break;
@@ -165,6 +172,7 @@ uint8_t i8237_readport(uint16_t portnum) {
         case 6:
         case 7:
             channel = (portnum >> 1) & 3;
+
             if (portnum & 1) { //count
                 if (flipflop) {
                     result = (uint8_t) (dma_channels[channel].count >> 8); //TODO: or give back the reload??
@@ -172,7 +180,6 @@ uint8_t i8237_readport(uint16_t portnum) {
                     result = (uint8_t) dma_channels[channel].count; //TODO: or give back the reload??
                 }
             } else { //address
-                //printf("%04X\r\n", dma_channel[ch].addr);
                 if (flipflop) {
                     result = (uint8_t) (dma_channels[channel].address >> 8);
                 } else {
@@ -214,23 +221,16 @@ uint8_t i8237_readpage(uint16_t portnum) {
 
 uint8_t i8237_read(uint8_t channel) {
     uint8_t result = 128;
-
-    if (dma_channels[channel].masked) {
-        return result;
-    }
-
     //TODO: fix commented out stuff
 //    if (dma_channel[channel].enable && !dma_channel[channel].terminal)
-//    if (!dma_channels[channel].finished)
+    if (!dma_channels[channel].masked)
     {
 //        printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
-//    printf("2 Read from %06X %x\r\n", (dma_channel[channel].page | dma_channel[channel].address), dma_channel[channel].count);
-//result= RAM[dma_channel[channel].page | dma_channel[channel].address];
       result = read86(dma_channels[channel].page | dma_channels[channel].address);
 //    result = read86((uint16_t)(dma_channel[channel].page + dma_channel[channel].address));
         dma_channels[channel].address += dma_channels[channel].direction;
         dma_channels[channel].count--;
-        //printf("Read from %06X %x\r\n", dma_channel[channel].page + dma_channel[channel].address, dma_channel[channel].count);
+
         if (dma_channels[channel].count == 0xFFFF) {
             if (dma_channels[channel].autoinit) {
                 dma_channels[channel].count = dma_channels[channel].reloadcount;

@@ -60,10 +60,14 @@ void __time_critical_func() second_core() {
     graphics_set_offset(0, 0);
     graphics_set_flashmode(true, true);
 
+    for (uint8_t i = 0; i < 255; i++) {
+        graphics_set_palette(i, vga_palette[i]);
+    }
+
     sem_acquire_blocking(&vga_start_semaphore);
 
     uint64_t tick = time_us_64();
-    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick, last_raytrace_tick = tick;
+    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
 
     uint64_t last_dss_tick = 0;
     uint64_t last_sb_tick = 0;
@@ -99,7 +103,6 @@ void __time_critical_func() second_core() {
 
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
-            static int sound_counter = 0;
             int16_t samples[2] = { 0, 0 };
             //adlib_getsample((int16_t *) &samples, 1);
             if (last_dss_sample)
