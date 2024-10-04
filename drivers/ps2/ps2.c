@@ -312,11 +312,11 @@ void keyboard_init(void) {
                                        (gpio_irq_callback_t)&KeyboardHandler); //
 
     // Blink all 3 leds
-    //ps2_send(0xFF); //Reset and start self-test
-    //sleep_ms(400); // Why so long?
+    keyboard_send(0xFF); //Reset and start self-test
+    sleep_ms(400); // Why so long?
 
-    //ps2_send(0xF2); // Get keyvoard id https://wiki.osdev.org/PS/2_Keyboard
-    //sleep_ms(250);
+    keyboard_send(0xF2); // Get keyvoard id https://wiki.osdev.org/PS/2_Keyboard
+    sleep_ms(250);
 
     /*
     ps2_send(0xED);

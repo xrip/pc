@@ -17,7 +17,7 @@
 extern uint32_t nespad_state;  // (S)NES Joystick1
 extern uint32_t nespad_state2; // (S)NES Joystick2
 
-extern bool nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,
+extern int nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,
                          uint8_t latPin);
 
 

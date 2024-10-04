@@ -31,10 +31,9 @@ static inline uint8_t fifo_is_full() {
 
 void dss_out(uint16_t portnum, uint8_t value) {
     //printf("OUT SS %x %x\r\n", portnum, value);
-    static uint8_t last37a, port378 = 0;
+    static uint8_t last37a;
     switch (portnum) {
         case 0x378:
-            port378 = value;
             fifo_push_byte(value);
             last37a = 0;
             break;

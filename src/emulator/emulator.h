@@ -15,11 +15,11 @@ extern "C" {
 #define RAM_SIZE (156 << 10)
 #endif
 #else
-#define VIDEORAM_SIZE (128 << 10)
+#define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
 #define SOUND_FREQUENCY (44100)
-#define rgb(r, g, b) ((r<<16) | (g << 8 ) | b )
+#define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 extern uint8_t log_debug;
 
@@ -172,6 +172,24 @@ extern void cms_samples(int16_t *output);;
 #define XMS_FN_IP 0x03FF
 
 extern uint8_t xms_handler();
+
+void i8237_writeport(uint16_t portnum, uint8_t value);
+void i8237_writepage(uint16_t portnum, uint8_t value);
+
+uint8_t i8237_readport( uint16_t portnum);
+uint8_t i8237_readpage( uint16_t portnum);
+uint8_t i8237_read( uint8_t channel);
+void i8237_write(uint8_t channel, uint8_t value);
+void i8237_reset();
+
+
+uint8_t blaster_read(uint16_t portnum);
+void blaster_write(uint16_t portnum, uint8_t value);
+int16_t blaster_generateSample();
+
+void outadlib(uint16_t portnum, uint8_t value);
+uint8_t inadlib(uint16_t portnum);
+int16_t adlibgensample();
 #ifdef __cplusplus
 }
 #endif

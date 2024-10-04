@@ -97,8 +97,8 @@ uint16_t readw86(uint32_t address) {
     }
 }
 #else
-uint8_t VIDEORAM[VIDEORAM_SIZE + 2];
-uint8_t RAM[RAM_SIZE + 2];
+uint8_t VIDEORAM[VIDEORAM_SIZE + 2] /* __attribute__((aligned(2*sizeof(uint32_t *))))= { 0 } */;
+uint8_t RAM[RAM_SIZE + 2] /*__attribute__((aligned(2*sizeof(uint32_t *))))= { 0 } */;
 uint8_t UMB[UMB_END - UMB_START] = { 0 };
 uint8_t HMA[HMA_END - HMA_START];
 
@@ -152,7 +152,7 @@ uint8_t read86(uint32_t address) {
     } else if (address >= HMA_START && address < HMA_END) {
         return HMA[address - HMA_START];
     }
-    return 0;
+    return 0x00;
 }
 
 // Reads a word from the virtual memory
@@ -171,7 +171,7 @@ uint16_t readw86(uint32_t address) {
         } else if (address >= HMA_START && address < HMA_END) {
             return *(uint16_t *) &HMA[address - HMA_START];
         }
-        return 0;
     }
+    return 0;
 }
 #endif

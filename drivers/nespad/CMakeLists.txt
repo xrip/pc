@@ -1,7 +1,7 @@
 add_library(nespad INTERFACE)
 
 target_sources(nespad INTERFACE
-        ${CMAKE_CURRENT_LIST_DIR}/nespad.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/nespad.c
         ${CMAKE_CURRENT_LIST_DIR}/nespad.h
 )
 

@@ -1,15 +1,19 @@
 #include <time.h>
 #include "emulator.h"
-
+#if PICO_ON_DEVICE
+#include "nespad.h"
+#endif
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
+#if !PICO_ON_DEVICE
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 
+#endif
 static inline uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
@@ -56,8 +60,58 @@ static inline uint8_t rtc_read(uint16_t addr) {
     return ret;
 }
 
+uint16_t gamepad_tick = 0;
+uint8_t gamepad_in() {
+    //printf("gamepad in %d \n", gamepad_tick);
+    gamepad_tick++;
+    if (gamepad_tick >= 32) {
+        gamepad_tick = 0;
+        return 0b11110000;
+    }
+#if PICO_ON_DEVICE
+    nespad_read();
+    nespad_state = ~nespad_state;
+    uint8_t gamepad_state  = ((nespad_state & DPAD_RIGHT)) != 0;
+    gamepad_state |= ((nespad_state & DPAD_UP)     != 0) << 1;
+    gamepad_state |= ((nespad_state & DPAD_LEFT)   != 0) << 2;
+    gamepad_state |= ((nespad_state & DPAD_DOWN)   != 0) << 3;
+
+    gamepad_state |= ((nespad_state & DPAD_A)      != 0) << 4;
+    gamepad_state |= ((nespad_state & DPAD_B)      != 0) << 5;
+    gamepad_state |= ((nespad_state & DPAD_START)  != 0) << 6;
+    gamepad_state |= ((nespad_state & DPAD_SELECT) != 0) << 7;
+
+    return gamepad_state & 0xff;
+#else
+
+    //printf("read \r\n");
+#endif
+}
+
+static inline void gamepad_out() {
+    gamepad_tick = 0;
+}
+
+
 void portout(uint16_t portnum, uint16_t value) {
     switch (portnum) {
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        case 0x03:
+        case 0x04:
+        case 0x05:
+        case 0x06:
+        case 0x07:
+        case 0x08:
+        case 0x09:
+        case 0x0a:
+        case 0x0b:
+        case 0x0c:
+        case 0x0d:
+        case 0x0e:
+        case 0x0f:
+            return i8237_writeport(portnum, value);
         case 0x20:
         case 0x21: //i8259
             return out8259(portnum, value);
@@ -80,6 +134,12 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x64:
             port64 = value;
             break;
+// i8237 DMA
+        case 0x81:
+        case 0x82:
+        case 0x83:
+        case 0x87:
+            return i8237_writepage(portnum, value);
 // Tandy 3 voice
         case 0x1E0:
         case 0x2C0:
@@ -93,11 +153,27 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC7:
             sn76489_out(value);
             return tandy_write(portnum, value);
+// Gamepad
+        case 0x201:
+            return gamepad_out();
 // GameBlaster / Creative Music System
         case 0x220:
         case 0x221:
         case 0x222:
         case 0x223:
+        case 0x224:
+        case 0x225:
+        case 0x226:
+        case 0x227:
+        case 0x228:
+        case 0x229:
+        case 0x22a:
+        case 0x22b:
+        case 0x22c:
+        case 0x22d:
+        case 0x22e:
+        case 0x22f:
+            blaster_write(portnum, value);
             cms_out(portnum, value);
             return cms_write(portnum, value);
 
@@ -109,6 +185,7 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x37A:
             return dss_out(portnum, value);
 // AdLib / OPL
+#if !PICO_ON_DEVICE
         case 0x388:
             adlib_register = value;
             break;
@@ -122,6 +199,11 @@ void portout(uint16_t portnum, uint16_t value) {
                 }
             }
             return adlib_write_d(adlib_register, value);
+#else
+        case 0x388:
+        case 0x389:
+            return outadlib(portnum, value);
+#endif
 // EGA/VGA
         case 0x3C0:
         case 0x3C4:
@@ -210,6 +292,23 @@ void portout(uint16_t portnum, uint16_t value) {
 
 uint16_t portin(uint16_t portnum) {
     switch (portnum) {
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        case 0x03:
+        case 0x04:
+        case 0x05:
+        case 0x06:
+        case 0x07:
+        case 0x08:
+        case 0x09:
+        case 0x0a:
+        case 0x0b:
+        case 0x0c:
+        case 0x0d:
+        case 0x0e:
+        case 0x0f:
+            return i8237_readport(portnum);
         case 0x20:
         case 0x21: //i8259
             return in8259(portnum);
@@ -226,6 +325,16 @@ uint16_t portin(uint16_t portnum) {
             return port61;
         case 0x64:
             return port64;
+// i8237 DMA
+        case 0x81:
+        case 0x82:
+        case 0x83:
+        case 0x87:
+            return i8237_readpage(portnum);
+
+        case 0x201:
+            return gamepad_in();
+
         case 0x220:
         case 0x221:
         case 0x222:
@@ -237,6 +346,12 @@ uint16_t portin(uint16_t portnum) {
         case 0x228:
         case 0x229:
         case 0x22a:
+        case 0x22b:
+        case 0x22c:
+        case 0x22d:
+        case 0x22e:
+        case 0x22f:
+            return blaster_read(portnum);
             return cms_in(portnum);
 // RTC
         case 0x240:
@@ -271,6 +386,7 @@ uint16_t portin(uint16_t portnum) {
 // Adlib
         case 0x388:
         case 0x389:
+#if !PICO_ON_DEVICE
             if (!adlibregmem[4])
                 adlibstatus = 0;
             else
@@ -278,7 +394,9 @@ uint16_t portin(uint16_t portnum) {
 
             adlibstatus = adlibstatus + (adlibregmem[4] & 1) * 0x40 + (adlibregmem[4] & 2) * 0x10;
             return adlibstatus;
-
+#else
+            return inadlib(portnum);
+#endif
         case 0x3C1:
         case 0x3C2:
         case 0x3C7:

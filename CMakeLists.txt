@@ -33,7 +33,7 @@ else ()
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c)
-
+    target_compile_options(${PROJECT_NAME} PUBLIC -Wall)
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
     if (PICO_PLATFORM STREQUAL "rp2040")
@@ -56,12 +56,15 @@ else ()
     add_subdirectory(drivers/graphics)
     add_subdirectory(drivers/audio)
     add_subdirectory(drivers/psram)
+    add_subdirectory(drivers/nespad)
 
-#    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+    target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
+    SET(BUILD_NAME "${BUILD_NAME}-VGA")
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
-
+#    target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
+#    target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
+#    SET(BUILD_NAME "${BUILD_NAME}-HDMI")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
@@ -69,6 +72,7 @@ else ()
             audio
             graphics
             psram
+            nespad
 
             pico_runtime
             pico_stdlib
@@ -84,7 +88,6 @@ else ()
 
             #            tinyusb_host tinyusb_board
     )
-    SET(BUILD_NAME "${BUILD_NAME}-HDMI")
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
 #            PICO_HEAP_SIZE=0
@@ -96,7 +99,6 @@ else ()
 
             # HDMI 8 pins starts from pin:
             HDMI_BASE_PIN=6
-
 
             # SDCARD
             SDCARD_PIN_SPI0_CS=5
@@ -113,6 +115,12 @@ else ()
             PSRAM_PIN_SCK=19
             PSRAM_PIN_MOSI=20
             PSRAM_PIN_MISO=21
+
+            # NES Gamepad
+            USE_NESPAD
+            NES_GPIO_CLK=14
+            NES_GPIO_DATA=16
+            NES_GPIO_LAT=15
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})

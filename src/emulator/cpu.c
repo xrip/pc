@@ -2,8 +2,8 @@
 
 //#define CPU_LIMIT_SHIFT_COUNT
 #define CPU_NO_SALC
-#define CPU_SET_HIGH_FLAGS
-#define CPU_286_STYLE_PUSH_SP
+//#define CPU_SET_HIGH_FLAGS
+//#define CPU_286_STYLE_PUSH_SP
 #define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
 #include "disks-rp2350.c.inc"
@@ -258,8 +258,8 @@ void intcall86(uint8_t intnum) {
                         case 0x12: {// set block of DAC color registers               VGA
                             uint32_t memloc = CPU_ES * 16 + CPU_DX;
                             for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
-                                vga_palette[color_index] = rgb(read86(memloc++) << 2, read86(memloc++) << 2,
-                                                               read86(memloc++) << 2);
+                                vga_palette[color_index] = rgb((read86(memloc++) << 2), (read86(memloc++) << 2),
+                                                               (read86(memloc++) << 2));
                             }
                             return;
                         }
@@ -1164,6 +1164,7 @@ void reset86() {
     memset(VIDEORAM, 0x00, VIDEORAM_SIZE);
 
     ip = 0x0000;
+    i8237_reset();
 }
 
 void exec86(uint32_t execloops) {
@@ -3296,14 +3297,15 @@ void exec86(uint32_t execloops) {
 
             default: {
 #ifdef CPU_ALLOW_ILLEGAL_OP_EXCEPTION
-                intcall86(6); /* trip invalid opcode exception (this
+                intcall86(6);
+                /* trip invalid opcode exception (this
 					 occurs on the 80186+, 8086/8088 CPUs
 					 treat them as NOPs. */
 			/* technically they aren't exactly like NOPs in most
 			 * cases, but for our pursoses, that's accurate enough.
 			 */
 #endif
-                //printf("Unexpected opcode: %02Xh ignored", opcode);
+//                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 //intcall86(6);
                 break;

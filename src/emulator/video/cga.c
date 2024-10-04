@@ -118,7 +118,7 @@ void cga_portout(uint16_t portnum, uint16_t value) {
             color_burst = (value >> 2) & 1;
 
             // the unofficial Mode 5 palette, accessed by disabling ColorBurst
-            if (videomode == 4 || videomode == 5 && color_burst) {
+            if ((videomode == 4 || videomode == 5) && color_burst) {
 //                printf("colorburst!!\n");
                 cga_colorset = 2;
             }

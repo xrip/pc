@@ -34,7 +34,7 @@ static inline void renderer() {
 
 
         //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
-        uint8_t *vidramptr = VIDEORAM + 0x18000 + (vram_offset << 1);
+        uint8_t *vidramptr = VIDEORAM + 32768 + (vram_offset << 1);
         uint8_t cols = videomode <= 1 ? 40 : 80;
         for (uint16_t y = 0; y < 400; y++) {
             if (y >= 399)
@@ -442,7 +442,7 @@ static inline void renderer() {
                     uint8_t odd_even = (y / 2) & 1;
                     // Calculate screen position
                     uint32_t *screenptr = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + 0x18000 + y_div_4 * 160;
+                    uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_4 * 160;
                     for (uint8_t column = 0; column < 80; column++) {
                         // Access vidram and font data once per character
                         uint8_t * charcode = cga_row + column * 2; // Character code
@@ -462,7 +462,7 @@ static inline void renderer() {
                     int y_div_2 = y / 2; // Precompute y / 2
                     // Calculate screen position
                     uint32_t *screenptr = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + 0x18000 + y_div_2 * 80 + (y_div_2 & 1 * 8192);
+                    uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_2 * 80 + (y_div_2 & 1 * 8192);
                     for (int column = 0; column < 80; column++) {
                         // Access vidram and font data once per character
                         uint8_t * charcode = cga_row + column * 2; // Character code
@@ -486,7 +486,7 @@ static inline void renderer() {
         }
     }
 }
-
+extern "C" uint32_t sb_samplerate;
 DWORD WINAPI TicksThread(LPVOID lpParam) {
 
     WAVEFORMATEX format = { 0 };
@@ -518,9 +518,11 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     double elapsed_blink_tics = 0;
     double elapsed_frame_tics = 0;
     double last_dss_tick = 0;
+    double last_sb_tick = 0;
     double last_sound_tick = 0;
     int16_t last_dss_sample = 0;
-
+    int16_t last_sb_sample = 0;
+    int z = 1;
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
 
@@ -539,19 +541,32 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             last_dss_tick = elapsedTime;
         }
 
+        // Sound Blaster
+        if (elapsedTime - last_sb_tick > hostfreq / sb_samplerate) {
+            last_sb_sample = blaster_generateSample();
+
+            last_sb_tick = elapsedTime;
+        }
+
+
         // Sound frequency 44100
         if (elapsedTime - last_sound_tick > hostfreq / 44100) {
             static int sound_counter = 0;
             int16_t samples[2];
             samples[0] = samples[1] = 0;
             adlib_getsample(samples, 1);
+
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
+
             if (speakerenabled)
                 samples[0] += speaker_sample();
 
             samples[0] += sn76489_sample();
 
+
+            if (last_sb_sample)
+                samples[0] += last_sb_sample;
 
             samples[1] = samples[0];
 
@@ -589,6 +604,9 @@ extern "C" void HandleMouse(int x, int y, uint8_t buttons) {
     prev_y = y;
     prev_x = x;
 }
+
+
+uint8_t KB_I, KB_J, KB_K, KB_M, KB_A = 0;
 
 extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
     unsigned char scancode = 0;
@@ -679,12 +697,14 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x16;
             break;
         case 'I':
+            KB_I = isKeyDown;
             scancode = 0x17;
             break;
         case 'O':
             scancode = 0x18;
             break;
         case 'P':
+            KB_A = isKeyDown;
             scancode = 0x19;
             break;
         case VK_OEM_4:
@@ -720,9 +740,11 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x23;
             break;
         case 'J':
+            KB_J = isKeyDown;
             scancode = 0x24;
             break;
         case 'K':
+            KB_K = isKeyDown ? 1 : 0;
             scancode = 0x25;
             break;
         case 'L':
@@ -764,6 +786,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x31;
             break;
         case 'M':
+            KB_M = isKeyDown;
             scancode = 0x32;
             break;
         case VK_OEM_COMMA:

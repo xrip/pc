@@ -5,7 +5,7 @@ static psram_spi_inst_t psram_spi;
 bool PSRAM_AVAILABLE;
 
 void init_psram() {
-    psram_spi = psram_spi_init_clkdiv(pio0, -1, 2.0f, true);
+    psram_spi = psram_spi_init_clkdiv(pio0, -1, 2.2f, false);
     psram_write32(&psram_spi, 0x313373, 0xDEADBEEF);
     PSRAM_AVAILABLE = 0xDEADBEEF == psram_read32(&psram_spi, 0x313373);
     psram_cleanup();

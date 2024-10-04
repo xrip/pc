@@ -12,6 +12,7 @@
 #include "ps2.h"
 #include "ff.h"
 #include "psram_spi.h"
+#include "nespad.h"
 
 FATFS fs;
 i2s_config_t i2s_config;
@@ -43,7 +44,7 @@ struct semaphore vga_start_semaphore;
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
 static int sample_index = 0;
-
+extern uint32_t sb_samplerate;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
     i2s_config.sample_freq = SOUND_FREQUENCY;
@@ -65,7 +66,10 @@ void __time_critical_func() second_core() {
     uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick, last_raytrace_tick = tick;
 
     uint64_t last_dss_tick = 0;
+    uint64_t last_sb_tick = 0;
     int16_t last_dss_sample = 0;
+    int16_t last_sb_sample = 0;
+
 
     while (true) {
         if (tick >= last_timer_tick + (1000000 / timer_period)) {
@@ -85,6 +89,14 @@ void __time_critical_func() second_core() {
             last_dss_tick = tick;
         }
 
+
+        // Sound Blaster
+        if (tick > last_sb_tick + 1000000 / sb_samplerate) {
+            last_sb_sample = blaster_generateSample();
+
+            last_sb_tick = tick;
+        }
+
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             static int sound_counter = 0;
@@ -97,7 +109,10 @@ void __time_critical_func() second_core() {
 
             samples[0] += sn76489_sample();
 
+            if (last_sb_sample)
+                samples[0] += last_sb_sample;
 
+            samples[0] += adlibgensample() * 32;
 
             samples[1] = samples[0];
 
@@ -188,9 +203,11 @@ int main() {
     set_sys_clock_hz(460000000, 0);
     *qmi_m0_timing = 0x60007303;
 #else
-    vreg_set_voltage(VREG_VOLTAGE_1_30);
+    //vreg_set_voltage(VREG_VOLTAGE_1_30);
+    hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
+    vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(376 * 1000, true);
+    set_sys_clock_khz(378 * 1000, true);
 #endif
 
 
@@ -205,6 +222,8 @@ int main() {
     }
 
     keyboard_init();
+    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+
     i2s_config = i2s_get_default_config();
 
     sem_init(&vga_start_semaphore, 0, 1);
@@ -216,6 +235,10 @@ int main() {
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
     init_psram();
+    if (!PSRAM_AVAILABLE) {
+        draw_text("No PSRAM detected.", 0, 0, 12, 0);
+        while (1);
+    }
 
     if (FR_OK != f_mount(&fs, "0", 1)) {
         draw_text("SD Card not inserted or SD Card error!", 0, 0, 12, 0);

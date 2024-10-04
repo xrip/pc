@@ -445,11 +445,17 @@ void graphics_set_mode(enum graphics_mode_t mode) {
             }
         case CGA_640x200x2:
         case CGA_320x200x4:
+        case CGA_320x200x4_BW:
+        case HERC_640x480x2:
         case TGA_160x200x16:
+        case TGA_640x200x16:
         case VGA_320x200x256:
+        case VGA_640x480x2:
         case VGA_320x200x256x4:
         case EGA_320x200x16x4:
         case TGA_320x200x16:
+        case COMPOSITE_160x200x16:
+        case COMPOSITE_160x200x16_force:
             TMPL_LINE8 = 0b11000000;
             HS_SHIFT = 328 * 2;
             HS_SIZE = 48 * 2;
