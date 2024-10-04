@@ -45,6 +45,7 @@ struct semaphore vga_start_semaphore;
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
+extern uint8_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
     i2s_config.sample_freq = SOUND_FREQUENCY;
@@ -95,7 +96,7 @@ void __time_critical_func() second_core() {
 
 
         // Sound Blaster
-        if (tick > last_sb_tick + 1000000 / sb_samplerate) {
+        if (tick > last_sb_tick + timeconst) {
             last_sb_sample = blaster_generateSample();
 
             last_sb_tick = tick;
