@@ -154,8 +154,8 @@ void portout(uint16_t portnum, uint16_t value) {
             sn76489_out(value);
             return tandy_write(portnum, value);
 // Gamepad
-        case 0x201:
-            return gamepad_out();
+//        case 0x201:
+//            return gamepad_out();
 // GameBlaster / Creative Music System
         case 0x220:
         case 0x221:
@@ -332,8 +332,8 @@ uint16_t portin(uint16_t portnum) {
         case 0x87:
             return i8237_readpage(portnum);
 
-        case 0x201:
-            return gamepad_in();
+//        case 0x201:
+//            return gamepad_in();
 
         case 0x220:
         case 0x221:

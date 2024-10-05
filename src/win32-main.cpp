@@ -186,11 +186,11 @@ static inline void renderer() {
                     break;
                 }
                 case 0x1e:
-                    //log_debug = 1;
+//                    log_debug = 1;
                 {
                     if (y >= 348) break;
                     uint32_t *pixels = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + 0x10000 + (y & 3) * 8192 + y / 4 * 90;
+                    uint8_t *cga_row = VIDEORAM + (y & 3) * 8192 + y / 4 * 90;
                     cga_row += 5; //
                     // Each byte containing 8 pixels
                     for (int x = 640 / 8; x--;) {
@@ -208,9 +208,11 @@ static inline void renderer() {
 
                     break;
                 }
-                case 0x7: {
+                case 0x7:
+//                    log_debug = 1;
+                {
                     uint32_t *pixels = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + 0x10000 + (y & 3) * 8192 + y / 4 * 80;
+                    uint8_t *cga_row = VIDEORAM + (y & 3) * 8192 + y / 4 * 80;
                     // Each byte containing 8 pixels
                     for (int x = 640 / 8; x--;) {
                         uint8_t cga_byte = *cga_row++;
@@ -589,7 +591,6 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             last_sb_tick = elapsedTime;
         }
-
 
         // Sound frequency 44100
         if (elapsedTime - last_sound_tick >=  hostfreq / (44100)) {
