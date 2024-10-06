@@ -35,8 +35,7 @@ else ()
 #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
-    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c)
-
+    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/emu8950_pico/emu8950.c src/emu8950_pico/slot_render.cpp)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
             USE_EMU8950_OPL
             EMU8950_SLOT_RENDER=1
