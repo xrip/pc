@@ -13,7 +13,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 # INCLUDE FILES THAT SHOULD BE COMPILED:
-file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c")
+file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c" "src/emu8950/*.c")
 
 message(STATUS "Add source files:")
 foreach(SRC_FILE IN LISTS SRC)
@@ -44,6 +44,14 @@ else ()
     target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=3)
     endif ()
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
+
+    if (PICO_ON_DEVICE)
+        target_sources(${PROJECT_NAME} PRIVATE
+                src/emu8950/slot_render_pico.S
+        )
+        target_link_libraries(${PROJECT_NAME} PRIVATE hardware_interp)
+    endif()
+
 
     pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/186/286 emulator")
     pico_set_program_version(${PROJECT_NAME} "wip")
