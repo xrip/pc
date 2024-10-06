@@ -23,6 +23,11 @@ message(STATUS "")
 
 if (PICO_PLATFORM STREQUAL "host")
     add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+            USE_EMU8950_OPL
+            EMU8950_NO_RATECONV
+            EMU8950_NO_TIMER
+    )
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
     pico_sdk_init()

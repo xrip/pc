@@ -4,6 +4,7 @@
 #include "emulator/emulator.h"
 #include "emulator/includes/font8x16.h"
 #include "emulator/includes/font8x8.h"
+#include "emu8950/emu8950.h"
 #pragma comment(lib, "winmm.lib")  // Link with Windows multimedia library
 static uint32_t SCREEN[400][640];
 
@@ -13,6 +14,7 @@ uint8_t log_debug = 0;
 HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
+OPL *emu8950_opl;
 
 #define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 50))
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
@@ -597,7 +599,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             static int sound_counter = 0;
             int16_t samples[2];
             samples[0] = samples[1] = 0;
-            adlib_getsample(samples, 1);
+            //adlib_getsample(samples, 1);
 
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
@@ -611,9 +613,12 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             if (last_sb_sample)
                 samples[0] += last_sb_sample;
 
+            samples[0] += OPL_calc(emu8950_opl);
             samples[1] = samples[0];
 
+
             cms_samples(samples);
+
 
             audio_buffer[sample_index++] = (int16_t) samples[1];
             audio_buffer[sample_index++] = (int16_t) samples[0];
@@ -1088,7 +1093,7 @@ extern "C" void adlib_init(uint32_t samplerate);
 extern "C" void adlib_write(uintptr_t idx, uint8_t val);
 
 extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
-    adlib_write(reg, value);
+    OPL_writeReg(emu8950_opl, reg, value);
     //    printf("Adlib Write %x %x", reg, value);
     uint16_t data = (reg & 0xff) << 8 | 2 << 4 | 0b0000 | (reg >> 8) & 1;
     Enqueue(&queue, data);
@@ -1212,7 +1217,8 @@ int main(int argc, char **argv) {
         Sleep(10);
     }
 
-    adlib_init(SOUND_FREQUENCY);
+//    adlib_init(SOUND_FREQUENCY);
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
     sn76489_reset();
     reset86();
 
