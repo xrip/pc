@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.22)
 include(pico_sdk_import.cmake)
 
 project(pc C CXX ASM)
+enable_language(CXX)
 SET(BUILD_NAME "${PROJECT_NAME}")
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 14)
 
 set(OUTPUT_DIR "${CMAKE_SOURCE_DIR}/bin/${PICO_PLATFORM}/${CMAKE_BUILD_TYPE}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
@@ -13,7 +14,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 # INCLUDE FILES THAT SHOULD BE COMPILED:
-file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c" "src/emu8950/*.c")
+file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c" "src/emu8950/*.c" "src/emu8950/*.cpp")
 
 message(STATUS "Add source files:")
 foreach(SRC_FILE IN LISTS SRC)
@@ -22,22 +23,77 @@ endforeach()
 message(STATUS "")
 
 if (PICO_PLATFORM STREQUAL "host")
-    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c)
+    add_compile_options(-fms-extensions)
+    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c )
     target_compile_definitions(${PROJECT_NAME} PRIVATE
             USE_EMU8950_OPL
-            EMU8950_NO_RATECONV
-            EMU8950_NO_TIMER
+            EMU8950_SLOT_RENDER=1
+            EMU8950_NO_RATECONV=1
+            # slightly slower but only uses 1K of sin tables vs 9K
+            EMU8950_NO_WAVE_TABLE_MAP=1
+
+            EMU8950_NO_TLL=1 # don't use lookup table for total level
+            EMU8950_NO_FLOAT=1 # double check there is no float
+            EMU8950_NO_TIMER=1 # disable timer which isn't used
+            EMU8950_NO_TEST_FLAG=1 # disable test flags (which aren't used)
+            EMU8950_SIMPLER_NOISE=1 # only generate noise bit when needed
+            EMU8950_SHORT_NOISE_UPDATE_CHECK=1 # only update short noise if it is used
+            # actually this doesn't make things faster
+            #EMU8950_LINEAR_NEG_NOT_NOT=1 # negative values rounded towrds -infinity not 0 without this; does it matter?
+
+            EMU8950_LINEAR_SKIP=1 # skip silent slots
+            EMU8950_LINEAR_END_OF_NOTE_OPTIMIZATION # early out envelope when DECAY/SUSTAIN/RELEASE envelope reaches mute
+            EMU8950_NO_PERCUSSION_MODE=1 # rhythm only mode (doom doesn't use percussion; whhhaaaah!?)
+            EMU8950_LINEAR=1 # reorganize to do linear runs of channels
+
+            # things we really don't care about but need for diff-ing with non linear version
+            # BEWARE - need to turn this off for comparison with on device version which doesn't do nitpicks (though could i guess)
     )
+
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
     pico_sdk_init()
 
-    add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -O2)
+    add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
 #    add_compile_options(-flto -fwhole-program )
 #    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c)
+
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+            USE_EMU8950_OPL
+            EMU8950_SLOT_RENDER=1
+            EMU8950_NO_RATECONV=1
+            # slightly slower but only uses 1K of sin tables vs 9K
+            EMU8950_NO_WAVE_TABLE_MAP=1
+
+            EMU8950_NO_TLL=1 # don't use lookup table for total level
+            EMU8950_NO_FLOAT=1 # double check there is no float
+            EMU8950_NO_TIMER=1 # disable timer which isn't used
+            EMU8950_NO_TEST_FLAG=1 # disable test flags (which aren't used)
+            EMU8950_SIMPLER_NOISE=1 # only generate noise bit when needed
+            EMU8950_SHORT_NOISE_UPDATE_CHECK=1 # only update short noise if it is used
+            # actually this doesn't make things faster
+            #EMU8950_LINEAR_NEG_NOT_NOT=1 # negative values rounded towrds -infinity not 0 without this; does it matter?
+
+            EMU8950_LINEAR_SKIP=1 # skip silent slots
+            EMU8950_LINEAR_END_OF_NOTE_OPTIMIZATION # early out envelope when DECAY/SUSTAIN/RELEASE envelope reaches mute
+            EMU8950_NO_PERCUSSION_MODE=1 # rhythm only mode (doom doesn't use percussion; whhhaaaah!?)
+            EMU8950_LINEAR=1 # reorganize to do linear runs of channels
+
+            # things we really don't care about but need for diff-ing with non linear version
+            # BEWARE - need to turn this off for comparison with on device version which doesn't do nitpicks (though could i guess)
+
+            EMU8950_ASM=1
+
+    )
+    if (PICO_ON_DEVICE)
+        target_sources(${PROJECT_NAME} PRIVATE
+                emu8950/slot_render_pico.S
+        )
+        target_link_libraries(${PROJECT_NAME} PRIVATE hardware_interp)
+    endif()
     target_compile_options(${PROJECT_NAME} PUBLIC -Wall)
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
@@ -50,12 +106,6 @@ else ()
     endif ()
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
-    if (PICO_ON_DEVICE)
-        target_sources(${PROJECT_NAME} PRIVATE
-                src/emu8950/slot_render_pico.S
-        )
-        target_link_libraries(${PROJECT_NAME} PRIVATE hardware_interp)
-    endif()
 
 
     pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/186/286 emulator")
@@ -139,5 +189,5 @@ else ()
     pico_add_extra_outputs(${PROJECT_NAME})
 endif ()
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
-target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_include_directories(${PROJECT_NAME} PRIVATE src src/emu8950)
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)

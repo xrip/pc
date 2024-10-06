@@ -4,7 +4,7 @@
 #include "emulator/emulator.h"
 #include "emulator/includes/font8x16.h"
 #include "emulator/includes/font8x8.h"
-#include "emu8950/emu8950.h"
+#include "emu8950.h"
 #pragma comment(lib, "winmm.lib")  // Link with Windows multimedia library
 static uint32_t SCREEN[400][640];
 
@@ -599,7 +599,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             static int sound_counter = 0;
             int16_t samples[2];
             samples[0] = samples[1] = 0;
-            //adlib_getsample(samples, 1);
+            OPL_calc_buffer_stereo(emu8950_opl, reinterpret_cast<int32_t *>(samples), 1);
 
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
@@ -613,7 +613,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             if (last_sb_sample)
                 samples[0] += last_sb_sample;
 
-            samples[0] += OPL_calc(emu8950_opl);
+
             samples[1] = samples[0];
 
 
