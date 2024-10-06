@@ -1881,14 +1881,14 @@ void OPL_writeReg(OPL *opl, uint32_t reg, uint8_t data) {
 #if !EMU8950_NO_TIMER
             latch_timer1(opl);
 #else
-            printf("WARNING TIMER1 LATCH\n");
+            //printf("WARNING TIMER1 LATCH\n");
 #endif
         }
         if (data & 0x02) {
 #if !EMU8950_NO_TIMER
             latch_timer2(opl);
 #else
-            printf("WARNING TIMER2 LATCH\n");
+            //printf("WARNING TIMER2 LATCH\n");
 #endif
         }
 
@@ -1899,7 +1899,7 @@ void OPL_writeReg(OPL *opl, uint32_t reg, uint8_t data) {
             opl->csm_mode = (data >> 7) & 1;
 #else
             if ((data >> 7) & 1) {
-                printf("WARNING SET CSM MODE\n");
+//                printf("WARNING SET CSM MODE\n");
             }
 #endif
             opl->notesel = (data >> 6) & 1;

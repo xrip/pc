@@ -9,11 +9,9 @@ uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
-#if !PICO_ON_DEVICE
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 
-#endif
 static inline uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
@@ -185,7 +183,6 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x37A:
             return dss_out(portnum, value);
 // AdLib / OPL
-#if !PICO_ON_DEVICE
         case 0x388:
             adlib_register = value;
             break;
@@ -199,11 +196,6 @@ void portout(uint16_t portnum, uint16_t value) {
                 }
             }
             return adlib_write_d(adlib_register, value);
-#else
-        case 0x388:
-        case 0x389:
-            return outadlib(portnum, value);
-#endif
 // EGA/VGA
         case 0x3C0:
         case 0x3C4:
@@ -352,7 +344,7 @@ uint16_t portin(uint16_t portnum) {
         case 0x22e:
         case 0x22f:
             return blaster_read(portnum);
-            return cms_in(portnum);
+//            return cms_in(portnum);
 // RTC
         case 0x240:
         case 0x241:
@@ -386,7 +378,6 @@ uint16_t portin(uint16_t portnum) {
 // Adlib
         case 0x388:
         case 0x389:
-#if !PICO_ON_DEVICE
             if (!adlibregmem[4])
                 adlibstatus = 0;
             else
@@ -394,9 +385,6 @@ uint16_t portin(uint16_t portnum) {
 
             adlibstatus = adlibstatus + (adlibregmem[4] & 1) * 0x40 + (adlibregmem[4] & 2) * 0x10;
             return adlibstatus;
-#else
-            return inadlib(portnum);
-#endif
         case 0x3C1:
         case 0x3C2:
         case 0x3C7:

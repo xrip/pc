@@ -90,7 +90,7 @@ else ()
     )
     if (PICO_ON_DEVICE)
         target_sources(${PROJECT_NAME} PRIVATE
-                emu8950/slot_render_pico.S
+                src/emu8950/slot_render_pico.S
         )
         target_link_libraries(${PROJECT_NAME} PRIVATE hardware_interp)
     endif()

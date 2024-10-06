@@ -13,10 +13,11 @@
 #include "ff.h"
 #include "psram_spi.h"
 #include "nespad.h"
+#include "emu8950.h"
 
 FATFS fs;
 i2s_config_t i2s_config;
-
+OPL *emu8950_opl;
 void tandy_write(uint16_t reg, uint8_t value) {
 }
 
@@ -25,7 +26,7 @@ extern void adlib_init(uint32_t samplerate);
 extern void adlib_write(uintptr_t idx, uint8_t val);
 
 void adlib_write_d(uint16_t reg, uint8_t value) {
-    //adlib_write(reg, value);
+        OPL_writeReg(emu8950_opl, reg, value);
 }
 
 void cms_write(uint16_t reg, uint8_t val) {
@@ -54,6 +55,8 @@ void __time_critical_func() second_core() {
     i2s_init(&i2s_config);
     sleep_ms(100);
 
+
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
     graphics_init();
     graphics_set_buffer(VIDEORAM, 320, 200);
     graphics_set_textbuffer(VIDEORAM + 32768);
@@ -105,6 +108,7 @@ void __time_critical_func() second_core() {
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             int16_t samples[2] = { 0, 0 };
+            OPL_calc_buffer_stereo(emu8950_opl, (int32_t *)(samples), 1);
 
             if (last_dss_sample)
                 samples[0] += last_dss_sample;
@@ -116,7 +120,7 @@ void __time_critical_func() second_core() {
             if (last_sb_sample)
                 samples[0] += last_sb_sample;
 
-            samples[0] += adlibgensample() * 32;
+//            samples[0] += adlibgensample() * 32;
 
             samples[1] = samples[0];
 
@@ -249,6 +253,7 @@ int main() {
         while (1);
     }
    // adlib_init(SOUND_FREQUENCY);
+
     sn76489_reset();
     reset86();
 
