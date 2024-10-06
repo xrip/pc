@@ -26,7 +26,7 @@ extern void adlib_init(uint32_t samplerate);
 extern void adlib_write(uintptr_t idx, uint8_t val);
 
 void adlib_write_d(uint16_t reg, uint8_t value) {
-        OPL_writeReg(emu8950_opl, reg, value);
+    OPL_writeReg(emu8950_opl, reg, value);
 }
 
 void cms_write(uint16_t reg, uint8_t val) {
@@ -215,7 +215,7 @@ int main() {
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(378 * 1000, true);
+    set_sys_clock_khz(396 * 1000, true);
 #endif
 
 
@@ -230,7 +230,7 @@ int main() {
     }
 
     keyboard_init();
-    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    //nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     i2s_config = i2s_get_default_config();
 
@@ -243,7 +243,7 @@ int main() {
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
     init_psram();
-    if (!PSRAM_AVAILABLE) {
+        if (!PSRAM_AVAILABLE) {
         draw_text("No PSRAM detected.", 0, 0, 12, 0);
         while (1);
     }

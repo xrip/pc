@@ -10,7 +10,7 @@ extern "C" {
 #ifdef PICO_ON_DEVICE
 #define VIDEORAM_SIZE (64 << 10)
 #if PICO_RP2350
-#define RAM_SIZE (416 << 10)
+#define RAM_SIZE (400 << 10)
 #else
 #define RAM_SIZE (146 << 10)
 #endif
