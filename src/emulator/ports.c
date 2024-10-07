@@ -9,6 +9,8 @@ uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
+
+
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 
@@ -57,39 +59,6 @@ static inline uint8_t rtc_read(uint16_t addr) {
 
     return ret;
 }
-
-uint16_t gamepad_tick = 0;
-uint8_t gamepad_in() {
-    //printf("gamepad in %d \n", gamepad_tick);
-    gamepad_tick++;
-    if (gamepad_tick >= 32) {
-        gamepad_tick = 0;
-        return 0b11110000;
-    }
-#if PICO_ON_DEVICE
-    nespad_read();
-    nespad_state = ~nespad_state;
-    uint8_t gamepad_state  = ((nespad_state & DPAD_RIGHT)) != 0;
-    gamepad_state |= ((nespad_state & DPAD_UP)     != 0) << 1;
-    gamepad_state |= ((nespad_state & DPAD_LEFT)   != 0) << 2;
-    gamepad_state |= ((nespad_state & DPAD_DOWN)   != 0) << 3;
-
-    gamepad_state |= ((nespad_state & DPAD_A)      != 0) << 4;
-    gamepad_state |= ((nespad_state & DPAD_B)      != 0) << 5;
-    gamepad_state |= ((nespad_state & DPAD_START)  != 0) << 6;
-    gamepad_state |= ((nespad_state & DPAD_SELECT) != 0) << 7;
-
-    return gamepad_state & 0xff;
-#else
-
-    //printf("read \r\n");
-#endif
-}
-
-static inline void gamepad_out() {
-    gamepad_tick = 0;
-}
-
 
 void portout(uint16_t portnum, uint16_t value) {
     switch (portnum) {
@@ -182,10 +151,10 @@ void portout(uint16_t portnum, uint16_t value) {
             return out_ems(portnum, value);
 
         case 0x278:
-            return covox_out(portnum, value);
+            covox_sample = (int16_t)((value - 128) << 7);
+            return;
 
         case 0x378:
-//            return covox_out(portnum, value);
         case 0x37A:
             return dss_out(portnum, value);
 // AdLib / OPL

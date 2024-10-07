@@ -31,7 +31,7 @@ uint8_t readlen;
 uint8_t readready;
 uint8_t writebuf;
 uint8_t timeconst;
-uint64_t sb_samplerate = 220500;
+uint64_t sb_samplerate = 22050;
 uint32_t timer;
 uint32_t dmalen;
 uint8_t dmachan = 1;

@@ -613,14 +613,16 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
                 samples[0] += last_sb_sample;
 
 
+            samples[0] += covox_sample;
+
             samples[1] = samples[0];
 
 
             cms_samples(samples);
 
 
-            audio_buffer[sample_index++] = (int16_t) samples[1];
             audio_buffer[sample_index++] = (int16_t) samples[0];
+            audio_buffer[sample_index++] = (int16_t) samples[1];
 
 
             if (sample_index >= AUDIO_BUFFER_LENGTH) {

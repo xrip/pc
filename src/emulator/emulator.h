@@ -152,7 +152,7 @@ extern uint8_t dss_in(uint16_t portnum);
 
 extern void covox_out(uint16_t portnum, uint8_t value);
 
-extern uint8_t dss_sample();
+extern uint16_t dss_sample();
 
 extern int16_t speaker_sample();
 
@@ -196,6 +196,8 @@ uint8_t ems_read(uint32_t addr);
 uint16_t ems_readw(uint32_t addr);
 void ems_write(uint32_t addr, uint8_t data);
 void ems_writew(uint32_t addr, uint16_t data);
+
+extern int16_t covox_sample;
 #ifdef __cplusplus
 }
 #endif

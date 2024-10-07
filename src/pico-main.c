@@ -121,7 +121,7 @@ void __time_critical_func() second_core() {
                 samples[0] += last_sb_sample;
 
 //            samples[0] += adlibgensample() * 32;
-
+            samples[0] += covox_sample;
             samples[1] = samples[0];
 
             cms_samples(samples);
