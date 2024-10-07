@@ -637,8 +637,10 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         if (elapsedTime - elapsed_frame_tics >= 16'666) {
+
             renderer();
             elapsed_frame_tics = elapsedTime; // Reset the tick counter for 2Hz
+
         }
     }
 }
@@ -1224,11 +1226,9 @@ int main(int argc, char **argv) {
     CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
     while (true) {
-
         exec86(327600);
         if (mfb_update(SCREEN, 0) == -1)
             exit(1);
-
     }
     // Wait for the thread to finish
     //    WaitForSingleObject(hThread, INFINITE);
