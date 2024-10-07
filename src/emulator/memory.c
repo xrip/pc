@@ -6,11 +6,13 @@
 #define VIDEORAM_START (0xA0000)
 #define VIDEORAM_END (0xC0000)
 
-#define UMB_START (0xC0000)
-#define UMB_END (0xE0000)
+#define EMS_START (0xC0000)
+#define EMS_END   (0xD0000)
 
-#define EMS_START (0xE0000)
-#define EMS_END   (0xF0000)
+
+#define UMB_START (0xD0000)
+#define UMB_END (0xFC000)
+
 
 #define HMA_START (0x100000)
 #define HMA_END (0x110000)

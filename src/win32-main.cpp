@@ -594,7 +594,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             last_sb_tick = elapsedTime;
         }
 
-        if (elapsedTime - last_sound_tick >=  hostfreq / (SOUND_FREQUENCY)) {
+        if (elapsedTime - last_sound_tick >=  hostfreq / SOUND_FREQUENCY) {
             static int sound_counter = 0;
             int16_t samples[2];
             samples[0] = samples[1] = 0;
