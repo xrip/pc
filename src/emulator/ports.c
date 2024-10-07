@@ -373,8 +373,11 @@ uint16_t portin(uint16_t portnum) {
             return rtc_read(portnum);
         case 0x27A: // LPT2 status (covox is always ready)
             return 0;
+        case 0x378:
         case 0x379:
             return dss_in(portnum);
+        case 0x37A:
+            return 0;
 // Adlib
         case 0x388:
         case 0x389:

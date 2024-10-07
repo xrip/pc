@@ -558,31 +558,31 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
     QueryPerformanceCounter(&start); // Get the starting time
 
-    double elapsed_system_timer = 0;
-    double elapsed_blink_tics = 0;
-    double elapsed_frame_tics = 0;
-    double last_dss_tick = 0;
-    double last_sb_tick = 0;
-    double last_sound_tick = 0;
+    uint32_t elapsed_system_timer = 0;
+    uint32_t elapsed_blink_tics = 0;
+    uint32_t elapsed_frame_tics = 0;
+    uint32_t last_dss_tick = 0;
+    uint32_t last_sb_tick = 0;
+    uint32_t last_sound_tick = 0;
+
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-    int z = 1;
 
     updateEvent = CreateEvent(NULL, 1, 1, NULL);
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
 
         // Calculate elapsed time in ticks since the start
-        auto elapsedTime = (double) (current.QuadPart - start.QuadPart);
+        uint32_t elapsedTime = (uint32_t)(current.QuadPart - start.QuadPart);
 
         if (elapsedTime - elapsed_system_timer >= hostfreq / timer_period) {
             doirq(0);
             elapsed_system_timer = elapsedTime; // Reset the tick counter for 1Hz
         }
 
-        // Dinse Sound Source frequency 7100
-        if (elapsedTime > last_dss_tick + 1400) {
-            last_dss_sample = dss_sample() * 32;
+        // Disney Sound Source frequency ~7KHz
+        if (elapsedTime - last_dss_tick > hostfreq / 7000) {
+            last_dss_sample = dss_sample();
 
             last_dss_tick = elapsedTime;
         }
@@ -594,8 +594,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             last_sb_tick = elapsedTime;
         }
 
-        // Sound frequency 44100
-        if (elapsedTime - last_sound_tick >=  hostfreq / (44100)) {
+        if (elapsedTime - last_sound_tick >=  hostfreq / (SOUND_FREQUENCY)) {
             static int sound_counter = 0;
             int16_t samples[2];
             samples[0] = samples[1] = 0;
@@ -632,7 +631,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             last_sound_tick = elapsedTime;
         }
 
-        if (elapsedTime - elapsed_blink_tics >= 500'000'0) {
+        if (elapsedTime - elapsed_blink_tics >= 333'333'3) {
             cursor_blink_state ^= 1;
             elapsed_blink_tics = elapsedTime; // Reset the tick counter for 2Hz
         }

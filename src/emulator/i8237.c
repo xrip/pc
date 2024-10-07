@@ -1,3 +1,5 @@
+// https://wiki.osdev.org/ISA_DMA
+// https://pdos.csail.mit.edu/6.828/2004/readings/hardware/8237A.pdf
 #include "emulator.h"
 
 /*

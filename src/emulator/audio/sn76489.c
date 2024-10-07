@@ -24,7 +24,6 @@
 */
 uint32_t clock = 3579545;
 const uint16_t samplerate = SOUND_FREQUENCY;
-#define quality 0
 
 uint32_t base_incr = 0;
 
@@ -56,21 +55,21 @@ int16_t channel_sample[4];
 // } sng = { 0 };
 
 
-const uint32_t volume_table[16] = {
+const uint16_t volume_table[16] = {
         0xff, 0xcb, 0xa1, 0x80, 0x65, 0x50, 0x40, 0x33, 0x28, 0x20, 0x19, 0x14, 0x10, 0x0c, 0x0a, 0x00
 };
 
 #define GETA_BITS 24
 
 void sn76489_reset() {
-    if (quality) {
+#ifdef QUALITY
         base_incr = 1 << GETA_BITS;
         realstep = (uint32_t) ((1 << 31) / samplerate);
         sngstep = (uint32_t) ((1 << 31) / (clock / 16));
         sngtime = 0;
-    } else {
+#else
         base_incr = (uint32_t) ((double) clock * (1 << GETA_BITS) / (16 * samplerate));
-    }
+#endif
 
     for (int i = 0; i < 3; i++) {
         count[i] = 0;
@@ -145,7 +144,7 @@ static inline int parity(int value) {
     return value & 1;
 };
 
-static inline void update_output() {
+static inline int16_t update_output() {
     base_count += base_incr;
     uint32_t incr = (base_count >> GETA_BITS);
     base_count &= (1 << GETA_BITS) - 1;
@@ -188,18 +187,13 @@ static inline void update_output() {
 
         channel_sample[i] >>= 1;
     }
-}
-
-static inline int16_t mix_output() {
     return (int16_t) (channel_sample[0] + channel_sample[1] + channel_sample[2] + channel_sample[3]);
 }
 
 int16_t sn76489_sample() {
-    if (!quality) {
-        update_output();
-        return mix_output();
-    }
-
+#ifndef QUALITY
+        return update_output();
+#else
     /* Simple rate converter */
     while (realstep > sngtime) {
         sngtime += sngstep;
@@ -209,8 +203,9 @@ int16_t sn76489_sample() {
     sngtime = sngtime - realstep;
 
     return mix_output();
+#endif
 }
-
+#if 0
 static inline void mix_output_stereo(int32_t out[2]) {
     out[0] = out[1] = 0;
     if ((stereo >> 4) & 0x08) {
@@ -231,11 +226,11 @@ static inline void mix_output_stereo(int32_t out[2]) {
 }
 
 void sn76489_sample_stereo(int32_t out[2]) {
-    if (!quality) {
+#ifdef QUALITY
         update_output();
         mix_output_stereo(out);
         return;
-    }
+#else
 
     while (realstep > sngtime) {
         sngtime += sngstep;
@@ -244,4 +239,6 @@ void sn76489_sample_stereo(int32_t out[2]) {
 
     sngtime = sngtime - realstep;
     mix_output_stereo(out);
+#endif
 }
+#endif
