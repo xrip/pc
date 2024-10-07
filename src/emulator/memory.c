@@ -115,10 +115,10 @@ void write86(uint32_t address, uint8_t value) {
         if (log_debug)
             printf("Writing %04X %02x\n", (vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE, value);
         VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
+    } else if (address >= EMS_START && address < EMS_END) {
+        ems_write(address - EMS_START, value);
     } else if (address >= UMB_START && address < UMB_END) {
         UMB[address - UMB_START] = value;
-    } else if (address >= EMS_START && address < EMS_END) {
-        ems_write(address-  EMS_START, value);
     } else if (address >= HMA_START && address < HMA_END) {
         HMA[address - HMA_START] = value;
     }
@@ -136,10 +136,10 @@ void writew86(uint32_t address, uint16_t value) {
             if (log_debug)
                 printf("WritingW %04X %04x\n", (vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE, value);
             *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
+        } else if (address >= EMS_START && address < EMS_END) {
+            ems_writew(address - EMS_START, value);
         } else if (address >= UMB_START && address < UMB_END) {
             *(uint16_t *) &UMB[address - UMB_START] = value;
-        } else if (address >= EMS_START && address < EMS_END) {
-            ems_writew(address -  EMS_START, value);
         } else if (address >= HMA_START && address < HMA_END) {
             *(uint16_t *) &HMA[address - HMA_START] = value;
         }
@@ -152,11 +152,11 @@ uint8_t read86(uint32_t address) {
         return RAM[address];
     } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
         return VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
-    } else if (address >= UMB_START && address < UMB_END) {
-        return UMB[address - UMB_START];
-    }   else if (address >= EMS_START && address < EMS_END) {
+    } else if (address >= EMS_START && address < EMS_END) {
         return ems_read(address - EMS_START);
-     }else if (address == 0xFC000) {
+    }  else if (address >= UMB_START && address < UMB_END) {
+        return UMB[address - UMB_START];
+    }else if (address == 0xFC000) {
         return 0x21;
     } else if (address >= BIOS_START && address < HMA_START) {
         return BIOS[address - BIOS_START];
@@ -175,10 +175,10 @@ uint16_t readw86(uint32_t address) {
             return *(uint16_t *) &RAM[address];
         } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
             return *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
-        } else if (address >= UMB_START && address < UMB_END) {
-            return *(uint16_t *) &UMB[address - UMB_START];
         }  else if (address >= EMS_START && address < EMS_END) {
             return ems_readw(address - EMS_START);
+        }else if (address >= UMB_START && address < UMB_END) {
+            return *(uint16_t *) &UMB[address - UMB_START];
         } else if (address >= BIOS_START && address < HMA_START) {
             return *(uint16_t *) &BIOS[address - BIOS_START];
         } else if (address >= HMA_START && address < HMA_END) {
@@ -187,4 +187,5 @@ uint16_t readw86(uint32_t address) {
     }
     return 0;
 }
+
 #endif

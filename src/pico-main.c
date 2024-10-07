@@ -85,7 +85,7 @@ void __time_critical_func() second_core() {
             last_timer_tick = tick;
         }
 
-        if (tick >= last_cursor_blink + 500000) {
+        if (tick >= last_cursor_blink + 333333) {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
@@ -245,7 +245,7 @@ int main() {
     init_psram();
         if (!PSRAM_AVAILABLE) {
         draw_text("No PSRAM detected.", 0, 0, 12, 0);
-        while (1);
+//        while (1);
     }
 
     if (FR_OK != f_mount(&fs, "0", 1)) {

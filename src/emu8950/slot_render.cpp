@@ -515,11 +515,11 @@ template <int F_NUM, typename F> uint32_t slot_envelope_loop(F&& fn, SLOT_RENDER
 #if DUMPO
                 if (hack_ch == 17 && s == 12) breako();
 #endif
-                if (unlikely((++eg_counter & eg_shift_mask) == 0)) {
+                if (unlikely((++eg_counter & eg_shift_mask) == 0)) [[unlikely]] {
                     uint8_t step = eg_step_table[(eg_counter >> slot->eg_shift) & 7];
                     slot->eg_out += (~slot->eg_out * step) >> 3;
                     slot->eg_out_tll_lsl3 = std::min(EG_MAX/*EG_MUTE*/, slot->eg_out + slot->tll) << 3; // note EG_MAX not EG_MUTE to avoid overflow check later
-                    if (unlikely(slot->eg_out == 0)) {
+                    if (unlikely(slot->eg_out == 0) ) [[unlikely]] {
                         slot->eg_state = DECAY;
                         commit_slot_update_eg_only<DECAY>(slot);
                         nsamples = s;
@@ -549,12 +549,12 @@ template <int F_NUM, typename F> uint32_t slot_envelope_loop(F&& fn, SLOT_RENDER
             }
         } else {
             for (; s < nsamples; s++) {
-                if (unlikely((++eg_counter & eg_shift_mask) == 0)) {
+                if (unlikely((++eg_counter & eg_shift_mask) == 0)) [[unlikely]] {
                     slot->eg_out = static_cast<int16_t>(std::min(EG_MUTE, slot->eg_out + (int) eg_step_table[
                             (eg_counter >> slot->eg_shift) & 7]));
                     slot->eg_out_tll_lsl3 = std::min(EG_MAX/*EG_MUTE*/, slot->eg_out + slot->tll) << 3; // note EG_MAX not EG_MUTE to avoid overflow check later
                     // todo check for decay to zero
-                    if (unlikely((slot->patch->SL != 15) && (slot->eg_out >> 4) == slot->patch->SL)) {
+                    if (unlikely((slot->patch->SL != 15) && (slot->eg_out >> 4) == slot->patch->SL)) [[unlikely]] {
                         slot->eg_state = SUSTAIN;
                         commit_slot_update_eg_only<SUSTAIN>(slot);
                         nsamples = s;
@@ -575,7 +575,7 @@ template <int F_NUM, typename F> uint32_t slot_envelope_loop(F&& fn, SLOT_RENDER
         uint32_t eg_shift_mask = slot->eg_rate_h > 0 ? (1 << slot->eg_shift) - 1 : 0xffffffff;
         uint8_t *eg_step_table = get_decay_step_table(slot);
         for (; s < nsamples; s++) {
-            if (unlikely((++eg_counter & eg_shift_mask) == 0)) {
+            if (unlikely((++eg_counter & eg_shift_mask) == 0)) [[unlikely]] {
                 slot->eg_out = static_cast<int16_t>(std::min(EG_MUTE, slot->eg_out + (int)eg_step_table[(eg_counter >> slot->eg_shift)&7]));
 #if EMU8950_LINEAR_END_OF_NOTE_OPTIMIZATION
                 if (slot->eg_out == EG_MUTE) {
