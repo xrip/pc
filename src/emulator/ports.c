@@ -175,6 +175,12 @@ void portout(uint16_t portnum, uint16_t value) {
             cms_out(portnum, value);
             return cms_write(portnum, value);
 
+        case 0x260:
+        case 0x261:
+        case 0x262:
+        case 0x263:
+            return out_ems(portnum, value);
+
         case 0x278:
             return covox_out(portnum, value);
 

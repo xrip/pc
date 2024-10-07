@@ -7,7 +7,10 @@
 #define VIDEORAM_END (0xC0000)
 
 #define UMB_START (0xC0000)
-#define UMB_END (0xFC000)
+#define UMB_END (0xE0000)
+
+#define EMS_START (0xE0000)
+#define EMS_END   (0xF0000)
 
 #define HMA_START (0x100000)
 #define HMA_END (0x110000)
@@ -112,6 +115,8 @@ void write86(uint32_t address, uint8_t value) {
         VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
     } else if (address >= UMB_START && address < UMB_END) {
         UMB[address - UMB_START] = value;
+    } else if (address >= EMS_START && address < EMS_END) {
+        ems_write(address-  EMS_START, value);
     } else if (address >= HMA_START && address < HMA_END) {
         HMA[address - HMA_START] = value;
     }
@@ -131,6 +136,8 @@ void writew86(uint32_t address, uint16_t value) {
             *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
         } else if (address >= UMB_START && address < UMB_END) {
             *(uint16_t *) &UMB[address - UMB_START] = value;
+        } else if (address >= EMS_START && address < EMS_END) {
+            ems_writew(address -  EMS_START, value);
         } else if (address >= HMA_START && address < HMA_END) {
             *(uint16_t *) &HMA[address - HMA_START] = value;
         }
@@ -145,7 +152,9 @@ uint8_t read86(uint32_t address) {
         return VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
     } else if (address >= UMB_START && address < UMB_END) {
         return UMB[address - UMB_START];
-    } else if (address == 0xFC000) {
+    }   else if (address >= EMS_START && address < EMS_END) {
+        return ems_read(address - EMS_START);
+     }else if (address == 0xFC000) {
         return 0x21;
     } else if (address >= BIOS_START && address < HMA_START) {
         return BIOS[address - BIOS_START];
@@ -166,6 +175,8 @@ uint16_t readw86(uint32_t address) {
             return *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
         } else if (address >= UMB_START && address < UMB_END) {
             return *(uint16_t *) &UMB[address - UMB_START];
+        }  else if (address >= EMS_START && address < EMS_END) {
+            return ems_readw(address - EMS_START);
         } else if (address >= BIOS_START && address < HMA_START) {
             return *(uint16_t *) &BIOS[address - BIOS_START];
         } else if (address >= HMA_START && address < HMA_END) {

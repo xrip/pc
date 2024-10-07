@@ -25,13 +25,13 @@
 	Intel 8237 DMA controller
 */
 //#define DEBUG_DMA
-static struct dma_channel_s {
+struct dma_channel_s {
     uint32_t page;
-    uint32_t address;
-    uint32_t reloadaddr;
-    int8_t direction;
+    uint16_t address;
+    uint16_t reload_address;
+    uint32_t address_increase;
     uint16_t count;
-    uint16_t reloadcount;
+    uint16_t reload_count;
     uint8_t autoinit;
     uint8_t mode;
     uint8_t enable;
@@ -39,12 +39,12 @@ static struct dma_channel_s {
     uint8_t dreq;
     uint8_t finished;
     uint8_t transfer_type;
-} dma_channels[4];
+} dma_channels[4] = { 0 };
 
 static uint8_t flipflop, memtomem;
 
 void i8237_reset() {
-    memset(dma_channels, 0x00, sizeof(dma_channels));
+    memset(dma_channels, 0x00, sizeof(struct dma_channel_s) * 4);
 
     dma_channels[0].masked = 1;
     dma_channels[1].masked = 1;
@@ -69,12 +69,12 @@ void i8237_writeport(uint16_t portnum, uint8_t value) {
         case 7: {
             static uint16_t count = 0;
             static uint32_t address = 0;
-
             channel = (portnum >> 1) & 3;
+
             if (portnum & 0x01) { //write terminal count
                 if (flipflop) {
                     dma_channels[channel].count = (count & 0x00FF) | ((uint16_t) value << 8);
-                    dma_channels[channel].reloadcount = dma_channels[channel].count;
+                    dma_channels[channel].reload_count = dma_channels[channel].count;
                 } else {
                     count = (dma_channels[channel].count & 0xFF00) | (uint16_t) value;
                 }
@@ -82,15 +82,15 @@ void i8237_writeport(uint16_t portnum, uint8_t value) {
             } else {
                 if (flipflop) {
                     dma_channels[channel].address = (address & 0x00FF) | ((uint16_t) value << 8);
-                    dma_channels[channel].reloadaddr = dma_channels[channel].address;
+                    dma_channels[channel].reload_address = dma_channels[channel].address;
                 } else {
                     address = (dma_channels[channel].address & 0xFF00) | (uint16_t) value;
                 }
             }
-            #ifdef DEBUG_DMA
+#ifdef DEBUG_DMA
             printf("[DMA] Channel %u addr set to %08X %d\r\n", channel, dma_channels[channel].address,
                    dma_channels[channel].count);
-            #endif
+#endif
 
             dma_channels[channel].finished = 0;
             flipflop ^= 1;
@@ -108,7 +108,7 @@ void i8237_writeport(uint16_t portnum, uint8_t value) {
         case 0x0B: //DMA channel 0-3 mode register
             dma_channels[value & 3].transfer_type = (value >> 2) & 3;
             dma_channels[value & 3].autoinit = (value >> 4) & 1;
-            dma_channels[value & 3].direction = (value & 0x20) ? -1 : 1; // bit 5
+            dma_channels[value & 3].address_increase = (value & 0x20) ? 0xFFFFFFFF : 0x1; // bit 5
             dma_channels[value & 3].mode = (value >> 6) & 3;
             break;
         case 0x0E: // Mask Reset
@@ -221,55 +221,27 @@ uint8_t i8237_readpage(uint16_t portnum) {
     return (uint8_t) (dma_channels[channel].page >> 16);
 }
 
-uint8_t i8237_read(uint8_t channel) {
-    uint8_t result = 128;
-    //TODO: fix commented out stuff
-//    if (dma_channel[channel].enable && !dma_channel[channel].terminal)
-//    if (!dma_channels[channel].masked)
-    {
-//        printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
-      result = read86(dma_channels[channel].page | dma_channels[channel].address);
-//    result = read86((uint16_t)(dma_channel[channel].page + dma_channel[channel].address));
-        dma_channels[channel].address += dma_channels[channel].direction;
-        dma_channels[channel].count--;
+inline static void update_count(uint8_t channel) {
+    dma_channels[channel].address += dma_channels[channel].address_increase;
+    dma_channels[channel].count--;
 
-        if (dma_channels[channel].count == 0xFFFF) {
-            if (dma_channels[channel].autoinit) {
-                dma_channels[channel].count = dma_channels[channel].reloadcount;
-                dma_channels[channel].address = dma_channels[channel].reloadaddr;
-            } else {
-                dma_channels[channel].finished = 1; //TODO: does this also happen in autoinit mode?
-            }
-        }
+    if ((dma_channels[channel].count == 0xFFFF) && (dma_channels[channel].autoinit)) {
+        dma_channels[channel].count   = dma_channels[channel].reload_count;
+        dma_channels[channel].address = dma_channels[channel].reload_address;
     }
+}
 
-    return result;
+uint8_t i8237_read(uint8_t channel) {
+//        printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
+    register uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
+    update_count(channel);
+    return read86(address & 0xfffff);
 }
 
 void i8237_write(uint8_t channel, uint8_t value) {
-    //TODO: fix commented out stuff
-//    if (dma_channel[channel].enable && !dma_channel[channel].terminal)
-    {
-        write86((dma_channels[channel].page | dma_channels[channel].address), value);
+    //        printf("Write to %06X %x value %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count, value);
+    register uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
+    update_count(channel);
+    write86(address & 0xfffff, value);
 
-//        printf("Write to %06X\r\n", dma_channel[channel].page + dma_channel[channel].address);
-        dma_channels[channel].address += dma_channels[channel].direction;
-        dma_channels[channel].count--;
-        if (dma_channels[channel].count == 0xFFFF) {
-            if (dma_channels[channel].autoinit) {
-                dma_channels[channel].count = dma_channels[channel].reloadcount;
-                dma_channels[channel].address = dma_channels[channel].reloadaddr;
-            } else {
-                dma_channels[channel].finished = 1; //TODO: does this also happen in autoinit mode?
-            }
-        }
-    }
 }
-/*
-void i8237_init( CPU_t* cpu) {
-    i8237_reset(i8237);
-
-    ports_cbRegister(0x00, 16, (void*)i8237_readport, NULL, (void*)i8237_writeport, NULL, i8237);
-    ports_cbRegister(0x80, 16, (void*)i8237_readpage, NULL, (void*)i8237_writepage, NULL, i8237);
-}
- */

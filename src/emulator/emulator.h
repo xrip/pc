@@ -190,6 +190,12 @@ int16_t blaster_generateSample();
 void outadlib(uint16_t portnum, uint8_t value);
 uint8_t inadlib(uint16_t portnum);
 int16_t adlibgensample();
+
+extern void out_ems(uint16_t port, uint8_t data);
+uint8_t ems_read(uint32_t addr);
+uint16_t ems_readw(uint32_t addr);
+void ems_write(uint32_t addr, uint8_t data);
+void ems_writew(uint32_t addr, uint16_t data);
 #ifdef __cplusplus
 }
 #endif

@@ -15,7 +15,11 @@
 
 static_assert(PM_DPHASE > 0, "");
 
+#if __GNUC__
 #define unlikely(x)     __builtin_expect((x),0)
+#else
+#define unlikely(x)     (x)
+#endif
 
 #if EMU8950_SLOT_RENDER
 #include <algorithm>
