@@ -209,7 +209,7 @@ void i8237_reset();
 void blaster_reset();
 uint8_t blaster_read(uint16_t portnum);
 void blaster_write(uint16_t portnum, uint8_t value);
-int16_t blaster_generateSample();
+int16_t blaster_sample();
 
 void outadlib(uint16_t portnum, uint8_t value);
 uint8_t inadlib(uint16_t portnum);

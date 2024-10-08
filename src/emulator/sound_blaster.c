@@ -271,7 +271,7 @@ uint8_t blaster_read(uint16_t portnum) {
     return result;
 }
 
-int16_t blaster_generateSample() { //for DMA mode
+int16_t blaster_sample() { //for DMA mode
     if (!sb.dma_active) return 0;
     if (sb.silencedsp == 0) {
         if (sb.dorecord == 0) {

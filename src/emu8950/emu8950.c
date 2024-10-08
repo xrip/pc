@@ -1692,9 +1692,9 @@ void OPL_calc_buffer_linear(OPL *opl, int32_t *buffer, uint32_t nsamples) {
     // kind of a nit pick, but so cheap - saves a bug every 24 hours due to an optimization
     // (we require that incrementing eg_counter is never zero during the rendering loop)
     opl->eg_counter = (opl->eg_counter & 0x3fffffffu) | 0x80000000u;
-    static uint8_t lfo_am_buffer_lsl3[SAMPLE_BUF_SIZE];
+    static uint8_t lfo_am_buffer_lsl3;
     assert(nsamples <= sizeof(lfo_am_buffer_lsl3));
-    opl->lfo_am_buffer_lsl3 = lfo_am_buffer_lsl3;
+    opl->lfo_am_buffer_lsl3 = &lfo_am_buffer_lsl3;
 #else
     static uint8_t lfo_am_buffer[SAMPLE_BUF_SIZE];
     assert(nsamples <= sizeof(lfo_am_buffer));
@@ -1706,7 +1706,9 @@ void OPL_calc_buffer_linear(OPL *opl, int32_t *buffer, uint32_t nsamples) {
     opl->buffer = buffer;
 
     // todo achievable by memcpy
-    for(uint32_t s = 0; s<nsamples; s++) {
+//    for(uint32_t s = 0; s<nsamples; s++)
+    const uint32_t sample_index = 0;
+    {
         // generate amplitude modulation same for all channels
         // need am_phase and lfo_am
         opl->am_phase_index++;
@@ -1715,11 +1717,11 @@ void OPL_calc_buffer_linear(OPL *opl, int32_t *buffer, uint32_t nsamples) {
 
 #if EMU8950_SLOT_RENDER
         // note <<3 still fits within 8 bits
-        lfo_am_buffer_lsl3[s] = (am_table[opl->am_phase_index] >> (opl->am_mode ? 0 : 2)) << 3;
+        lfo_am_buffer_lsl3 = (am_table[opl->am_phase_index] >> (opl->am_mode ? 0 : 2)) << 3;
 #else
         lfo_am_buffer[s] = (am_table[opl->am_phase_index] >> (opl->am_mode ? 0 : 2));
 #endif
-        buffer[s]=0;
+        buffer[sample_index]=0;
     }
 
     for (i = 0; i < 18; i++) {

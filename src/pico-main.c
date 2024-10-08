@@ -100,7 +100,7 @@ void __time_critical_func() second_core() {
 
         // Sound Blaster
         if (tick > last_sb_tick + timeconst) {
-            last_sb_sample = blaster_generateSample();
+            last_sb_sample = blaster_sample();
 
             last_sb_tick = tick;
         }
@@ -108,7 +108,7 @@ void __time_critical_func() second_core() {
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             int16_t samples[2] = { 0, 0 };
-            OPL_calc_buffer_stereo(emu8950_opl, (int32_t *)(samples), 1);
+            OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
 
             if (last_dss_sample)
                 samples[0] += last_dss_sample;

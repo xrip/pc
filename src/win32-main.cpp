@@ -5,6 +5,7 @@
 #include "emulator/includes/font8x16.h"
 #include "emulator/includes/font8x8.h"
 #include "emu8950.h"
+
 #pragma comment(lib, "winmm.lib")  // Link with Windows multimedia library
 static uint32_t SCREEN[400][640];
 
@@ -62,7 +63,7 @@ static inline void renderer() {
                         // Calculate screen position
                         uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column) * 2;
 
-                                                        // Cursor blinking check
+                        // Cursor blinking check
                         uint8_t cursor_active = (cursor_blink_state &&
                                                  (y_div_16 == CURSOR_Y && column == CURSOR_X &&
                                                   y_mod_8 >= cursor_start &&
@@ -449,8 +450,8 @@ static inline void renderer() {
                     uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_4 * 160;
                     for (uint8_t column = 0; column < 80; column++) {
                         // Access vidram and font data once per character
-                        uint8_t * charcode = cga_row + column * 2; // Character code
-                        uint8_t glyph_row = font_8x8[(*charcode * 8)+odd_even]; // Glyph row from font
+                        uint8_t *charcode = cga_row + column * 2; // Character code
+                        uint8_t glyph_row = font_8x8[(*charcode * 8) + odd_even]; // Glyph row from font
                         uint8_t color = *++charcode;
 
                         uint8_t pixel_color = 0;
@@ -469,7 +470,7 @@ static inline void renderer() {
                     uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_2 * 80 + (y_div_2 & 1 * 8192);
                     for (int column = 0; column < 80; column++) {
                         // Access vidram and font data once per character
-                        uint8_t * charcode = cga_row + column * 2; // Character code
+                        uint8_t *charcode = cga_row + column * 2; // Character code
                         uint8_t glyph_row = font_8x8[*charcode++ * 8]; // Glyph row from font
                         uint8_t color = *charcode;
 
@@ -490,6 +491,7 @@ static inline void renderer() {
         }
     }
 }
+
 extern "C" uint64_t sb_samplerate;
 HANDLE updateEvent;
 
@@ -566,14 +568,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     uint32_t last_sound_tick = 0;
 
     int16_t last_dss_sample = 0;
-    int16_t sb_sample = 0;
+    int16_t last_sb_sample = 0;
 
     updateEvent = CreateEvent(NULL, 1, 1, NULL);
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
 
         // Calculate elapsed time in ticks since the start
-        uint32_t elapsedTime = (uint32_t)(current.QuadPart - start.QuadPart);
+        uint32_t elapsedTime = (uint32_t) (current.QuadPart - start.QuadPart);
 
         if (elapsedTime - elapsed_system_timer >= hostfreq / timer_period) {
             doirq(0);
@@ -589,16 +591,15 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
         // Sound Blaster
         if (elapsedTime - last_sb_tick > hostfreq / sb_samplerate) {
-            sb_sample = blaster_generateSample();
+            last_sb_sample = blaster_sample();
 
             last_sb_tick = elapsedTime;
         }
 
-        if (elapsedTime - last_sound_tick >=  hostfreq / SOUND_FREQUENCY) {
+        if (elapsedTime - last_sound_tick >= hostfreq / SOUND_FREQUENCY) {
             static int sound_counter = 0;
-            int16_t samples[2];
-            samples[0] = samples[1] = 0;
-            OPL_calc_buffer_stereo(emu8950_opl, reinterpret_cast<int32_t *>(samples), 1);
+            int16_t samples[2] = { 0, 0 };
+            OPL_calc_buffer_linear(emu8950_opl, (int32_t *) samples, 1);
 
             samples[0] += last_dss_sample;
 
@@ -608,7 +609,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             samples[0] += sn76489_sample();
 
 
-            samples[0] += sb_sample;
+            samples[0] += last_sb_sample;
 
 
             samples[0] += covox_sample;
@@ -719,7 +720,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x0E;
             break; // Backspace
 
-        // Row 2
+            // Row 2
         case VK_TAB:
             scancode = 0x0F;
             break;
@@ -765,7 +766,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x1C;
             break; // Enter
 
-        // Row 3
+            // Row 3
         case VK_CONTROL:
             scancode = 0x1D;
             break; // Left Control
@@ -808,7 +809,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x29;
             break; // ` key (backtick)
 
-        // Row 4
+            // Row 4
         case VK_SHIFT:
             scancode = 0x2A;
             break; // Left Shift
@@ -850,7 +851,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x36;
             break; // Right Shift
 
-        // Row 5
+            // Row 5
         case VK_MULTIPLY:
             scancode = 0x37;
             break; // Numpad *
@@ -864,7 +865,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x3A;
             break; // Caps Lock
 
-        // F1-F10
+            // F1-F10
         case VK_F1:
             scancode = 0x3B;
             break;
@@ -896,7 +897,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x44;
             break;
 
-        // Numpad
+            // Numpad
         case VK_NUMLOCK:
             scancode = 0x45;
             break;
@@ -943,7 +944,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x53;
             break; // Numpad .
 
-        // Additional keys (insert, delete, etc.)
+            // Additional keys (insert, delete, etc.)
         case VK_INSERT:
             scancode = 0x52;
             break; // Insert
