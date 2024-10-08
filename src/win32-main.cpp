@@ -566,7 +566,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     uint32_t last_sound_tick = 0;
 
     int16_t last_dss_sample = 0;
-    int16_t last_sb_sample = 0;
+    int16_t sb_sample = 0;
 
     updateEvent = CreateEvent(NULL, 1, 1, NULL);
     while (true) {
@@ -589,7 +589,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
         // Sound Blaster
         if (elapsedTime - last_sb_tick > hostfreq / sb_samplerate) {
-            last_sb_sample = blaster_generateSample();
+            sb_sample = blaster_generateSample();
 
             last_sb_tick = elapsedTime;
         }
@@ -600,8 +600,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             samples[0] = samples[1] = 0;
             OPL_calc_buffer_stereo(emu8950_opl, reinterpret_cast<int32_t *>(samples), 1);
 
-            if (last_dss_sample)
-                samples[0] += last_dss_sample;
+            samples[0] += last_dss_sample;
 
             if (speakerenabled)
                 samples[0] += speaker_sample();
@@ -609,8 +608,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             samples[0] += sn76489_sample();
 
 
-            if (last_sb_sample)
-                samples[0] += last_sb_sample;
+            samples[0] += sb_sample;
 
 
             samples[0] += covox_sample;
@@ -1222,6 +1220,7 @@ int main(int argc, char **argv) {
 
 //    adlib_init(SOUND_FREQUENCY);
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+    blaster_reset();
     sn76489_reset();
     reset86();
 

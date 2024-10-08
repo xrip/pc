@@ -1160,8 +1160,13 @@ void reset86() {
     CPU_SS = 0x0000;
     CPU_SP = 0x0000;
 
-    memset(RAM, 0x00, RAM_SIZE);
-    memset(VIDEORAM, 0x00, VIDEORAM_SIZE);
+    memset(RAM, 0, sizeof(RAM));
+    memset(VIDEORAM, 0x00, sizeof(VIDEORAM));
+#if !PICO_ON_DEVICE
+    memset(UMB, 0, sizeof(UMB));
+    memset(HMA, 0, sizeof(HMA));
+    memset(EMS, 0, sizeof(HMA));
+#endif
 
     ip = 0x0000;
     i8237_reset();

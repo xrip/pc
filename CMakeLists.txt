@@ -55,11 +55,11 @@ else ()
     pico_sdk_init()
 
     add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
-#    add_compile_options(-flto -fwhole-program )
-#    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops  -ffast-math -feliminate-unused-debug-types -ffunction-sections -fdata-sections -Ofast")
 
-    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
+    target_include_directories(${PROJECT_NAME} PRIVATE src/printf)
+
+    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
             USE_EMU8950_OPL
@@ -88,15 +88,11 @@ else ()
             EMU8950_ASM=1
 
     )
-    if (PICO_ON_DEVICE)
-        target_sources(${PROJECT_NAME} PRIVATE
-                src/emu8950/slot_render_pico.S
-        )
-        target_link_libraries(${PROJECT_NAME} PRIVATE hardware_interp)
-    endif()
-    target_compile_options(${PROJECT_NAME} PUBLIC -Wall)
+
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
+
+
     if (PICO_PLATFORM STREQUAL "rp2040")
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
     target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
@@ -188,6 +184,8 @@ else ()
 
     pico_add_extra_outputs(${PROJECT_NAME})
 endif ()
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
+
 target_include_directories(${PROJECT_NAME} PRIVATE src src/emu8950)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)

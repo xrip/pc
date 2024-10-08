@@ -91,8 +91,8 @@ void __time_critical_func() second_core() {
         }
 
         // Dinse Sound Source frequency 7100
-        if (tick > last_dss_tick + 140) {
-            last_dss_sample = dss_sample() * 32;
+        if (tick > last_dss_tick + (1000000 / 7000)) {
+            last_dss_sample = dss_sample();
 
             last_dss_tick = tick;
         }
@@ -201,6 +201,43 @@ void __time_critical_func() second_core() {
     __unreachable();
 }
 extern bool PSRAM_AVAILABLE;
+
+void _putchar(char character)
+{
+    static uint8_t color = 0xf;
+    static int x = 0, y = 25;
+
+    if (videomode > 4) return;
+
+    if (y == 30) {
+        y = 29;
+        memmove(
+                (25 * 160) + VIDEORAM + 32768,
+                (26 * 160) + VIDEORAM + 32768,
+                160 * 4
+        );
+        memset((29 * 160) + VIDEORAM + 32768, 0, 160);
+    }
+    uint8_t * vidramptr = VIDEORAM + 32768 + (y * 160) + x * 2;
+    if ((unsigned)character >= 32) {
+        *vidramptr++ = character & 0xFF;
+        *vidramptr = color;
+        if (x == 79) {
+            x = 0;
+            y++;
+        } else
+            x++;
+    } else if (character == '\n') {
+        x = 0;
+        y++;
+    } else if (character == '\r') {
+        x = 0;
+    } else if (character == 8 && x > 0) {
+        x--;
+        *vidramptr = 32;
+    }
+}
+
 int main() {
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;

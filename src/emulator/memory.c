@@ -2,38 +2,25 @@
 
 #include "includes/bios.h"
 #include "emulator.h"
-
-#define VIDEORAM_START (0xA0000)
-#define VIDEORAM_END (0xC0000)
-
-#define EMS_START (0xC0000)
-#define EMS_END   (0xD0000)
-
-
-#define UMB_START (0xD0000)
-#define UMB_END (0xFC000)
-
-
-#define HMA_START (0x100000)
-#define HMA_END (0x110000)
-
-#define BIOS_START (0xFE000)
+#include "emulator/ems.c.inc"
 
 #if PICO_ON_DEVICE
 #include "psram_spi.h"
-uint8_t RAM[RAM_SIZE + 2]  __attribute__((aligned(2*sizeof(uint32_t *))))= { 0 };
-uint8_t VIDEORAM[VIDEORAM_SIZE + 2]  __attribute__((aligned(2*sizeof(uint32_t *)))) = { 0 };
+uint8_t RAM[RAM_SIZE + 4]   __attribute__((aligned(4))) = { 0 };
+uint8_t VIDEORAM[VIDEORAM_SIZE + 4] __attribute__((aligned(4))) = { 0 };
 
 
 // Writes a byte to the virtual memory
-void write86(uint32_t address, uint8_t value) {
+void __time_critical_func() write86(uint32_t address, uint8_t value) {
     if (address < RAM_SIZE) {
         RAM[address] = value;
     } else if (address < VIDEORAM_START) {
         write8psram(address, value);
     } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
         VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
-    } else if (address >= UMB_START && address < UMB_END) {
+    } else if (address >= EMS_START && address < EMS_END) {
+        ems_write(address - EMS_START, value);
+    }  else if (address >= UMB_START && address < UMB_END) {
         write8psram(address, value);
     } else if (address >= HMA_START && address < HMA_END) {
         write8psram(address, value);
@@ -41,7 +28,7 @@ void write86(uint32_t address, uint8_t value) {
 }
 
 // Writes a word to the virtual memory
-void writew86(uint32_t address, uint16_t value) {
+void __time_critical_func() writew86(uint32_t address, uint16_t value) {
     if (address & 1) {
         write86(address, (uint8_t) (value & 0xFF));
         write86(address + 1, (uint8_t) ((value >> 8) & 0xFF));
@@ -52,7 +39,9 @@ void writew86(uint32_t address, uint16_t value) {
             write16psram(address, value);
         }  else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
             *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
-        } else if (address >= UMB_START && address < UMB_END) {
+        } else if (address >= EMS_START && address < EMS_END) {
+            ems_writew(address - EMS_START, value);
+        }  else if (address >= UMB_START && address < UMB_END) {
             write16psram(address, value);
         } else if (address >= HMA_START && address < HMA_END) {
             write16psram(address, value);
@@ -61,13 +50,15 @@ void writew86(uint32_t address, uint16_t value) {
 }
 
 // Reads a byte from the virtual memory
-uint8_t read86(uint32_t address) {
+uint8_t __time_critical_func() read86(uint32_t address) {
     if (address < RAM_SIZE) {
         return RAM[address];
     } else if (address < VIDEORAM_START) {
         return read8psram(address);
     } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
         return VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
+    } else if (address >= EMS_START && address < EMS_END) {
+        return ems_read(address - EMS_START);
     } else if (address >= UMB_START && address < UMB_END) {
         return read8psram(address);
     } else if (address == 0xFC000) {
@@ -77,11 +68,11 @@ uint8_t read86(uint32_t address) {
     } else if (address >= HMA_START && address < HMA_END) {
         return read8psram(address);
     }
-    return 0x00;
+    return 0xFF;
 }
 
 // Reads a word from the virtual memory
-uint16_t readw86(uint32_t address) {
+uint16_t __time_critical_func() readw86(uint32_t address) {
     if (address & 1) {
         return (uint16_t) read86(address) | ((uint16_t) read86(address + 1) << 8);
     } else {
@@ -91,6 +82,8 @@ uint16_t readw86(uint32_t address) {
             return read16psram(address);
         } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
             return *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
+        } else if (address >= EMS_START && address < EMS_END) {
+            return ems_readw(address - EMS_START);
         } else if (address >= UMB_START && address < UMB_END) {
             return read16psram(address);
         } else if (address >= BIOS_START && address < HMA_START) {
@@ -98,14 +91,14 @@ uint16_t readw86(uint32_t address) {
         } else if (address >= HMA_START && address < HMA_END) {
             return read16psram(address);
         }
-        return 0;
     }
+    return 0xFFFF;
 }
 #else
-uint8_t VIDEORAM[VIDEORAM_SIZE + 2] /* __attribute__((aligned(2*sizeof(uint32_t *))))= { 0 } */;
-uint8_t RAM[RAM_SIZE + 2] /*__attribute__((aligned(2*sizeof(uint32_t *))))= { 0 } */;
-uint8_t UMB[UMB_END - UMB_START] = { 0 };
-uint8_t HMA[HMA_END - HMA_START];
+uint8_t VIDEORAM[VIDEORAM_SIZE + 4]  __attribute__((aligned(4))) = { 0 };
+uint8_t RAM[RAM_SIZE + 4]  __attribute__((aligned(4))) = { 0 };
+uint8_t UMB[(UMB_END - UMB_START) + 4]  __attribute__((aligned(4))) = { 0 };
+uint8_t HMA[(HMA_END - HMA_START) + 4]  __attribute__((aligned(4))) = { 0 };
 
 // Writes a byte to the virtual memory
 void write86(uint32_t address, uint8_t value) {
@@ -163,7 +156,7 @@ uint8_t read86(uint32_t address) {
     } else if (address >= HMA_START && address < HMA_END) {
         return HMA[address - HMA_START];
     }
-    return 0x00;
+    return 0xFF;
 }
 
 // Reads a word from the virtual memory
@@ -185,7 +178,7 @@ uint16_t readw86(uint32_t address) {
             return *(uint16_t *) &HMA[address - HMA_START];
         }
     }
-    return 0;
+    return 0xFFFF;
 }
 
 #endif

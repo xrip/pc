@@ -14,7 +14,7 @@ void init_psram() {
 void psram_cleanup() {
 //    logMsg("PSRAM cleanup"); // TODO: block mode, ensure diapason
     for (uint32_t addr32 = (1ul << 20); addr32 < (2ul << 20); addr32 += 4) {
-        psram_write32(&psram_spi, addr32, 0);
+        psram_write32(&psram_spi, addr32, 0xFF);
     }
 }
 

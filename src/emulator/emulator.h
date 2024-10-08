@@ -1,7 +1,10 @@
 #pragma once
-
+#if PICO_ON_DEVICE
+#include "printf/printf.h"
+#else
+#include "stdio.h"
+#endif
 #include <stdint.h>
-#include <stdio.h>
 #include "cpu.h"
 
 #ifdef __cplusplus
@@ -21,10 +24,31 @@ extern "C" {
 #define SOUND_FREQUENCY (49716)
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
+#define VIDEORAM_START (0xA0000)
+#define VIDEORAM_END (0xC0000)
+
+#define EMS_START (0xC0000)
+#define EMS_END   (0xD0000)
+
+#define UMB_START (0xD0000)
+#define UMB_END (0xFC000)
+
+#define HMA_START (0x100000)
+#define HMA_END (0x110000)
+
+#define BIOS_START (0xFE000)
+
+#define EMS_MEMORY_SIZE 0x200000
+
 extern uint8_t log_debug;
 
-extern uint8_t VIDEORAM[VIDEORAM_SIZE+2];
-extern uint8_t RAM[RAM_SIZE+2];
+extern uint8_t VIDEORAM[VIDEORAM_SIZE+4];
+extern uint8_t RAM[RAM_SIZE+4];
+
+extern uint8_t UMB[(UMB_END - UMB_START) + 4];
+extern uint8_t HMA[(HMA_END - HMA_START) + 4];
+extern uint8_t EMS[EMS_MEMORY_SIZE + 4];
+
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];
@@ -45,13 +69,13 @@ extern struct i8259_s {
     uint8_t enabled;
 } i8259;
 
-#define doirq(irqnum) i8259.irr |= (1 << irqnum)
+#define doirq(irqnum) (i8259.irr |= (1 << (irqnum)) & (~i8259.imr))
 
 static inline uint8_t nextintr() {
     uint8_t tmpirr = i8259.irr & (~i8259.imr); //XOR request register with inverted mask register
     for (uint8_t i = 0; i < 8; i++)
         if ((tmpirr >> i) & 1) {
-            i8259.irr ^= (1 << i);
+            i8259.irr &= ~(1 << i);
             i8259.isr |= (1 << i);
             return (i8259.icw[2] + i);
         }
@@ -173,16 +197,16 @@ extern void cms_samples(int16_t *output);;
 
 extern uint8_t xms_handler();
 
-void i8237_writeport(uint16_t portnum, uint8_t value);
-void i8237_writepage(uint16_t portnum, uint8_t value);
+//void i8237_writeport(uint16_t portnum, uint8_t value);
+//void i8237_writepage(uint16_t portnum, uint8_t value);
 
-uint8_t i8237_readport( uint16_t portnum);
-uint8_t i8237_readpage( uint16_t portnum);
+//uint8_t i8237_readport( uint16_t portnum);
+//uint8_t i8237_readpage( uint16_t portnum);
 uint8_t i8237_read( uint8_t channel);
 void i8237_write(uint8_t channel, uint8_t value);
 void i8237_reset();
 
-
+void blaster_reset();
 uint8_t blaster_read(uint16_t portnum);
 void blaster_write(uint16_t portnum, uint8_t value);
 int16_t blaster_generateSample();
@@ -192,12 +216,17 @@ uint8_t inadlib(uint16_t portnum);
 int16_t adlibgensample();
 
 extern void out_ems(uint16_t port, uint8_t data);
-uint8_t ems_read(uint32_t addr);
-uint16_t ems_readw(uint32_t addr);
-void ems_write(uint32_t addr, uint8_t data);
-void ems_writew(uint32_t addr, uint16_t data);
-
 extern int16_t covox_sample;
+
+#ifndef INLINE
+#if defined(_MSC_VER)
+#define INLINE __inline
+#elif defined(__GNUC__)
+#define INLINE __inline__
+#else
+#define INLINE inline
+#endif
+#endif
 #ifdef __cplusplus
 }
 #endif

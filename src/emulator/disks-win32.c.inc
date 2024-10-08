@@ -1,5 +1,4 @@
 #include "emulator.h"
-
 int hdcount = 0, fdcount = 0;
 
 static uint8_t sectorbuffer[512];

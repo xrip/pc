@@ -4,6 +4,8 @@
 #include "nespad.h"
 #endif
 
+#include "i8237.c.inc"
+
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
