@@ -37,106 +37,197 @@ umb_t *get_free_umb_block(uint16_t size) {
 
 
 #define XMS_VERSION 0x00
+
 #define REQUEST_HMA 0x01
 #define RELEASE_HMA 0x02
+
 #define ENABLE_A20 0x05
 #define DISABLE_A20 0x06
 #define QUERY_A20 0x07
+
+#define QUERY_EMB 0x08
 #define ALLOCATE_EMB 0x09
+#define FREE_EMB 0x0A
+#define MOVE_EMB 0x0B
+#define LOCK_EMB 0x0C
+#define UNLOCK_EMB 0x0D
+#define EMB_HANDLE_INFO 0x0E
+#define REALLOCATE_EMB 0x0F
+
 #define REQUEST_UMB 0x10
 #define RELEASE_UMB 0x11
 
+#define XMS_SIZE (1024 << 10)
+uint8_t XMS[XMS_SIZE * 4] = { 0 };
+uint32_t xms_available = XMS_SIZE;
+
+struct {
+    uint8_t handle;
+    uint32_t size; //
+    uint8_t locks;
+} XMS_HANDLE[32] = { 0 };
+uint8_t xms_handles = 0;
+
 uint8_t xms_handler() {
-    switch (CPU_AH) {
-        case XMS_VERSION: { // Get XMS Version
-            CPU_AX = 0x0100;
-            CPU_BX = 0x0001; // driver version
-            CPU_DX = 0x0001; // HMA Exist
-            break;
-        }
-        case REQUEST_HMA: { // Request HMA
-            // Stub: Implement HMA request functionality
-            CPU_AX = 1; // Success
-            break;
-        }
-        case RELEASE_HMA: { // Release HMA
-            // Stub: Implement HMA release functionality
-            CPU_AX = 1; // Success
-            break;
-        }
-        case ENABLE_A20: { // Local Enable A20
-            CPU_AX = 0x0001; // Success
-            CPU_BL = 0x00;
-            break;
-        }
-        case DISABLE_A20: { // Local Disable A20
-            CPU_AX = 0; // Failed
-            CPU_BL = 0x94;
-            break;
-        }
-        case QUERY_A20: { // Query A20 (Function 07h):
-            CPU_AX = 1; // Success
-            break;
-        }
-        case ALLOCATE_EMB: { // Allocate Extended Memory Block (Function 09h):
-            // Stub: Implement allocating extended memory block functionality
-            CPU_DX = 0x0000;
-            CPU_AX = 0x0000;
-            CPU_BL = 0xA0;
-            break;
-        }
-        case REQUEST_UMB: { // Request Upper Memory Block (Function 10h):
-            if (CPU_DX == 0xFFFF) {
-                if (umb_blocks_allocated < UMB_BLOCKS_COUNT) {
+    if (CPU_AH != 0x7)
+//    printf("[XMS] AH %x\r\n", CPU_AH);
+        switch (CPU_AH) {
+            case XMS_VERSION: { // Get XMS Version
+                CPU_AX = 0x0200;
+                CPU_BX = 0x0001; // driver version
+                CPU_DX = 0x0001; // HMA Exist
+                break;
+            }
+            case REQUEST_HMA: { // Request HMA
+                // Stub: Implement HMA request functionality
+                CPU_AX = 1; // Success
+                break;
+            }
+            case RELEASE_HMA: { // Release HMA
+                // Stub: Implement HMA release functionality
+                CPU_AX = 1; // Success
+                break;
+            }
+
+            case ENABLE_A20: { // Local Enable A20
+                CPU_AX = 0x0001; // Success
+                CPU_BL = 0x00;
+                break;
+            }
+            case DISABLE_A20: { // Local Disable A20
+//            CPU_AX = 0x00; // Failed
+//            CPU_BL = 0x94;
+                CPU_AX = 0x0001; // Failed
+                CPU_BL = 0x00;
+                break;
+            }
+            case QUERY_A20: { // Query A20 (Function 07h):
+                CPU_BL = 0;
+                CPU_AX = 1; // Success
+                break;
+            }
+
+            case QUERY_EMB : { // 08h
+                printf("[XMS] Query free\r\n");
+                CPU_AX = XMS_SIZE >> 10;
+                CPU_DX = 64;
+                CPU_BL = 0;
+                break;
+            }
+
+            case ALLOCATE_EMB: { // Allocate Extended Memory Block (Function 09h):
+                printf("[XMS] Allocate %dKb\n", CPU_DX);
+                // Stub: Implement allocating extended memory block functionality
+                CPU_DX = ++xms_handles;
+                CPU_AX = 0x0001;
+                CPU_BL = 0x0;
+                break;
+            }
+
+            case FREE_EMB:
+                printf("XMS request AH: %02X DX: %04X BX %04X\n", CPU_AH, CPU_DX, CPU_BX);
+                break;
+            case MOVE_EMB:
+                struct {
+                    uint32_t length;
+                    uint16_t source_handle;
+                    uint32_t source_offset;
+                    uint16_t destination_handle;
+                    uint32_t destination_offset;
+                } move_data;
+
+                uint32_t struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
+
+                move_data.length = readw86(struct_offset + 2) << 16 | readw86(struct_offset);
+                move_data.source_handle = readw86(struct_offset + 4);
+                move_data.destination_handle = readw86(struct_offset + 10);
+
+                move_data.source_offset = (uint32_t) readw86(struct_offset + 8) << 4 | readw86(struct_offset + 6);
+                move_data.destination_offset = (uint32_t) readw86(struct_offset + 14) << 4 | readw86(struct_offset + 12);
+
+                printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
+                       struct_offset,
+                       move_data.length,
+                       move_data.source_handle,
+                       move_data.source_offset,
+                       move_data.destination_handle,
+                       move_data.destination_offset
+                );
+
+                if (0 == move_data.source_handle) {
+                    printf("Moving from regular memory to XMS\n");
+                    for (int offset = 0; offset < move_data.length; offset++) {
+                        XMS[move_data.destination_offset++] = read86(move_data.source_offset++);
+                    }
+                }
+                if (0 == move_data.destination_handle) {
+                    printf("Moving from XMS to regular memory\n");
+                    for (int offset = 0; offset < move_data.length; offset++) {
+                        write86(move_data.destination_offset++, XMS[move_data.source_offset++]);
+                    }
+                }
+                CPU_AX = 0x0001;
+                CPU_BL = 0;
+                break;
+            case LOCK_EMB:
+            case UNLOCK_EMB:
+            case EMB_HANDLE_INFO:
+            case REALLOCATE_EMB:
+                printf("XMS request AH: %02X DX: %04X BX %04X\n", CPU_AH, CPU_DX, CPU_BX);
+                break;
+
+            case REQUEST_UMB: { // Request Upper Memory Block (Function 10h):
+                if (CPU_DX == 0xFFFF) {
+                    if (umb_blocks_allocated < UMB_BLOCKS_COUNT) {
+                        umb_t *umb_block = get_free_umb_block(CPU_DX);
+                        if (umb_block != NULL) {
+                            CPU_DX = umb_block->size;
+                            CPU_AX = 0x1000; // Success
+                            CPU_BX = 0x00B0; // Success
+                            break;
+                        }
+                    }
+                } else {
                     umb_t *umb_block = get_free_umb_block(CPU_DX);
                     if (umb_block != NULL) {
+                        CPU_BX = umb_block->segment;
                         CPU_DX = umb_block->size;
-                        CPU_AX = 0x1000; // Success
-                        CPU_BX = 0x00B0; // Success
+                        CPU_AX = 0x0001;
+
+                        umb_block->allocated = true;
+                        umb_blocks_allocated++;
                         break;
                     }
                 }
-            } else {
-                umb_t *umb_block = get_free_umb_block(CPU_DX);
-                if (umb_block != NULL) {
-                    CPU_BX = umb_block->segment;
-                    CPU_DX = umb_block->size;
-                    CPU_AX = 0x0001;
 
-                    umb_block->allocated = true;
-                    umb_blocks_allocated++;
-                    break;
-                }
+                CPU_AX = 0x0000;
+                CPU_DX = 0x0000;
+                CPU_BL = umb_blocks_allocated >= UMB_BLOCKS_COUNT ? 0xB1 : 0xB0;
+                break;
             }
 
-            CPU_AX = 0x0000;
-            CPU_DX = 0x0000;
-            CPU_BL = umb_blocks_allocated >= UMB_BLOCKS_COUNT ? 0xB1 : 0xB0;
-            break;
-        }
+            case RELEASE_UMB: { // Release Upper Memory Block (Function 11h)
+                // Stub: Release Upper Memory Block
+                for (int i = 0; i < UMB_BLOCKS_COUNT; i++)
+                    if (umb_blocks[i].segment == CPU_BX && umb_blocks[i].allocated) {
+                        umb_blocks[i].allocated = false;
+                        umb_blocks_allocated--;
+                        CPU_AX = 0x0001; // Success
+                        CPU_BL = 0;
+                        break;
+                    }
 
-        case RELEASE_UMB: { // Release Upper Memory Block (Function 11h)
-            // Stub: Release Upper Memory Block
-            for (int i = 0; i < UMB_BLOCKS_COUNT; i++)
-                if (umb_blocks[i].segment == CPU_BX && umb_blocks[i].allocated) {
-                    umb_blocks[i].allocated = false;
-                    umb_blocks_allocated--;
-                    CPU_AX = 0x0001; // Success
-                    CPU_BL = 0;
-                    break;
-                }
-
-            CPU_AX = 0x0000; // Failure
-            CPU_DX = 0x0000;
-            CPU_BL = 0xB2; // Error code
-            break;
+                CPU_AX = 0x0000; // Failure
+                CPU_DX = 0x0000;
+                CPU_BL = 0xB2; // Error code
+                break;
+            }
+            default: {
+                // Unhandled function
+                CPU_AX = 0x0001; // Function not supported
+                CPU_BL = 0x80; // Function not implemented
+                break;
+            }
         }
-        default: {
-            // Unhandled function
-            CPU_AX = 0x0001; // Function not supported
-            CPU_BL = 0x80; // Function not implemented
-            break;
-        }
-    }
     return 0xCB; // RETF opcode
 }
