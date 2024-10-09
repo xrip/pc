@@ -127,7 +127,7 @@ uint8_t xms_handler() {
             case FREE_EMB:
                 printf("XMS request AH: %02X DX: %04X BX %04X\n", CPU_AH, CPU_DX, CPU_BX);
                 break;
-            case MOVE_EMB:
+            case MOVE_EMB: {
                 struct {
                     uint32_t length;
                     uint16_t source_handle;
@@ -143,7 +143,8 @@ uint8_t xms_handler() {
                 move_data.destination_handle = readw86(struct_offset + 10);
 
                 move_data.source_offset = (uint32_t) readw86(struct_offset + 8) << 4 | readw86(struct_offset + 6);
-                move_data.destination_offset = (uint32_t) readw86(struct_offset + 14) << 4 | readw86(struct_offset + 12);
+                move_data.destination_offset =
+                        (uint32_t) readw86(struct_offset + 14) << 4 | readw86(struct_offset + 12);
 
                 printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
                        struct_offset,
@@ -169,6 +170,7 @@ uint8_t xms_handler() {
                 CPU_AX = 0x0001;
                 CPU_BL = 0;
                 break;
+            }
             case LOCK_EMB:
             case UNLOCK_EMB:
             case EMB_HANDLE_INFO:
