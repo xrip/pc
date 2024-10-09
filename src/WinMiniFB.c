@@ -133,7 +133,7 @@ int mfb_open(const char *title, int width, int height, int scale) {
     RegisterClass(&s_wc);
 
     rect.right = width * scale;
-    rect.bottom = height * scale;
+    rect.bottom = (10 + height) * scale;
 
     AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
 

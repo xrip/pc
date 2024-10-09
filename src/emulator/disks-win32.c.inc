@@ -267,7 +267,7 @@ static void writedisk(uint8_t drivenum,
 }
 
 
-static inline void diskhandler() {
+static INLINE void diskhandler() {
     static uint8_t lastdiskah[4] = { 0 }, lastdiskcf[4] = { 0 };
     uint8_t drivenum = CPU_DL;
 

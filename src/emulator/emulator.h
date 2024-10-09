@@ -221,10 +221,12 @@ extern int16_t covox_sample;
 #ifndef INLINE
 #if defined(_MSC_VER)
 #define INLINE __inline
+#define ALING(x, y) __declspec(align(x)) y
 #elif defined(__GNUC__)
 #define INLINE __inline__
 #else
 #define INLINE inline
+#define ALING(x, y) y __attribute__((aligned(x)))
 #endif
 #endif
 #ifdef __cplusplus

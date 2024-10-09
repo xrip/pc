@@ -13,7 +13,7 @@
 
 #endif
 
-int videomode = 0;
+int videomode = 3;
 uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;
@@ -296,8 +296,8 @@ void intcall86(uint8_t intnum) {
             insertdisk(0, "\\XT\\fdd0.img");
             insertdisk(128, "\\XT\\hdd.img");
 #else
-            insertdisk(0, "fdd0.img");
-            insertdisk(128, "hdd.img");
+            insertdisk(0, "..\\fdd0.img");
+            insertdisk(128, "..\\hdd.img");
 #endif
             break;
         case 0x2F:
