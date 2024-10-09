@@ -224,6 +224,7 @@ extern int16_t covox_sample;
 #define ALING(x, y) __declspec(align(x)) y
 #elif defined(__GNUC__)
 #define INLINE __inline__
+#define ALING(x, y) y __attribute__((aligned(x)))
 #else
 #define INLINE inline
 #define ALING(x, y) y __attribute__((aligned(x)))

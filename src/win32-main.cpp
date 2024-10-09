@@ -537,7 +537,6 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             elapsed_frame_tics = elapsedTime;
         }
     }
-    __assume(0);
 }
 
 
