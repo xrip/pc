@@ -548,8 +548,6 @@ extern "C" void HandleMouse(int x, int y, uint8_t buttons) {
 }
 
 
-uint8_t KB_I, KB_J, KB_K, KB_M, KB_A = 0;
-
 extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
     unsigned char scancode = 0;
     // Check if SCROLL LOCK is pressed
