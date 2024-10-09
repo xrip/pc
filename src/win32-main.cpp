@@ -637,14 +637,12 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x16;
             break;
         case 'I':
-            KB_I = isKeyDown;
             scancode = 0x17;
             break;
         case 'O':
             scancode = 0x18;
             break;
         case 'P':
-            KB_A = isKeyDown;
             scancode = 0x19;
             break;
         case VK_OEM_4:
@@ -680,11 +678,9 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x23;
             break;
         case 'J':
-            KB_J = isKeyDown;
             scancode = 0x24;
             break;
         case 'K':
-            KB_K = isKeyDown ? 1 : 0;
             scancode = 0x25;
             break;
         case 'L':
@@ -726,7 +722,6 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
             scancode = 0x31;
             break;
         case 'M':
-            KB_M = isKeyDown;
             scancode = 0x32;
             break;
         case VK_OEM_COMMA:
