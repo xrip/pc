@@ -70,8 +70,8 @@ uint8_t xms_handler() {
             break;
         }
         case DISABLE_A20: { // Local Disable A20
-            CPU_AX = 0; // Failed
-            CPU_BL = 0x94;
+            CPU_AX = 1; // Failed
+            CPU_BL = 0;
             break;
         }
         case QUERY_A20: { // Query A20 (Function 07h):
