@@ -7,7 +7,7 @@
 #include "emu8950.h"
 
 #pragma comment(lib, "winmm.lib")  // Link with Windows multimedia library
-static uint32_t SCREEN[400][640];
+static uint32_t SCREEN[640*400];
 
 int cursor_blink_state = 0;
 uint8_t log_debug = 0;
@@ -39,7 +39,7 @@ static inline void renderer() {
         //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
         uint8_t *vidramptr = VIDEORAM + 32768 + (vram_offset << 1);
         uint8_t cols = videomode <= 1 ? 40 : 80;
-        for (uint16_t y = 0; y < 400; y++) {
+        for (int y = 0; y < 400; y++) {
             if (y >= 399)
                 port3DA = 8;
             else
@@ -48,20 +48,18 @@ static inline void renderer() {
             if (y & 1)
                 port3DA |= 1;
 
+            uint32_t *pixels = SCREEN + y * 640;
             switch (videomode) {
                 case 0x00:
                 case 0x01: {
                     uint16_t y_div_16 = y / 16; // Precompute y / 16
                     uint8_t y_mod_8 = (y / 2) % 8; // Precompute y % 8 for font lookup
-
-                    for (uint8_t column = 0; column < cols; column++) {
+                    // Calculate screen position
+                    for (int column = 0; column < cols; column++) {
                         // Access vidram and font data once per character
                         uint8_t charcode = vidramptr[y_div_16 * (cols * 2) + column * 2]; // Character code
                         uint8_t glyph_row = font_8x8[charcode * 8 + y_mod_8]; // Glyph row from font
                         uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1]; // Color attribute
-
-                        // Calculate screen position
-                        uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column) * 2;
 
                         // Cursor blinking check
                         uint8_t cursor_active = (cursor_blink_state &&
@@ -84,8 +82,7 @@ static inline void renderer() {
                             }
 
                             // Write the pixel twice (horizontal scaling)
-                            *screenptr++ = cga_palette[pixel_color];
-                            *screenptr++ = cga_palette[pixel_color];
+                            *pixels++ = *pixels++ = cga_palette[pixel_color];
                         }
                     }
 
@@ -104,9 +101,6 @@ static inline void renderer() {
                         uint8_t color = vidramptr[column_offset + 1]; // Color attribute
                         uint8_t glyph_row = font_8x16[charcode * 16 +
                                                       y_mod_16]; // Glyph row from font
-
-                        // Calculate screen position
-                        uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column);
 
                         // Cursor blinking check
                         uint8_t cursor_active =
@@ -130,14 +124,13 @@ static inline void renderer() {
                                                 >> 4); // Foreground or background color
                             }
 
-                            *screenptr++ = cga_palette[pixel_color];
+                            *pixels++ = cga_palette[pixel_color];
                         }
                     }
                     break;
                 }
                 case 0x04:
                 case 0x05: {
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *cga_row = &vidramptr[(((((y / 2) >> 1) * 80) +
                                                     (((y / 2) & 1) * 8192)))]; // Precompute CGA row pointer
                     uint8_t *current_cga_palette = (uint8_t *) cga_gfxpal[cga_colorset][cga_intensity];
@@ -168,7 +161,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x06: {
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *cga_row = &vidramptr[(((y / 2) >> 1) * 80) +
                                                   (((y / 2) & 1) * 8192)]; // Precompute row start
 
@@ -195,7 +187,6 @@ static inline void renderer() {
                 case 0x7:
 //                    log_debug = 1;
                 {
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *cga_row = vram_offset + VIDEORAM + (y & 3) * 8192 + y / 4 * cols;
                     // Each byte containing 8 pixels
                     for (int x = 640 / 8; x--;) {
@@ -232,7 +223,6 @@ static inline void renderer() {
                             break;
                     }
 
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *cga_row = &vidramptr[(((y / 2) >> 1) * 80) +
                                                   (((y / 2) & 1) * 8192)]; // Precompute row start
 
@@ -252,7 +242,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x09: /* tandy 320x200 16 color */ {
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *tga_row = &vidramptr[(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
 //                            uint8_t *tga_row = &VIDEORAM[tga_offset+(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
 
@@ -266,7 +255,6 @@ static inline void renderer() {
 
                 }
                 case 0x0a: /* tandy 640x200 16 color */ {
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *tga_row = VIDEORAM + ((y / 2) * 320);
 
                     // Each byte contains 2 pixels
@@ -278,7 +266,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x0D: /* EGA *320x200 16 color */ {
-                    uint32_t *pixels = &SCREEN[y][0];
                     vidramptr = VIDEORAM + vram_offset;
                     for (int x = 0; x < 320; x++) {
                         uint32_t divy = y >> 1;
@@ -294,7 +281,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x0E: /* EGA 640x200 16 color */ {
-                    uint32_t *pixels = &SCREEN[y][0];
                     vidramptr = VIDEORAM + vram_offset;
                     for (int x = 0; x < 640; x++) {
                         uint32_t divy = y;
@@ -311,7 +297,6 @@ static inline void renderer() {
                 }
                 case 0x10: /* EGA 640x350 4 or 16 color */ {
                     if (y >= 350) break;
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *ega_row = VIDEORAM + y * 80;
                     for (int x = 640 / 8; x--;) {
                         uint8_t plane1_pixel = *ega_row + vga_plane_size * 0;
@@ -332,7 +317,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x11: /* EGA 640x480 2 color */ {
-                    uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *cga_row = VIDEORAM + y * 80;
                     // Each byte containing 8 pixels
                     for (int x = 640 / 8; x--;) {
@@ -351,7 +335,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x12: /* EGA 640x480 16 color */ {
-                    uint32_t *pixels = &SCREEN[y][0];
                     for (int x = 0; x < 640; x++) {
                         uint32_t ptr = x / 8 + y * 80;
                         uint8_t color = ((VIDEORAM[ptr] >> (~x & 7)) & 1);
@@ -363,7 +346,6 @@ static inline void renderer() {
                     break;
                 }
                 case 0x13: {
-                    uint32_t *pixels = &SCREEN[y][0];
                     if (vga_planar_mode) {
                         for (int x = 0; x < 320; x++) {
                             uint32_t ptr = x + (y >> 1) * 320;
@@ -395,7 +377,7 @@ static inline void renderer() {
                         uint8_t color = vidramptr[y_div_16 * (cols * 2) + column * 2 + 1]; // Color attribute
 
                         // Calculate screen position
-                        uint32_t *screenptr = (uint32_t *) &SCREEN[0][0] + y * 640 + (8 * column);
+                        uint32_t *screenptr = SCREEN + y * 640 + (8 * column);
 
                         // Cursor blinking check
                         uint8_t cursor_active = (cursor_blink_state &&
@@ -427,7 +409,7 @@ static inline void renderer() {
                     uint16_t y_div_4 = y / 4; // Precompute y / 4
                     uint8_t odd_even = (y / 2) & 1;
                     // Calculate screen position
-                    uint32_t *screenptr = &SCREEN[y][0];
+                    uint32_t *screenptr = SCREEN + y * 640;
                     uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_4 * 160;
                     for (uint8_t column = 0; column < 80; column++) {
                         // Access vidram and font data once per character
@@ -447,9 +429,8 @@ static inline void renderer() {
                 case 0x79: /* 80x200x16 textmode */ {
                     int y_div_2 = y / 2; // Precompute y / 2
                     // Calculate screen position
-                    uint32_t *screenptr = &SCREEN[y][0];
                     uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_2 * 80 + (y_div_2 & 1 * 8192);
-                    for (int column = 0; column < 80; column++) {
+                    for (int column = 0; column < 40; column++) {
                         // Access vidram and font data once per character
                         uint8_t *charcode = cga_row + column * 2; // Character code
                         uint8_t glyph_row = font_8x8[*charcode++ * 8]; // Glyph row from font
@@ -460,8 +441,8 @@ static inline void renderer() {
                             // Foreground or background color
                             uint8_t pixel_color = (glyph_row >> bit) & 1 ? (color & 0x0f) : (color >> 4);
 
-                            *screenptr++ = cga_palette[pixel_color];
-                            *screenptr++ = cga_palette[pixel_color];
+                            *pixels++ = cga_palette[pixel_color];
+                            *pixels++ = cga_palette[pixel_color];
                         }
                     }
                     break;
