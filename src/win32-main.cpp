@@ -189,33 +189,13 @@ static inline void renderer() {
                     break;
                 }
                 case 0x1e:
-//                    log_debug = 1;
-                {
+                    cols = 90;
                     if (y >= 348) break;
-                    uint32_t *pixels = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + (y & 3) * 8192 + y / 4 * 90;
-                    cga_row += 5; //
-                    // Each byte containing 8 pixels
-                    for (int x = 640 / 8; x--;) {
-                        uint8_t cga_byte = *cga_row++;
-
-                        *pixels++ = cga_palette[((cga_byte >> 7) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 6) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 5) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 4) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 3) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 2) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 1) & 1) * 7];
-                        *pixels++ = cga_palette[((cga_byte >> 0) & 1) * 7];
-                    }
-
-                    break;
-                }
                 case 0x7:
 //                    log_debug = 1;
                 {
                     uint32_t *pixels = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + (y & 3) * 8192 + y / 4 * 80;
+                    uint8_t *cga_row = VIDEORAM + (y & 3) * 8192 + y / 4 * cols;
                     // Each byte containing 8 pixels
                     for (int x = 640 / 8; x--;) {
                         uint8_t cga_byte = *cga_row++;
@@ -296,7 +276,7 @@ static inline void renderer() {
                     }
                     break;
                 }
-                case 0x0D: /* EGA */ {
+                case 0x0D: /* EGA *320x200 16 color */ {
                     uint32_t *pixels = &SCREEN[y][0];
                     vidramptr = VIDEORAM + vram_offset;
                     for (int x = 0; x < 320; x++) {
@@ -316,7 +296,7 @@ static inline void renderer() {
                     uint32_t *pixels = &SCREEN[y][0];
                     vidramptr = VIDEORAM + vram_offset;
                     for (int x = 0; x < 640; x++) {
-                        uint32_t divy = y >> 1;
+                        uint32_t divy = y;
                         uint32_t vidptr = divy * 80 + (x >> 3);
                         int x1 = 7 - (x & 7);
                         uint32_t color = (vidramptr[vidptr] >> x1) & 1;
@@ -328,7 +308,7 @@ static inline void renderer() {
                     break;
 
                 }
-                case 0x10: {
+                case 0x10: /* EGA 640x350 4 or 16 color */ {
                     if (y >= 350) break;
                     uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *ega_row = VIDEORAM + y * 80;
@@ -350,7 +330,7 @@ static inline void renderer() {
                     }
                     break;
                 }
-                case 0x11: {
+                case 0x11: /* EGA 640x480 2 color */ {
                     uint32_t *pixels = &SCREEN[y][0];
                     uint8_t *cga_row = VIDEORAM + y * 80;
                     // Each byte containing 8 pixels
@@ -369,7 +349,7 @@ static inline void renderer() {
 
                     break;
                 }
-                case 0x12: {
+                case 0x12: /* EGA 640x480 16 color */ {
                     uint32_t *pixels = &SCREEN[y][0];
                     for (int x = 0; x < 640; x++) {
                         uint32_t ptr = x / 8 + y * 80;

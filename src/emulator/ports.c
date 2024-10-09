@@ -188,10 +188,24 @@ void portout(uint16_t portnum, uint16_t value) {
 // https://bitsavers.trailing-edge.com/components/motorola/_dataSheets/6845.pdf
 // https://www.theoddys.com/acorn/the_6845_crtc/the_6845_crtc.html
 // MC6845 CRTC
+        case 0x3B0:
+        case 0x3B2:
+        case 0x3B4:
+        case 0x3B6:
+        case 0x3D0:
+        case 0x3D2:
         case 0x3D4:
+        case 0x3D6:
             crt_controller_idx = value & 31;
             break;
+        case 0x3B1:
+        case 0x3B3:
+        case 0x3B5:
+        case 0x3B7:
+        case 0x3D1:
+        case 0x3D3:
         case 0x3D5:
+        case 0x3D7:
             switch (crt_controller_idx) {
                 case 0x4: {
                     if (value == 0x3e/* && videomode == 1*/) {
@@ -219,6 +233,7 @@ void portout(uint16_t portnum, uint16_t value) {
 // Cursor pos
                 case 0x0A:
                     cursor_start = value;
+                    //cursor_visible = !(value & 0x20) && (cursor_start < 8);
                     break;
                 case 0x0B:
                     cursor_end = value;
@@ -240,6 +255,8 @@ void portout(uint16_t portnum, uint16_t value) {
             crt_controller[crt_controller_idx] = value;
 
             break;
+        case 0x3B8:
+        case 0x3BF:
         case 0x3D8:
         case 0x3D9:
             return cga_portout(portnum, value);

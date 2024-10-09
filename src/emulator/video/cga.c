@@ -1,6 +1,7 @@
 #include "emulator/emulator.h"
 
 uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0, cga_hires = 0;
+static uint8_t hercules_mode = 0, hercules_enable = 0;
 uint8_t port3DA;
 
 const uint32_t cga_palette[16] = {
@@ -110,8 +111,17 @@ void cga_portout(uint16_t portnum, uint16_t value) {
     // http://www.techhelpmanual.com/901-color_graphics_adapter_i_o_ports.html
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
+        case 0x3B8: {
+            hercules_mode = ((hercules_enable & 1) & ((value & 2) >> 1)) != 0;
+            if (hercules_mode && videomode != 0x7) videomode = 0x1e;
+            break;
+        }
+        case 0x3BF: {
+            hercules_enable = value & 3;
+            break;
+        }
         case 0x3D8: // Mode control register:
-         //printf("3d8 %x\n", value);
+//         printf("3d8 %x\n", value);
         // 0x13 -- 640 dot mode -- 0b10011
             //if (videomode >= 0xd) return;
             cga_hires = (value >> 4) & 1;
@@ -162,5 +172,5 @@ void cga_portout(uint16_t portnum, uint16_t value) {
 uint16_t cga_portin(uint16_t portnum) {
 //    port3DA ^= 1;
 //    if (!(port3DA & 1)) port3DA ^= 8;
-    return port3DA;
+    return hercules_mode ? 0xFF : port3DA;
 }
