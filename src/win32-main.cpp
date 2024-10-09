@@ -190,12 +190,13 @@ static inline void renderer() {
                 }
                 case 0x1e:
                     cols = 90;
+                    vram_offset = 5;
                     if (y >= 348) break;
                 case 0x7:
 //                    log_debug = 1;
                 {
                     uint32_t *pixels = &SCREEN[y][0];
-                    uint8_t *cga_row = VIDEORAM + (y & 3) * 8192 + y / 4 * cols;
+                    uint8_t *cga_row = vram_offset + VIDEORAM + (y & 3) * 8192 + y / 4 * cols;
                     // Each byte containing 8 pixels
                     for (int x = 640 / 8; x--;) {
                         uint8_t cga_byte = *cga_row++;
