@@ -112,7 +112,7 @@ void cga_portout(uint16_t portnum, uint16_t value) {
     // https://www.seasip.info/VintagePC/cga.html
     switch (portnum) {
         case 0x3B8: {
-            hercules_mode = ((hercules_enable & 1) & ((value & 2) >> 1)) != 0;
+            hercules_mode = ((hercules_enable & 1) & (value & 2)) != 0;
             if (hercules_mode && videomode != 0x7) videomode = 0x1e;
             break;
         }

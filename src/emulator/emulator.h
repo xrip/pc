@@ -40,6 +40,10 @@ extern "C" {
 
 #define EMS_MEMORY_SIZE 0x200000
 
+#define BIOS_MEMORY_SIZE                0x413
+#define BIOS_TRUE_MEMORY_SIZE           0x415
+#define BIOS_BIOSMEM_CRTCPU_PAGE        0x48A
+
 extern uint8_t log_debug;
 
 extern uint8_t VIDEORAM[VIDEORAM_SIZE+4];

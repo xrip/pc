@@ -32,7 +32,6 @@ static inline void bufsermousedata(uint8_t value) {
                 bufsermousedata('M'); //drivers to verify that there is
                 bufsermousedata('M'); //actually a mouse connected to the port.
                 bufsermousedata('M');
-                bufsermousedata('M');
             }
             break;
     }

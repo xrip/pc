@@ -75,6 +75,15 @@ uint32_t tga_palette[16] = {
 // B8000h is accessed, the 16kB area is mapped to the 32kB
 // range twice in a row. (Scuba Venture writes across the boundary)
 
+            // CRT/processor page register
+            // See the comments on the PCJr version of this register.
+            // A difference to it is:
+            // Bit 3-5: Processor page CPU_PG
+            // The remapped range is 32kB instead of 16. Therefore CPU_PG bit 0
+            // appears to be ORed with CPU A14 (to preserve some sort of
+            // backwards compatibility?), resulting in odd pages being mapped
+            // as 2x16kB. Implemented in vga_memory.cpp Tandy handler.
+
 // Bit 6-7: Video Address mode
 // 0: CRTC addresses A0-12 directly, accessing 8k characters
 //    (+8k attributes). Used in text modes (one bank).

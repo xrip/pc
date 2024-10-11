@@ -236,6 +236,20 @@ void intcall86(uint8_t intnum) {
                     break;
                 case 0x10:
                     switch (CPU_AL) {
+                        case 0x00: {
+                            uint8_t color_index = CPU_BL & 0xF;
+                            uint8_t color_byte = CPU_BH;
+                            const uint16_t r = (((color_byte >> 2) & 1) << 1) + (color_byte >> 5 & 1);
+                            const uint16_t g = (((color_byte >> 1) & 1) << 1) + (color_byte >> 4 & 1);
+                            const uint16_t b = (((color_byte >> 0) & 1) << 1) + (color_byte >> 3 & 1);
+
+                            if (videomode <= 0xa) {
+                                tga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+                            } else {
+                                vga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+                            }
+                            return;
+                        }
                         case 0x02: {
                             uint32_t memloc = CPU_ES * 16 + CPU_DX;
                             for (int color_index = 0; color_index < 16; color_index++) {
@@ -299,6 +313,20 @@ void intcall86(uint8_t intnum) {
             insertdisk(0, "..\\fdd0.img");
             insertdisk(128, "..\\hdd.img");
 #endif
+
+            if (1) {
+/* PCjr reserves the top of its internal 128KB of RAM for video RAM.  * Sidecars can extend it past 128KB but it
+ * requires DOS drivers or TSRs to modify the MCB chain so that it a) marks the video memory as reserved and b)
+ * creates a new free region above the video RAM region.
+ *
+ * Therefore, only subtract 16KB if 128KB or less is configured for this machine.
+ *
+ * Note this is not speculation, it's there in the PCjr BIOS source code:
+ * [http://hackipedia.org/browse.cgi/Computer/Platform/PC%2c%20IBM%20compatible/Video/PCjr/IBM%20Personal%20Computer%20PCjr%20Hardware%20Reference%20Library%20Technical%20Reference%20%281983%2d11%29%20First%20Edition%20Revised%2epdf]
+ * ROM BIOS source code page A-16 */
+
+                writew86(BIOS_TRUE_MEMORY_SIZE, 640 - 16);
+            }
             break;
         case 0x2F:
             // XMS memory
