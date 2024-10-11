@@ -234,11 +234,41 @@ void intcall86(uint8_t intnum) {
                     vga_plane_offset = 0;
                     vga_planar_mode = 0;
                     break;
+                case 0x05: /* Select Active Page */ {
+                    if (CPU_AL >= 0x80) {
+                        printf("page select %x %x %x\n", CPU_AL, CPU_BL, CPU_BH);
+                        uint8_t CRTCPU = RAM[BIOS_BIOSMEM_CRTCPU_PAGE];
+                        switch (CPU_AL) {
+                            case 0x80: /* read CRT/CPU page registers */
+                                CPU_BH = CRTCPU & 7;
+                                CPU_BL = (CRTCPU >> 7) & 7;
+                                break;
+                            case 0x81: /* set CPU page register to value in BL */
+                                CRTCPU = (CRTCPU & 0xc7) | ((CPU_BL & 7) << 3);
+                                tga_offset = (CPU_BL & 7) == 0x4 ? 0 : 32768;
+                                break;
+                            case 0x82: /* set CRT page register to value in BH */
+                                CRTCPU = (CRTCPU & 0xf8) | (CPU_BH & 7);
+                                vga_plane_offset = (CPU_BH & 7)  == 0x4 ? 0 : 32768;
+                                break;
+                            case 0x83: /* set CRT and CPU page registers in BH and BL */
+                                CRTCPU = (CRTCPU & 0xc0) | (CPU_BH & 7) | ((CPU_BL & 7) << 3);
+                                vga_plane_offset = (CPU_BH & 7)  == 0x4 ? 0 : 32768;
+                                tga_offset = (CPU_BL & 7) == 0x4 ? 0 : 32768;
+                                break;
+                        }
+                        RAM[BIOS_BIOSMEM_CRTCPU_PAGE] = CRTCPU;
+                        return;
+                    }
+
+                    break;
+                }
                 case 0x10:
                     switch (CPU_AL) {
                         case 0x00: {
                             uint8_t color_index = CPU_BL & 0xF;
                             uint8_t color_byte = CPU_BH;
+
                             const uint16_t r = (((color_byte >> 2) & 1) << 1) + (color_byte >> 5 & 1);
                             const uint16_t g = (((color_byte >> 1) & 1) << 1) + (color_byte >> 4 & 1);
                             const uint16_t b = (((color_byte >> 0) & 1) << 1) + (color_byte >> 3 & 1);
@@ -251,6 +281,7 @@ void intcall86(uint8_t intnum) {
                             return;
                         }
                         case 0x02: {
+
                             uint32_t memloc = CPU_ES * 16 + CPU_DX;
                             for (int color_index = 0; color_index < 16; color_index++) {
                                 uint8_t color_byte = read86(memloc++);
@@ -263,9 +294,8 @@ void intcall86(uint8_t intnum) {
                             // TODO: Overscan/Border 17th color
                             return;
                         }
-                            // INT 10H 1010H: Set One DAC Color Register
                         case 0x10: {// Set One DAC Color Register
-                            vga_palette[CPU_BX & 0xFF] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2,
+                            vga_palette[CPU_BL] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2,
                                                              (CPU_CL & 63) << 2);
                             return;
                         }
@@ -3334,9 +3364,9 @@ void exec86(uint32_t execloops) {
                 /* trip invalid opcode exception (this
 					 occurs on the 80186+, 8086/8088 CPUs
 					 treat them as NOPs. */
-			/* technically they aren't exactly like NOPs in most
-			 * cases, but for our pursoses, that's accurate enough.
-			 */
+                /* technically they aren't exactly like NOPs in most
+                 * cases, but for our pursoses, that's accurate enough.
+                 */
 #endif
                 //printf("Unexpected opcode: %02Xh ignored", opcode);
             }

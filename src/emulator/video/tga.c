@@ -23,11 +23,10 @@ uint32_t tga_palette[16] = {
 
 uint8_t tga_palette_map[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
- void tga_portout(uint16_t portnum, uint16_t value) {
+void tga_portout(uint16_t portnum, uint16_t value) {
 // http://archives.oldskool.org/pub/tvdog/tandy1000/faxback/02506.pdf
 // https://ia803208.us.archive.org/15/items/Tandy_1000_Computer_Service_Manual_1985_Tandy/Tandy_1000_Computer_Service_Manual_1985_Tandy.pdf
     static uint8_t tga_register;
-
 
 
     switch (portnum) {
@@ -99,12 +98,8 @@ uint8_t tga_palette_map[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 // 3: CRTC A12 is replaced with CRTC RA0, PG0 is replaced with
 //    CRTC RA1. This results in the 4-bank mode.
 //    PG1-2 in effect. 32k range
-    if (value == 0) {
-        tga_offset = (6*16*1024);
-    } else {
-        tga_offset  = 32768;
-    }
-            //vga_plane_offset = vram_offset >> 1;
-break;
+
+            vga_plane_offset = (value & 7) == 0x4 ? 0 : 32768;
+            break;
     }
 }
