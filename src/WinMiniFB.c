@@ -144,7 +144,7 @@ int mfb_open(const char *title, int width, int height, int scale) {
     s_height = height;
     s_scale = scale;
 
-/** /
+/**/
     s_wnd = CreateWindowEx(0,
                            title, title,
                            WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
@@ -153,7 +153,7 @@ int mfb_open(const char *title, int width, int height, int scale) {
                            rect.right, rect.bottom,
                            0, 0, 0, 0);
 /**/
-/**/    s_wnd = CreateWindowEx(0,
+/** /    s_wnd = CreateWindowEx(0,
                            title, title,
                            WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
                            (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2,

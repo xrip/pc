@@ -264,7 +264,7 @@ static INLINE void renderer() {
             case 0x0E: /* EGA 640x200 16 color */ {
                 vidramptr = VIDEORAM + vram_offset;
                 for (int x = 0; x < 640; x++) {
-                    uint32_t divy = y;
+                    uint32_t divy = y / 2;
                     uint32_t vidptr = divy * 80 + (x >> 3);
                     int x1 = 7 - (x & 7);
                     uint32_t color = vidramptr[vidptr] >> x1 & 1
