@@ -244,7 +244,7 @@ void intcall86(uint8_t intnum) {
                             const uint16_t b = (((color_byte >> 0) & 1) << 1) + (color_byte >> 3 & 1);
 
                             if (videomode <= 0xa) {
-                                tga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+                                tga_palette_map[color_index] = color_byte;
                             } else {
                                 vga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
                             }

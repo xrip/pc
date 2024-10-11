@@ -1,5 +1,6 @@
 #include "emulator/emulator.h"
-uint32_t tga_offset = 0x18000;
+
+uint32_t tga_offset = 0x8000;
 
 uint32_t tga_palette[16] = {
         0x000000, // Black
@@ -20,6 +21,7 @@ uint32_t tga_palette[16] = {
         0xFFFFFF // White
 };
 
+uint8_t tga_palette_map[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
  void tga_portout(uint16_t portnum, uint16_t value) {
 // http://archives.oldskool.org/pub/tvdog/tandy1000/faxback/02506.pdf
@@ -52,8 +54,8 @@ uint32_t tga_palette[16] = {
             // Palette Registers 0x10-0x1F
             uint8_t palette = tga_register & 0xF;
 
-            const uint8_t r = ((value >> 2 & 1) << 1) + (value >> 3 & 1);
-            const uint8_t g = ((value >> 1 & 1) << 1) + (value >> 3 & 1);
+            const uint8_t r = ((value >> 2 & 1) << 1) + (value >> 5 & 1);
+            const uint8_t g = ((value >> 1 & 1) << 1) + (value >> 4 & 1);
             const uint8_t b = ((value >> 0 & 1) << 1) + (value >> 3 & 1);
 
 

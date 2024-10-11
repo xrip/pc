@@ -225,14 +225,14 @@ static INLINE void renderer() {
                 break;
             }
             case 0x09: /* tandy 320x200 16 color */ {
-                uint8_t *tga_row = &vidramptr[(y / 2 & 3) * 8192 + y / 8 * 160];
+                uint8_t *tga_row = tga_offset + VIDEORAM + (y / 2 & 3) * 8192 + y / 8 * 160;
                 //                  uint8_t *tga_row = &VIDEORAM[tga_offset+(((y / 2) & 3) * 8192) + ((y / 8) * 160)];
 
                 // Each byte containing 4 pixels
                 for (int x = 320 / 2; x--;) {
                     uint8_t tga_byte = *tga_row++;
-                    *pixels++ = *pixels++ = tga_palette[tga_byte >> 4 & 15];
-                    *pixels++ = *pixels++ = tga_palette[tga_byte & 15];
+                    *pixels++ = *pixels++ = tga_palette[tga_palette_map[tga_byte >> 4 & 15]];
+                    *pixels++ = *pixels++ = tga_palette[tga_palette_map[tga_byte & 15]];
                 }
                 break;
             }
@@ -242,8 +242,8 @@ static INLINE void renderer() {
                 // Each byte contains 2 pixels
                 for (int x = 640 / 2; x--;) {
                     uint8_t tga_byte = *tga_row++;
-                    *pixels++ = tga_palette[tga_byte >> 4 & 15];
-                    *pixels++ = tga_palette[tga_byte & 15];
+                    *pixels++ = tga_palette[tga_palette_map[tga_byte >> 4 & 15]];
+                    *pixels++ = tga_palette[tga_palette_map[tga_byte & 15]];
                 }
                 break;
             }

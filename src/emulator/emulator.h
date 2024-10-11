@@ -97,6 +97,7 @@ extern uint32_t vga_palette[256];
 
 // TGA
 extern uint32_t tga_palette[16];
+extern uint8_t tga_palette_map[16];
 extern void tga_portout(uint16_t portnum, uint16_t value);
 
 
