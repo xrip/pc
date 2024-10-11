@@ -1,7 +1,7 @@
 // https://wiki.osdev.org/ISA_DMA
 // https://pdos.csail.mit.edu/6.828/2004/readings/hardware/8237A.pdf
 /* 	Intel 8237 DMA controller */
-#define DEBUG_DMA 1
+//#define DEBUG_DMA 1
 static struct dma_channel_s {
     uint32_t page;
     uint16_t address;
