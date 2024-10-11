@@ -236,7 +236,7 @@ void intcall86(uint8_t intnum) {
                     break;
                 case 0x05: /* Select Active Page */ {
                     if (CPU_AL >= 0x80) {
-                        printf("page select %x %x %x\n", CPU_AL, CPU_BL, CPU_BH);
+//                        printf("page select %x %x %x\n", CPU_AL, CPU_BL, CPU_BH);
                         uint8_t CRTCPU = RAM[BIOS_BIOSMEM_CRTCPU_PAGE];
                         switch (CPU_AL) {
                             case 0x80: /* read CRT/CPU page registers */

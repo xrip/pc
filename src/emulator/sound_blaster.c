@@ -99,9 +99,9 @@ static INLINE void blaster_writecmd(uint8_t value) {
                 sb.autoinit = 0;
                 sb.dorecord = (sb.lastcmd == 0x24) ? 1 : 0;
                 sb.dma_active = 1;
-//#ifdef DEBUG_BLASTER
+#ifdef DEBUG_BLASTER
                 printf("[BLASTER] Begin DMA transfer mode with %lx  byte blocks\r\n", sb.dmalen);
-//#endif
+#endif
             }
             return;
         case 0x40: //set time constant
