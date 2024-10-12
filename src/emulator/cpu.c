@@ -224,9 +224,9 @@ void intcall86(uint8_t intnum) {
                     videomode = CPU_AL & 0x7F;
 
                     RAM[0x449] = CPU_AL;
-                    RAM[0x44A] = (uint8_t) videomode <= 2 ? 40 : 80;
+                    RAM[0x44A] = videomode <= 2 ? 40 : 80;
                     RAM[0x44B] = 0;
-                    RAM[0x484] = (uint8_t) (25 - 1);
+                    RAM[0x484] = (25 - 1);
 
                     if ((CPU_AL & 0x80) == 0x00) {
                         memset(VIDEORAM, 0x0, VIDEORAM_SIZE);
@@ -237,8 +237,7 @@ void intcall86(uint8_t intnum) {
                     break;
                 case 0x05: /* Select Active Page */ {
                     if (CPU_AL >= 0x80) {
-//                        printf("page select %x %x %x\n", CPU_AL, CPU_BL, CPU_BH);
-                        uint8_t CRTCPU = RAM[BIOS_BIOSMEM_CRTCPU_PAGE];
+                        uint8_t CRTCPU = RAM[BIOS_CRTCPU_PAGE];
                         switch (CPU_AL) {
                             case 0x80: /* read CRT/CPU page registers */
                                 CPU_BH = CRTCPU & 7;
@@ -255,7 +254,7 @@ void intcall86(uint8_t intnum) {
                                 break;
                         }
                         tga_portout(0x3df, CRTCPU);
-                        RAM[BIOS_BIOSMEM_CRTCPU_PAGE] = CRTCPU;
+                        RAM[BIOS_CRTCPU_PAGE] = CRTCPU;
                         return;
                     }
 

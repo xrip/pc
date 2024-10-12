@@ -61,8 +61,8 @@ void tga_portout(uint16_t portnum, uint16_t value) {
             tga_palette[palette] = rgb(r * 85, g * 85, b * 85);
             break;
 
-        case 0x3DF: // CRT/processor page register
-            //printf("TANDY %x %x \n", portnum, value);
+        case 0x3DF:
+// CRT/processor page register
 // Bit 0-2: CRT page PG0-2
 // In one- and two bank modes, bit 0-2 select the 16kB memory
 // area of system RAM that is displayed on the screen.
@@ -76,14 +76,14 @@ void tga_portout(uint16_t portnum, uint16_t value) {
 // B8000h is accessed, the 16kB area is mapped to the 32kB
 // range twice in a row. (Scuba Venture writes across the boundary)
 
-            // CRT/processor page register
-            // See the comments on the PCJr version of this register.
-            // A difference to it is:
-            // Bit 3-5: Processor page CPU_PG
-            // The remapped range is 32kB instead of 16. Therefore CPU_PG bit 0
-            // appears to be ORed with CPU A14 (to preserve some sort of
-            // backwards compatibility?), resulting in odd pages being mapped
-            // as 2x16kB. Implemented in vga_memory.cpp Tandy handler.
+// CRT/processor page register
+// See the comments on the PCJr version of this register.
+// A difference to it is:
+// Bit 3-5: Processor page CPU_PG
+// The remapped range is 32kB instead of 16. Therefore CPU_PG bit 0
+// appears to be ORed with CPU A14 (to preserve some sort of
+// backwards compatibility?), resulting in odd pages being mapped
+// as 2x16kB. Implemented in vga_memory.cpp Tandy handler.
 
 // Bit 6-7: Video Address mode
 // 0: CRTC addresses A0-12 directly, accessing 8k characters
@@ -98,23 +98,13 @@ void tga_portout(uint16_t portnum, uint16_t value) {
 // 3: CRTC A12 is replaced with CRTC RA0, PG0 is replaced with
 //    CRTC RA1. This results in the 4-bank mode.
 //    PG1-2 in effect. 32k range
-
-            uint8_t memctrl = value;
-            uint32_t base = 0;
-            uint32_t vram, b8000, b8000_mask;
-            if ((memctrl & 0xc0) != 0xc0) {
-                vram = ((memctrl & 0x06) << 14) + base;
-                b8000 = ((memctrl & 0x30) << 11) + base;
-                b8000_mask = 0x7fff; // 32kb
-            } else {
-                vram = ((memctrl & 0x07) << 14) + base;
-                b8000 = ((memctrl & 0x38) << 11) + base;
-                b8000_mask = 0x3fff; // 16kb
+            if ((value & 0xc0) != 0xc0) { // 32kb
+                tga_offset = (value & 0x06) ? 0 : 0x8000;
+                vga_plane_offset = ((value & 0x30) << 11);
+            } else { // 16kb
+                tga_offset = (value & 0x07) ? 0 : 0x8000;
+                vga_plane_offset = (value & 0x38) << 11;
             }
-//            printf("VRAM %06X b8000 %06X MASK %06X \n", vram - 0x10000, b8000 - 0x10000, b8000_mask);
-
-            tga_offset = vram - 0x18000;
-            vga_plane_offset = b8000;
             break;
     }
 }

@@ -42,7 +42,7 @@ extern "C" {
 
 #define BIOS_MEMORY_SIZE                0x413
 #define BIOS_TRUE_MEMORY_SIZE           0x415
-#define BIOS_BIOSMEM_CRTCPU_PAGE        0x48A
+#define BIOS_CRTCPU_PAGE        0x48A
 
 extern uint8_t log_debug;
 
