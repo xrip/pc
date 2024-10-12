@@ -134,7 +134,7 @@ void __time_critical_func() dma_handler_VGA() {
             uint y_div_16 = screen_line / 16;
 
             //указатель откуда начать считывать символы
-            uint8_t* text_buffer_line = input_buffer + 32768 + (vram_offset << 1) + screen_line / 16 * text_buffer_width * 2;
+            uint8_t* text_buffer_line = input_buffer + 32768 + (vram_offset << 1) + __fast_mul(screen_line >> 4, 160);
 
             for (int x = 0; x < text_buffer_width; x++) {
                 //из таблицы символов получаем "срез" текущего символа
@@ -195,12 +195,7 @@ void __time_critical_func() dma_handler_VGA() {
 
     //зона прорисовки изображения
     //начальные точки буферов
-    // uint8_t* vbuf8=vbuf+line*g_buf_width; //8bit buf
-    // uint8_t* vbuf8=vbuf+(line*g_buf_width/2); //4bit buf
-    //uint8_t* vbuf8=vbuf+(line*g_buf_width/4); //2bit buf
-    //uint8_t* vbuf8=vbuf+((line&1)*8192+(line>>1)*g_buf_width/4);
-    uint8_t *input_buffer_8bit = input_buffer + 0x8000 + (vram_offset << 1) + y / 2 * 80 + (y & 1) * 8192;
-
+    uint8_t *input_buffer_8bit = input_buffer + 0x8000 + (vram_offset << 1) + __fast_mul(y >> 1, 80) + ((y & 1) << 13);
 
     //output_buffer = &lines_pattern[2 + ((line_number) & 1)];
 
@@ -261,20 +256,20 @@ void __time_critical_func() dma_handler_VGA() {
             for (int x = 640 / 8; x--;) {
                 uint8_t cga_byte = *input_buffer_8bit++;
 
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 7) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 6) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 5) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 4) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 3) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 2) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 1) & 1) * cga_foreground_color];
-                *output_buffer_8bit++ = current_palette[((cga_byte >> 0) & 1) * cga_foreground_color];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 7) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 6) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 5) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 4) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 3) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 2) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 1) & 1), cga_foreground_color)];
+                *output_buffer_8bit++ = current_palette[__fast_mul(((cga_byte >> 0) & 1), cga_foreground_color)];
             }
             break;
         case HERC_640x480x2:
             //4bit buf
             output_buffer_8bit = (uint8_t *) output_buffer_16bit;
-            input_buffer_8bit = input_buffer + (screen_line & 3) * 8192 + screen_line / 4 * 80;
+            input_buffer_8bit = input_buffer + (screen_line & 3) * 8192 + __fast_mul((screen_line >> 2), 80);
             // Each byte containing 8 pixels
             for (int x = 640 / 8; x--;) {
                 uint8_t cga_byte = *input_buffer_8bit++;
@@ -310,7 +305,7 @@ void __time_critical_func() dma_handler_VGA() {
             break;
         case TGA_320x200x16: {
             //4bit buf
-            input_buffer_8bit = 32768 + input_buffer + (y & 3) * 8192 + y / 4 * 160;
+            input_buffer_8bit = tga_offset + input_buffer + (y & 3) * 8192 + __fast_mul(y >> 2, 160);
             for (int x = 320 / 2; x--;) {
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit >> 4 & 15];
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit & 15];
@@ -320,7 +315,7 @@ void __time_critical_func() dma_handler_VGA() {
         }
         case TGA_640x200x16: {
             //4bit buf
-            input_buffer_8bit = input_buffer + y * 320;
+            input_buffer_8bit = input_buffer + __fast_mul(y, 320);
             output_buffer_8bit = (uint8_t *) output_buffer_16bit;
 
             for (int x = 640 / 2; x--;) {
@@ -331,7 +326,7 @@ void __time_critical_func() dma_handler_VGA() {
             break;
         }
         case VGA_640x480x2:
-            input_buffer_8bit = input_buffer + y * 80;
+            input_buffer_8bit = input_buffer + __fast_mul(y, 80);
             output_buffer_8bit = (uint8_t *) output_buffer_16bit;
             for (int x = 640 / 8; x--;) {
                 //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
@@ -348,13 +343,13 @@ void __time_critical_func() dma_handler_VGA() {
             }
             break;
         case VGA_320x200x256:
-            input_buffer_8bit = input_buffer + y * 320;
+            input_buffer_8bit = input_buffer + __fast_mul(y, 320);
             for (int x = 640 / 2; x--;) {
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
             }
             break;
         case VGA_320x200x256x4:
-            input_buffer_8bit = input_buffer + y * (width / 4);
+            input_buffer_8bit = input_buffer + __fast_mul(y, 80);
             for (int x = 640 / 4; x--;) {
                 //*output_buffer_16bit++=current_palette[*input_buffer_8bit++];
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit];
@@ -365,7 +360,7 @@ void __time_critical_func() dma_handler_VGA() {
             }
             break;
         case EGA_320x200x16x4: {
-            input_buffer_8bit = input_buffer + y * 40;
+            input_buffer_8bit = input_buffer + __fast_mul(y, 40);
             for (int x = 0; x < 40; x++) {
                 for (int bit = 7; bit--;) {
                     uint8_t color = *input_buffer_8bit >> bit & 1;
@@ -379,7 +374,7 @@ void __time_critical_func() dma_handler_VGA() {
             break;
         }
         default:
-            input_buffer_8bit = input_buffer + y * width;
+            input_buffer_8bit = input_buffer + __fast_mul(y, 320);
             for (int x = 640 / 2; x--;) {
                 *output_buffer_16bit++ = current_palette[*input_buffer_8bit++];
             }
