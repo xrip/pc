@@ -233,6 +233,7 @@ void intcall86(uint8_t intnum) {
                     }
                     vga_plane_offset = 0;
                     vga_planar_mode = 0;
+                    tga_offset = 0x8000;
                     break;
                 case 0x05: /* Select Active Page */ {
                     if (CPU_AL >= 0x80) {
