@@ -53,8 +53,8 @@ void tga_portout(uint16_t portnum, uint16_t value) {
             // Palette Registers 0x10-0x1F
             uint8_t palette = tga_register & 0xF;
 
-            const uint8_t r = ((value >> 2 & 1) << 1) + (value >> 5 & 1);
-            const uint8_t g = ((value >> 1 & 1) << 1) + (value >> 4 & 1);
+            const uint8_t r = ((value >> 2 & 1) << 1) + (value >> 3 & 1);
+            const uint8_t g = ((value >> 1 & 1) << 1) + (value >> 3 & 1);
             const uint8_t b = ((value >> 0 & 1) << 1) + (value >> 3 & 1);
 
 
@@ -99,7 +99,22 @@ void tga_portout(uint16_t portnum, uint16_t value) {
 //    CRTC RA1. This results in the 4-bank mode.
 //    PG1-2 in effect. 32k range
 
-            vga_plane_offset = (value & 7) == 0x4 ? 0 : 32768;
+            uint8_t memctrl = value;
+            uint32_t base = 0;
+            uint32_t vram, b8000, b8000_mask;
+            if ((memctrl & 0xc0) != 0xc0) {
+                vram = ((memctrl & 0x06) << 14) + base;
+                b8000 = ((memctrl & 0x30) << 11) + base;
+                b8000_mask = 0x7fff; // 32kb
+            } else {
+                vram = ((memctrl & 0x07) << 14) + base;
+                b8000 = ((memctrl & 0x38) << 11) + base;
+                b8000_mask = 0x3fff; // 16kb
+            }
+//            printf("VRAM %06X b8000 %06X MASK %06X \n", vram - 0x10000, b8000 - 0x10000, b8000_mask);
+
+            tga_offset = vram - 0x18000;
+            vga_plane_offset = b8000;
             break;
     }
 }

@@ -241,22 +241,19 @@ void intcall86(uint8_t intnum) {
                         switch (CPU_AL) {
                             case 0x80: /* read CRT/CPU page registers */
                                 CPU_BH = CRTCPU & 7;
-                                CPU_BL = (CRTCPU >> 7) & 7;
+                                CPU_BL = (CRTCPU >> 3) & 7;
                                 break;
                             case 0x81: /* set CPU page register to value in BL */
                                 CRTCPU = (CRTCPU & 0xc7) | ((CPU_BL & 7) << 3);
-                                tga_offset = (CPU_BL & 7) == 0x4 ? 0 : 32768;
                                 break;
                             case 0x82: /* set CRT page register to value in BH */
                                 CRTCPU = (CRTCPU & 0xf8) | (CPU_BH & 7);
-                                vga_plane_offset = (CPU_BH & 7)  == 0x4 ? 0 : 32768;
                                 break;
                             case 0x83: /* set CRT and CPU page registers in BH and BL */
                                 CRTCPU = (CRTCPU & 0xc0) | (CPU_BH & 7) | ((CPU_BL & 7) << 3);
-                                vga_plane_offset = (CPU_BH & 7)  == 0x4 ? 0 : 32768;
-                                tga_offset = (CPU_BL & 7) == 0x4 ? 0 : 32768;
                                 break;
                         }
+                        tga_portout(0x3df, CRTCPU);
                         RAM[BIOS_BIOSMEM_CRTCPU_PAGE] = CRTCPU;
                         return;
                     }
