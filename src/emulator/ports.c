@@ -216,7 +216,7 @@ void portout(uint16_t portnum, uint16_t value) {
                 }
 
                 case 0x6:
-                    //printf("!!! Y = %i\n", value);
+//                    printf("!!! Y = %i\n", value);
                     // 160x100x16 or 160x200x16 mode TODO: Add more checks
                     if (value == 0x64 && (videomode <= 3)) {
                         videomode = cga_hires ? 0x76 : 0x77;

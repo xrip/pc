@@ -381,9 +381,27 @@ static INLINE void renderer() {
                 }
                 break;
             }
+            case 0x87: { /* 40x46 ??? */
+                int y_div_2 = y / 8; // Precompute y / 2
+                // Calculate screen position
+                uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_2 * 80 + (y_div_2 & 1 * 8192);
+                for (int column = 0; column < 40; column++) {
+                    // Access vidram and font data once per character
+                    uint8_t *charcode = cga_row + column * 2; // Character code
+                    uint8_t glyph_row = font_8x8[*charcode * 8 + (y_div_2 % 8)]; // Glyph row from font
+                    uint8_t color = *++charcode;
+
+#pragma GCC unroll(8)
+                    for (int bit = 0; bit < 8; bit++) {
+                        *pixels++ = *pixels++ = cga_palette[glyph_row >> bit & 1 ? color & 0x0f : color >> 4];
+                    }
+                }
+                break;
+            }
             default:
                 printf("Unsupported videomode %x\n", videomode);
                 break;
+
         }
     }
 }
@@ -1119,6 +1137,7 @@ int main(int argc, char **argv) {
         exec86(327600);
         if (mfb_update(SCREEN, 0) == -1)
             exit(1);
+
     }
     // Wait for the thread to finish
     //    WaitForSingleObject(hThread, INFINITE);
