@@ -174,12 +174,7 @@ void __time_critical_func() second_core() {
                             break;
                         }
                         case VGA_320x200x256:
-                        case VGA_320x200x256x4: {
-                            for (uint8_t i = 0; i < 255; i++) {
-                                graphics_set_palette(i, vga_palette[i]);
-                            }
-                            break;
-                        }
+                        case VGA_320x200x256x4:
                         default: {
                             for (uint8_t i = 0; i < 255; i++) {
                                 graphics_set_palette(i, vga_palette[i]);
