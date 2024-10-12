@@ -351,7 +351,7 @@ static INLINE void renderer() {
                 uint8_t odd_even = y / 2 & 1;
                 // Calculate screen position
                 uint8_t *cga_row = VIDEORAM + 0x8000 + y_div_4 * 160;
-                for (uint8_t column = 0; column < 40; column++) {
+                for (uint8_t column = 0; column < cols; column++) {
                     // Access vidram and font data once per character
                     uint8_t *charcode = cga_row + column * 2; // Character code
                     uint8_t glyph_row = font_8x8[*charcode * 8 + odd_even]; // Glyph row from font
