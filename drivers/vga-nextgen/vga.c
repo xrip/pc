@@ -294,7 +294,7 @@ void __time_critical_func() dma_handler_VGA() {
         case TGA_160x200x16:
             //input_buffer_8bit = 32768 + input_buffer + (y & 1) * 8192 + y / 4 * 80;
             //4bit buf
-            for (int x = 640 / 4; x--;) {
+            for (int x = 320 / 4; x--;) {
                 uint8_t cga_byte = *input_buffer_8bit++; // Fetch 8 pixels from TGA memory
                 uint8_t color1 = ((cga_byte >> 4) & 15);
                 uint8_t color2 = (cga_byte & 15);
