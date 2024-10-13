@@ -561,6 +561,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 extern "C" void HandleMouse(int x, int y, uint8_t buttons) {
     static int prev_x = 0, prev_y = 0;
     sermouseevent(buttons, x - prev_x, y - prev_y);
+
     prev_y = y;
     prev_x = x;
 }
