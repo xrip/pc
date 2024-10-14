@@ -20,7 +20,6 @@
 extern uint8_t kbloop;
 
 void KeyboardHandler(); //uint /*gpio*/, uint32_t /*event_mask*/
-uint32_t ps2getcode(void);
 
 
 void keyboard_init(void);
@@ -31,15 +30,15 @@ void keyboard_toggle_led(uint8_t led);
 
 int16_t keyboard_send(uint8_t data);
 
-struct ps2_struct_group {
+typedef struct ps2_struct_group {
     unsigned char character;
     unsigned char make;
     unsigned is_char;
     unsigned char xt_make;
-};
+} ps2_struct_group_t;
 
 
-static struct ps2_struct_group ps2_group1[] =
+static const struct ps2_struct_group ps2_group1[] =
 {
     { 'a', 0x1C, 1, 0x1E },
     { 'b', 0x32, 1, 0x30 },

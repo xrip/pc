@@ -16,9 +16,9 @@ uint8_t led_status = 0b000;
 
 volatile int16_t ps2_error = PS2_ERR_NONE;
 
-void ps2poll();
+static inline void ps2poll();
 
-static void clock_lo(void) {
+static inline void clock_lo(void) {
     gpio_set_dir(KBD_CLOCK_PIN, GPIO_OUT);
     gpio_put(KBD_CLOCK_PIN, 0);
 }
@@ -106,17 +106,17 @@ static inline uint16_t wait_data_hi(uint16_t us) {
     } \
 } while (0)
 
-static void int_on(void) {
+static inline void int_on(void) {
     gpio_set_dir(KBD_CLOCK_PIN, GPIO_IN);
     gpio_set_dir(KBD_DATA_PIN, GPIO_IN);
     gpio_set_irq_enabled(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, true);
 }
 
-static void int_off(void) {
+static inline void int_off(void) {
     gpio_set_irq_enabled(KBD_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, false);
 }
 
-static int16_t ps2_recv_response(void) {
+static inline int16_t ps2_recv_response(void) {
     // Command may take 25ms/20ms at most([5]p.46, [3]p.21)
     uint8_t retry = 25;
     int16_t c = -1;
@@ -195,7 +195,7 @@ void keyboard_toggle_led(uint8_t led) {
     keyboard_send(led_status);
 }
 
-uint8_t ps2_to_xt_1(uint32_t val) {
+static uint8_t inline ps2_to_xt_1(uint32_t val) {
     uint8_t i;
     for (i = 0; i < 85; i++) {
         if (ps2_group1[i].make == val) return ps2_group1[i].xt_make;
@@ -203,7 +203,7 @@ uint8_t ps2_to_xt_1(uint32_t val) {
     return 0;
 }
 
-uint8_t ps2_to_xt_2(uint32_t val) {
+static uint8_t inline ps2_to_xt_2(uint32_t val) {
     uint8_t i;
     for (i = 0; i < 16; i++) {
         if (ps2_group2[i].xt_make == val) return ps2_group2[i].make;
@@ -211,7 +211,7 @@ uint8_t ps2_to_xt_2(uint32_t val) {
     return 0;
 }
 
-uint32_t ps2getcode() {
+static inline uint32_t ps2getcode() {
     uint32_t retval, i, len;
     if (!ps2bufsize) return 0;
     switch (ps2buffer[0]) {
@@ -336,19 +336,10 @@ void keyboard_init(void) {
 
 extern bool handleScancode(uint32_t ps2scancode);
 
-void ps2poll() {
+static inline void ps2poll() {
     uint32_t ps2scancode = ps2getcode();
-    if (!ps2scancode) {
-        return;
+    if (ps2scancode) {
+        handleScancode(ps2scancode);
     }
 
-    if (handleScancode(ps2scancode)) {
-        return;
-    }
-#if 0
-    portram[0x60] = ps2scancode;
-    // char tmp[20]; sprintf(tmp, "sc: 0x%X", ps2scancode); logMsg(tmp);
-    portram[0x64] |= 2;
-    doirq(1);
-#endif
 }
