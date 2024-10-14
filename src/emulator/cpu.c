@@ -340,7 +340,6 @@ void intcall86(uint8_t intnum) {
             insertdisk(0, "..\\fdd0.img");
             insertdisk(128, "..\\hdd.img");
 #endif
-
             if (1) {
 /* PCjr reserves the top of its internal 128KB of RAM for video RAM.  * Sidecars can extend it past 128KB but it
  * requires DOS drivers or TSRs to modify the MCB chain so that it a) marks the video memory as reserved and b)
