@@ -47,7 +47,7 @@ static inline void ps2poll(uint8_t data) {
         int8_t xsign = mouse_data.status >> 4 & 1 ? 0 : -1;
         int8_t ysign = mouse_data.status >> 5 & 1 ? 0 : -1;
         //printf_("Data packet %02x %d %d %d\n", mouse_data.status, mouse_data.axis_x, mouse_data.axis_y, mouse_data.wheel);
-        sermouseevent( mouse_data.status & 0b111, mouse_data.axis_x - prev_x, -1 * (mouse_data.axis_y - prev_y));
+        sermouseevent( mouse_data.status & 0b111, mouse_data.axis_x - prev_x, -(mouse_data.axis_y - prev_y));
         prev_x = xsign * mouse_data.axis_x;
         prev_y = ysign * mouse_data.axis_y;
         packet_size = 0;
