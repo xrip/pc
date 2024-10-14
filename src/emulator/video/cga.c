@@ -1,6 +1,6 @@
 #include "emulator/emulator.h"
 
-uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0, cga_hires = 0;
+uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0xFF, cga_hires = 0;
 static uint8_t hercules_mode = 0, hercules_enable = 0;
 uint8_t port3DA;
 
@@ -157,7 +157,7 @@ void cga_portout(uint16_t portnum, uint16_t value) {
                 //printf("160x200x16 %i", videomode);
                 videomode = 0x76;
             }
-            cga_blinking = (value >> 5) & 1;
+            cga_blinking = (value >> 5) & 1 ? 0x7F : 0xFF;
             break;
         case 0x3D9: // Colour control register
             cga_foreground_color = value & 0b1111;

@@ -15,8 +15,8 @@ typedef struct umb {
 
 static umb_t umb_blocks[] = {
 // Used by EMS driver
-//        { 0xC000, 0x0800, false },
-//        { 0xC800, 0x0800, false },
+        { 0xC000, 0x0800, false },
+        { 0xC800, 0x0800, false },
         { 0xE000, 0x0800, false },
         { 0xE800, 0x0800, false },
         { 0xF000, 0x0800, false },

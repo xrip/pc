@@ -68,8 +68,8 @@ static INLINE void renderer() {
                         uint8_t pixel_color;
                         if (cursor_active) {
                             pixel_color = color & 0x0F; // Cursor foreground color
-                        } else if (cga_blinking && color >> 7 & 1 && cursor_blink_state) {
-                            pixel_color = color >> 4 & 0x07; // Blinking background color
+                        } else if (cga_blinking && color >> 7 & 1 ) {
+                            pixel_color = cursor_blink_state ? color >> 4 & 0x7 : color & 0x7; // Blinking background color
                         } else {
                             pixel_color = glyph_pixels >> bit & 1 ? color & 0x0f : color >> 4;
                             // Foreground or background color
@@ -109,8 +109,12 @@ static INLINE void renderer() {
                         uint8_t pixel_color;
                         if (cursor_active) {
                             pixel_color = color & 0x0F; // Cursor foreground color
-                        } else if (cga_blinking && color >> 7 & 1 && cursor_blink_state) {
-                            pixel_color = color >> 4 & 0x07; // Blinking background color
+                        } else if (cga_blinking && color >> 7 & 1) {
+                            if (cursor_blink_state) {
+                                pixel_color = color >> 4 & 0x7; // Blinking background color
+                            } else {
+                                pixel_color = glyph_row >> bit & 1 ? color & 0x0f : (color >> 4 & 0x7);
+                            }
                         } else {
                             // Foreground or background color
                             pixel_color = glyph_row >> bit & 1 ? color & 0x0f : color >> 4;
