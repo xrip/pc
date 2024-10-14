@@ -1,4 +1,4 @@
-#pragma GCC optimize("Ofast")
+#pragma GCC optimize("O3")
 
 #include "includes/bios.h"
 #include "emulator.h"
@@ -6,8 +6,8 @@
 
 #if PICO_ON_DEVICE
 #include "psram_spi.h"
-uint8_t RAM[RAM_SIZE + 4]   __attribute__((aligned(4))) = { 0 };
-uint8_t VIDEORAM[VIDEORAM_SIZE + 4] __attribute__((aligned(4))) = { 0 };
+uint8_t __aligned(4) RAM[RAM_SIZE+4]  = { 0 };
+uint8_t __aligned(4) VIDEORAM[VIDEORAM_SIZE+4]  = { 0 };
 
 
 // Writes a byte to the virtual memory

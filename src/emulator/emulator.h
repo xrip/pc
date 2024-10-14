@@ -46,8 +46,8 @@ extern "C" {
 
 extern uint8_t log_debug;
 
-extern uint8_t VIDEORAM[VIDEORAM_SIZE+4];
-extern uint8_t RAM[RAM_SIZE+4];
+extern uint8_t VIDEORAM[VIDEORAM_SIZE + 4];
+extern uint8_t RAM[RAM_SIZE + 4];
 
 extern uint8_t UMB[(UMB_END - UMB_START) + 4];
 extern uint8_t HMA[(HMA_END - HMA_START) + 4];
@@ -229,7 +229,13 @@ extern int16_t covox_sample;
 #define ALING(x, y) __declspec(align(x)) y
 #elif defined(__GNUC__)
 #define INLINE __inline__
+#if PICO_ON_DEVICE
+#define ALING(x, y) __attribute__((__aligned__(x))) y
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
+#else
 #define ALING(x, y) y __attribute__((aligned(x)))
+#endif
 #else
 #define INLINE inline
 #define ALING(x, y) y __attribute__((aligned(x)))

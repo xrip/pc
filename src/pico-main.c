@@ -4,7 +4,7 @@
 #include <hardware/vreg.h>
 #include <pico/stdio.h>
 #include <pico/multicore.h>
-
+#include "../../memops_opt/memops_opt.h"
 #include "emulator/emulator.h"
 
 #include "audio.h"
@@ -43,7 +43,7 @@ int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
 extern uint8_t timeconst;
@@ -234,6 +234,7 @@ void _putchar(char character)
 }
 
 int main() {
+    memcpy_wrapper_replace(NULL);
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
@@ -262,7 +263,7 @@ int main() {
     }
 
     keyboard_init();
-    //nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     i2s_config = i2s_get_default_config();
 

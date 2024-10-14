@@ -16,7 +16,31 @@ uint32_t vram_offset = 0x0;
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 
-static inline uint8_t rtc_read(uint16_t addr) {
+static int8_t joystick_tick;
+static INLINE void joystick_out() {
+#if PICO_ON_DEVICE
+    joystick_tick = -127;
+#endif
+}
+
+static INLINE uint8_t joystick_in() {
+    uint8_t data = 0xF0;
+#if PICO_ON_DEVICE
+    nespad_read();
+    int8_t axis_x = nespad_state & DPAD_LEFT ? -127 : (nespad_state & DPAD_RIGHT) ? 127 : 0;
+    int8_t axis_y = nespad_state & DPAD_UP ? -127 : (nespad_state & DPAD_DOWN) ? 127 : 0;
+    joystick_tick++;
+
+    if (joystick_tick < axis_x) data |= 1;
+    if (joystick_tick < axis_y) data |= 2;
+    if (nespad_state & DPAD_A) data ^= 0x10;
+    if (nespad_state & DPAD_B) data ^= 0x20;
+#endif
+    return data;
+}
+
+
+static INLINE uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
 
@@ -123,8 +147,8 @@ void portout(uint16_t portnum, uint16_t value) {
             sn76489_out(value);
             return tandy_write(portnum, value);
 // Gamepad
-//        case 0x201:
-//            return joystick_out();
+        case 0x201:
+            return joystick_out();
 // GameBlaster / Creative Music System
         case 0x220:
         case 0x221:
@@ -318,8 +342,8 @@ uint16_t portin(uint16_t portnum) {
         case 0x87:
             return i8237_readpage(portnum);
 
-//        case 0x201:
-//            return joystick_in();
+        case 0x201:
+            return joystick_in();
 
         case 0x220:
         case 0x221:

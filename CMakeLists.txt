@@ -58,6 +58,7 @@ else ()
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
     target_include_directories(${PROJECT_NAME} PRIVATE src/printf)
+    add_subdirectory(memops_opt)
 
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
 
@@ -145,6 +146,7 @@ else ()
             hardware_pwm
             hardware_flash
 
+            memops_opt
             #            tinyusb_host tinyusb_board
     )
 
