@@ -38,7 +38,7 @@ static inline void ps2poll(uint8_t data) {
     static mouse_data_s mouse_data = { 0 };
     static uint8_t packet_size = 0;
     if (!mouse_initialized) {
-        printf_("%02x", data);
+//        printf_("%02x", data);
         return;
     }
     mouse_data.data[packet_size] = data;
