@@ -195,7 +195,7 @@ void __time_critical_func() dma_handler_VGA() {
                          : glyph_line >= cursor_start << 1 && glyph_line <= cursor_end << 1);
 
                 if (cga_blinking && color >> 7 & 1 && cursor_blink_state) {
-                    palette_color = &txt_palette_fast[(color >> 7 & 0x07) * 4];
+                    palette_color = &txt_palette_fast[(color >> 4 & 0x07) * 4];
                 }
                 if (cursor_active) {
                     *output_buffer_16bit++ = palette_color[3];
