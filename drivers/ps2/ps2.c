@@ -28,18 +28,18 @@ static inline void clock_hi(void) {
     gpio_put(KBD_CLOCK_PIN, 1);
 }
 
-static bool clock_in(void) {
+static inline bool clock_in(void) {
     gpio_set_dir(KBD_CLOCK_PIN, GPIO_IN);
     asm("nop");
     return gpio_get(KBD_CLOCK_PIN);
 }
 
-static void data_lo(void) {
+static inline void data_lo(void) {
     gpio_set_dir(KBD_DATA_PIN, GPIO_OUT);
     gpio_put(KBD_DATA_PIN, 0);
 }
 
-static void data_hi(void) {
+static inline void data_hi(void) {
     gpio_set_dir(KBD_DATA_PIN, GPIO_OUT);
     gpio_put(KBD_DATA_PIN, 1);
 }
@@ -50,12 +50,12 @@ static inline bool data_in(void) {
     return gpio_get(KBD_DATA_PIN);
 }
 
-static void inhibit(void) {
+static inline void inhibit(void) {
     clock_lo();
     data_hi();
 }
 
-static void idle(void) {
+static inline void idle(void) {
     clock_hi();
     data_hi();
 }
@@ -315,10 +315,10 @@ void keyboard_init(void) {
     keyboard_send(0xFF); //Reset and start self-test
     sleep_ms(400); // Why so long?
 
+    /*
     keyboard_send(0xF2); // Get keyvoard id https://wiki.osdev.org/PS/2_Keyboard
     sleep_ms(250);
 
-    /*
     ps2_send(0xED);
     sleep_ms(50);
     ps2_send(2); // NUM
