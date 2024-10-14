@@ -14,6 +14,7 @@
 #include "psram_spi.h"
 #include "nespad.h"
 #include "emu8950.h"
+#include "ps2_mouse.h"
 
 FATFS fs;
 i2s_config_t i2s_config;
@@ -262,7 +263,8 @@ int main() {
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
 
-    keyboard_init();
+//    keyboard_init();
+    mouse_init();
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     i2s_config = i2s_get_default_config();

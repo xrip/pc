@@ -3,6 +3,8 @@ add_library(ps2 INTERFACE)
 target_sources(ps2 INTERFACE
         ${CMAKE_CURRENT_LIST_DIR}/ps2.c
         ${CMAKE_CURRENT_LIST_DIR}/ps2.h
+        ${CMAKE_CURRENT_LIST_DIR}/ps2_mouse.c
+        ${CMAKE_CURRENT_LIST_DIR}/ps2_mouse.h
 )
 
 target_link_libraries(ps2 INTERFACE hardware_pio hardware_clocks)

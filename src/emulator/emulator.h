@@ -164,11 +164,11 @@ extern int timer_period;
 extern int speakerenabled;
 
 // Mouse
-void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel);
+extern void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel);
 
-uint8_t mouse_portin(uint16_t portnum);
+extern uint8_t mouse_portin(uint16_t portnum);
 
-void mouse_portout(uint16_t portnum, uint8_t value);
+extern void mouse_portout(uint16_t portnum, uint8_t value);
 
 extern void tandy_write(uint16_t reg, uint8_t value);
 

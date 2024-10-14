@@ -1,6 +1,6 @@
 #include "emulator.h"
 
-struct sermouse_s {
+static struct sermouse_s {
     uint8_t reg[8];
     uint8_t buf[16];
     int8_t bufptr;
@@ -9,16 +9,18 @@ struct sermouse_s {
 
 
 static inline void bufsermousedata(uint8_t value) {
+    doirq(4);
     if (sermouse.bufptr == 16)
         return;
-    if (sermouse.bufptr == 0)
+    if (sermouse.bufptr == 0) {
         doirq(4);
+    }
     sermouse.buf[sermouse.bufptr++] = value;
 }
 
  void mouse_portout(uint16_t portnum, uint8_t value) {
     uint8_t oldreg;
-    // printf("[DEBUG] Serial mouse, port %X out: %02X\n", portnum, value);
+//     printf("[DEBUG] Serial mouse, port %X out: %02X\n", portnum, value);
     portnum &= 7;
     oldreg = sermouse.reg[portnum];
     sermouse.reg[portnum] = value;
@@ -32,6 +34,7 @@ static inline void bufsermousedata(uint8_t value) {
                 bufsermousedata('M'); //drivers to verify that there is
                 bufsermousedata('M'); //actually a mouse connected to the port.
                 bufsermousedata('M');
+                bufsermousedata('M');
             }
             break;
     }
@@ -39,7 +42,7 @@ static inline void bufsermousedata(uint8_t value) {
 
  uint8_t mouse_portin(uint16_t portnum) {
     uint8_t temp;
-    // printf("[DEBUG] Serial mouse, port %X in\n", portnum);
+//     printf("[DEBUG] Serial mouse, port %X in\n", portnum);
     portnum &= 7;
     switch (portnum) {
         case 0: //data receive
@@ -58,13 +61,12 @@ static inline void bufsermousedata(uint8_t value) {
             else
                 temp = 0;
             return 0x1;
-        /*default:
-            return 0x60 | temp;*/
     }
     return sermouse.reg[portnum & 7];
 }
 
 void sermouseevent(uint8_t buttons, int8_t xrel, int8_t yrel) {
+
     uint8_t highbits = (xrel < 0) ? 3 : 0;
     if (yrel < 0)
         highbits |= 12;
