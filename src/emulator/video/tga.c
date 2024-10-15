@@ -1,6 +1,8 @@
 #include "emulator/emulator.h"
 #include "emulator/includes/font8x8.h"
-
+#if PICO_ON_DEVICE
+#include "graphics.h"
+#endif
 uint32_t tga_offset = 0x8000;
 
 uint32_t tga_palette[16] = {
@@ -60,6 +62,9 @@ void tga_portout(uint16_t portnum, uint16_t value) {
 
 
             tga_palette[palette] = rgb(r * 85, g * 85, b * 85);
+#if PICO_ON_DEVICE
+            graphics_set_palette(palette, tga_palette[palette]);
+#endif
             break;
 
         case 0x3DF:

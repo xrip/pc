@@ -7,6 +7,8 @@
 #define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
 #include "disks-rp2350.c.inc"
+#include "graphics.h"
+
 #else
 
 #include "disks-win32.c.inc"
@@ -209,7 +211,6 @@ static inline void decodeflagsword(uint16_t x) {
 void intcall86(uint8_t intnum) {
     switch (intnum) {
         case 0x10: {
-
             switch (CPU_AH) {
                 case 0x09:
                 case 0x0a:
@@ -280,8 +281,12 @@ void intcall86(uint8_t intnum) {
 
                             if (videomode <= 0xa) {
                                 tga_palette_map[color_index] = color_byte;
+
                             } else {
                                 vga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+#if PICO_ON_DEVICE
+                                graphics_set_palette(color_index, vga_palette[color_index]);
+#endif
                             }
                             return;
                         }
@@ -295,6 +300,9 @@ void intcall86(uint8_t intnum) {
                                 const uint8_t b = (((color_byte >> 0) & 1) << 1) + (color_byte >> 3 & 1);
 
                                 vga_palette[color_index] = rgb((r * 85), (g * 85), (b * 85));
+#if PICO_ON_DEVICE
+                                graphics_set_palette(color_index, vga_palette[color_index]);
+#endif
                             }
                             // TODO: Overscan/Border 17th color
                             return;
@@ -302,6 +310,9 @@ void intcall86(uint8_t intnum) {
                         case 0x10: {// Set One DAC Color Register
                             vga_palette[CPU_BL] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2,
                                                              (CPU_CL & 63) << 2);
+#if PICO_ON_DEVICE
+                            graphics_set_palette(CPU_BL, vga_palette[CPU_BL]);
+#endif
                             return;
                         }
                         case 0x12: {// set block of DAC color registers               VGA
@@ -309,6 +320,9 @@ void intcall86(uint8_t intnum) {
                             for (int color_index = CPU_BX; color_index < ((CPU_BX + CPU_CX) & 0xFF); color_index++) {
                                 vga_palette[color_index] = rgb((read86(memloc++) << 2), (read86(memloc++) << 2),
                                                                (read86(memloc++) << 2));
+#if PICO_ON_DEVICE
+                                graphics_set_palette(color_index, vga_palette[color_index]);
+#endif
                             }
                             return;
                         }

@@ -1,4 +1,7 @@
 #include "emulator/emulator.h"
+#if PICO_ON_DEVICE
+#include "graphics.h"
+#endif
 
 static uint8_t color_index = 0, read_color_index = 0, vga_register, sequencer_register = 0, graphics_control_register = 0;
 uint32_t vga_plane_offset = 0;
@@ -62,6 +65,9 @@ uint32_t vga_palette[256] = {
                     const uint8_t b = (((value >> 0) & 1) << 1) + (value >> 3 & 1);
 
                     vga_palette[vga_register] = rgb(r * 85, g * 85, b * 85);
+#if PICO_ON_DEVICE
+                    graphics_set_palette(vga_register, vga_palette[vga_register]);
+#endif
                 } else {
                     // vga[vga_register_index] = value;
                 }
@@ -121,6 +127,9 @@ uint32_t vga_palette[256] = {
             RGB[rgb_index++] = value << 2;
             if (rgb_index == 3) {
                 vga_palette[color_index++] = rgb(RGB[0], RGB[1], RGB[2]);
+#if PICO_ON_DEVICE
+                graphics_set_palette(color_index-1, vga_palette[color_index-1]);
+#endif
                 rgb_index = 0;
             }
             break;
