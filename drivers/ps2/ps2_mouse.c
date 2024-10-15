@@ -1,7 +1,7 @@
+// https://isdaman.com/alsos/hardware/mouse/ps2interface.htm
 #include "ps2_mouse.h"
 #include <pico/stdlib.h>
 #include <stdbool.h>
-#include "string.h"
 #include "emulator/emulator.h"
 
 extern int printf_(const char* format, ...);
@@ -148,93 +148,64 @@ static inline void int_off(void) {
     gpio_set_irq_enabled(MOUSE_CLOCK_PIN, GPIO_IRQ_EDGE_FALL, false);
 }
 
-static inline int16_t ps2_recv_response(void) {
-    busy_wait_ms(25);
-    return 0;
-}
-
-int16_t mouse_send(uint8_t data) {
+void mouse_send(uint8_t data) {
     bool parity = true;
-
-    //printf("KBD set s%02X \r\n", data);
-
     int_off();
-
-    /* terminate a transmission if we have */
     inhibit();
     wait_us(200);
 
-    /* 'Request to Send' and Start bit */
     data_lo();
     wait_us(200);
     clock_hi();
-    WAIT(clock_lo, 15000, 1); // 10ms [5]p.50
+    WAIT(clock_lo, 15000, 1);
 
-    /* Data bit[2-9] */
     for (uint8_t i = 0; i < 8; i++) {
         wait_us(15);
         if (data & (1 << i)) {
             parity = !parity;
             data_hi();
-        }
-        else {
+        } else {
             data_lo();
         }
-        WAIT(clock_hi, 100, (int16_t) (2 + i * 0x10));
-        WAIT(clock_lo, 100, (int16_t) (3 + i * 0x10));
+        WAIT(clock_hi, 100, (int16_t)(2 + i * 0x10));
+        WAIT(clock_lo, 100, (int16_t)(3 + i * 0x10));
     }
 
-    /* Parity bit */
     wait_us(15);
-    if (parity) { data_hi(); }
-    else { data_lo(); }
+    parity ? data_hi() : data_lo();
     WAIT(clock_hi, 100, 4);
     WAIT(clock_lo, 100, 5);
 
-    /* Stop bit */
     wait_us(15);
     data_hi();
 
-    /* Ack */
-    WAIT(data_lo, 100, 6); // check Ack
+    WAIT(data_lo, 100, 6);
     WAIT(data_hi, 100, 7);
     WAIT(clock_hi, 100, 8);
 
-    //ringbuf_reset(&rbuf);   // clear buffer
     idle();
     int_on();
-    return ps2_recv_response();
-    ERROR:
-//    printf("KBD error %02X \r\n", ps2_error);
-//    ps2_error = 0;
-    idle();
-    int_on();
-    return -0xf;
+    busy_wait_ms(25);
 }
 
 void DataHandler(void) {
     static uint8_t incoming = 0;
-    static uint32_t prev_ms = 0;
-    uint32_t now_ms;
-    uint8_t n, val;
+    static uint32_t prev_us = 0;
+    uint32_t now_us = time_us_64();
+    uint8_t val = gpio_get(MOUSE_DATA_PIN);
 
-    val = gpio_get(MOUSE_DATA_PIN);
-    now_ms = time_us_64();
-    if (now_ms - prev_ms > 250) {
+    if (now_us - prev_us > 250) {
         bitcount = 0;
         incoming = 0;
     }
-    prev_ms = now_ms;
-    n = bitcount - 1;
-    if (n <= 7) {
-        incoming |= (val << n);
+    prev_us = now_us;
+
+    if (bitcount && bitcount <= 8) {
+        incoming |= (val << (bitcount - 1));
     }
-    bitcount++;
-    if (bitcount == 11) {
-//        if (ps2bufsize < MOUSE_BUFFER_SIZE) {
-//            ps2buffer[ps2bufsize++] = incoming;
-            ps2poll(incoming);
-//        }
+
+    if (++bitcount == 11) {
+        ps2poll(incoming);
         bitcount = 0;
         incoming = 0;
     }
