@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 #include <pico/time.h>
 #include "hardware/clocks.h"
 #include <pico/stdlib.h>
