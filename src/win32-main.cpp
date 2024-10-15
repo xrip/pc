@@ -1137,7 +1137,7 @@ int main(int argc, char **argv) {
     CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
     while (true) {
-        exec86(327600);
+        exec86(32760);
         if (mfb_update(SCREEN, 0) == -1)
             exit(1);
 

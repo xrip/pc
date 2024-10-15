@@ -209,8 +209,15 @@ static inline void decodeflagsword(uint16_t x) {
 void intcall86(uint8_t intnum) {
     switch (intnum) {
         case 0x10: {
-//        printf("INT 10h CPU_AH: 0x%x CPU_AL: 0x%x\r\n", CPU_AH, CPU_AL);
+
             switch (CPU_AH) {
+                case 0x09:
+                case 0x0a:
+                    if (videomode >=8 && videomode <= 0xa) {
+                        tga_draw_char(CPU_AL, CURSOR_X, CURSOR_Y, 9);
+                        return;
+                    }
+                    break;
                 case 0x0f:
                     if (videomode < 8) break;
                     CPU_AL = videomode;
@@ -224,7 +231,7 @@ void intcall86(uint8_t intnum) {
                     videomode = CPU_AL & 0x7F;
 
                     RAM[0x449] = CPU_AL;
-                    RAM[0x44A] = videomode <= 2 ? 40 : 80;
+                    RAM[0x44A] = videomode <= 2 || (videomode >= 0x8 && videomode <= 0xa) ? 40 : 80;
                     RAM[0x44B] = 0;
                     RAM[0x484] = (25 - 1);
 

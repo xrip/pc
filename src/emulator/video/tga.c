@@ -1,4 +1,5 @@
 #include "emulator/emulator.h"
+#include "emulator/includes/font8x8.h"
 
 uint32_t tga_offset = 0x8000;
 
@@ -105,6 +106,34 @@ void tga_portout(uint16_t portnum, uint16_t value) {
                 tga_offset = (value & 0x07) ? 0 : 0x8000;
                 vga_plane_offset = (value & 0x38) << 11;
             }
+            //printf("3DF %x %x %x\n", value, tga_offset, vga_plane_offset);
             break;
+    }
+}
+
+void tga_draw_char(uint8_t ch, int x, int y, uint8_t color) {
+    uint16_t base_offset = tga_offset + (x << 2) + y * 320;
+
+    // Iterate over the 8 rows of the font character
+    uint8_t * font_char = &font_8x8[ch << 3];  // Get the bitmap for the current row of the character
+    for (int row = 0; row < 8; row++) {
+        uint8_t font_row = *font_char++;
+        uint16_t plane_offset = base_offset + ((row & 3) << 13);  // 8192-byte offset per bitplane
+
+        VIDEORAM[plane_offset++] = (((font_row >> 0) & 1) * color << 4) | ((font_row >> 1) & 1) * color;
+        VIDEORAM[plane_offset++] = (((font_row >> 2) & 1) * color << 4) | ((font_row >> 3) & 1) * color;
+        VIDEORAM[plane_offset++] = (((font_row >> 4) & 1) * color << 4) | ((font_row >> 5) & 1) * color;
+        VIDEORAM[plane_offset]   = (((font_row >> 6) & 1) * color << 4) | ((font_row >> 7) & 1) * color;
+
+        if (row == 3) base_offset += 160;
+    }
+}
+
+void tga_draw_pixel(int x, int y, uint8_t color) {
+    uint8_t * pixel = &VIDEORAM[tga_offset + (x >> 1) + ((y >> 2) << 13)];
+    if (x & 1) {
+        *pixel = (*pixel & 0xF0) | (color & 0x0F);
+    } else {
+        *pixel = (*pixel & 0x0F) | (color << 4);
     }
 }

@@ -99,7 +99,8 @@ extern uint32_t vga_palette[256];
 extern uint32_t tga_palette[16];
 extern uint8_t tga_palette_map[16];
 extern void tga_portout(uint16_t portnum, uint16_t value);
-
+extern void tga_draw_char(uint8_t ch, int x, int y, uint8_t color);
+extern void tga_draw_pixel(int x, int y, uint8_t color);
 
 // CGA
 extern const uint32_t cga_palette[16];
