@@ -69,7 +69,7 @@ static INLINE uint8_t blaster_getreadbuf() {
 void blaster_reset() {
     memset(&sb, 0, sizeof(struct sound_blaster_s));
 
-    sb.irq = 5;
+    sb.irq = 2;
     sb.dmachan = 1;
 
     blaster_putreadbuf(0xAA);

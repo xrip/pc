@@ -99,14 +99,14 @@ void __time_critical_func() second_core() {
             last_dss_tick = tick;
         }
 
-
+#if !PICO_ON_DEVICE
         // Sound Blaster
         if (tick > last_sb_tick + timeconst) {
             last_sb_sample = blaster_sample();
 
             last_sb_tick = tick;
         }
-
+#endif
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             int16_t samples[2] = { 0, 0 };
@@ -119,9 +119,10 @@ void __time_critical_func() second_core() {
 
             samples[0] += sn76489_sample();
 
+#if !PICO_ON_DEVICE
             if (last_sb_sample)
                 samples[0] += last_sb_sample;
-
+#endif
 //            samples[0] += adlibgensample() * 32;
             samples[0] += covox_sample;
             samples[1] = samples[0];
@@ -236,7 +237,7 @@ void _putchar(char character)
 }
 
 int main() {
-    memcpy_wrapper_replace(NULL);
+
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
@@ -246,6 +247,7 @@ int main() {
     set_sys_clock_hz(460000000, 0);
     *qmi_m0_timing = 0x60007303;
 #else
+    memcpy_wrapper_replace(NULL);
     //vreg_set_voltage(VREG_VOLTAGE_1_30);
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
