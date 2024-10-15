@@ -354,6 +354,13 @@ void intcall86(uint8_t intnum) {
         }
         case 0x13:
             return diskhandler();
+/*        case 0x15:
+            if (CPU_AH == 0x88) {
+                printf("Sss");
+                CPU_AX = 240+64;
+                return;
+            }
+            break;*/
         case 0x19:
 #if PICO_ON_DEVICE
             insertdisk(0, "\\XT\\fdd0.img");
