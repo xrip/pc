@@ -133,6 +133,11 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x83:
         case 0x87:
             return i8237_writepage(portnum, value);
+
+            // A20
+        case 0x92:
+            printf("A20 W\n");
+            return;
 // Tandy 3 voice
         case 0x1E0:
         case 0x2C0:
@@ -343,7 +348,10 @@ uint16_t portin(uint16_t portnum) {
         case 0x83:
         case 0x87:
             return i8237_readpage(portnum);
-
+            // A20
+        case 0x92:
+            printf("A20 R\n");
+            return 0xFF;
         case 0x201:
             return joystick_in();
 
