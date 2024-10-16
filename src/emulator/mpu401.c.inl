@@ -77,6 +77,9 @@ static INLINE void midi_write(uint16_t portnum, uint8_t value) {
                 mpu_status = STATUS_READY;
                 break;
             }
+            default:
+                printf("[MIDI] Unknown %x %x\n",portnum, value);
+                break;
         }
         return;
     }
