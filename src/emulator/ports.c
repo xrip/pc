@@ -4,7 +4,7 @@
 #include "nespad.h"
 #endif
 
-#include "i8237.c.inc"
+#include "i8237.c.inl"
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;

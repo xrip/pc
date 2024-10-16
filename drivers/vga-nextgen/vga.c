@@ -72,6 +72,7 @@ static uint16_t *txt_palette_fast = NULL;
 
 enum graphics_mode_t graphics_mode;
 
+extern uint8_t __aligned(4) DEBUG_VRAM[80*10];
 
 void __time_critical_func() dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
@@ -119,7 +120,31 @@ void __time_critical_func() dma_handler_VGA() {
 
     uint32_t * *output_buffer = &lines_pattern[2 + (screen_line & 1)];
     uint16_t *output_buffer_16bit = (uint16_t *) (*output_buffer) + shift_picture / 2;
+    if (screen_line >= 400) {
+        uint8_t y = screen_line - 400;
+        uint8_t y_div_8 = y / 8;
+        uint8_t glyph_line = y % 8;
 
+        //указатель откуда начать считывать символы
+        uint8_t* text_buffer_line = &DEBUG_VRAM[__fast_mul(y_div_8, 80)];
+
+        for (uint8_t column = 0; column < 80; column++) {
+            //из таблицы символов получаем "срез" текущего символа
+            uint8_t glyph_pixels = font_8x8[*text_buffer_line++ * 8 + glyph_line];
+            //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
+            uint16_t* palette_color = &txt_palette_fast[60] ;
+
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+            glyph_pixels >>= 2;
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+            glyph_pixels >>= 2;
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+            glyph_pixels >>= 2;
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+        }
+        dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
+        return;
+    }
     switch (graphics_mode) {
         case TEXTMODE_40x25_COLOR:
         case TEXTMODE_40x25_BW: {

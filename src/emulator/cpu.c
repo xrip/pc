@@ -6,12 +6,12 @@
 //#define CPU_286_STYLE_PUSH_SP
 //#define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
-#include "disks-rp2350.c.inc"
+#include "disks-rp2350.c.inl"
 #include "graphics.h"
 
 #else
 
-#include "disks-win32.c.inc"
+#include "disks-win32.c.inl"
 
 #endif
 

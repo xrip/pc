@@ -200,7 +200,7 @@ void __time_critical_func() second_core() {
 }
 extern bool PSRAM_AVAILABLE;
 
-void _putchar(char character)
+void _putchar1(char character)
 {
     static uint8_t color = 0xf;
     static int x = 0, y = 25;
@@ -235,7 +235,38 @@ void _putchar(char character)
         *vidramptr = 32;
     }
 }
+#if 1
+uint8_t __aligned(4) DEBUG_VRAM[80*10] = { 0 };
+void _putchar(char character)
+{
+    static uint8_t color = 0xf;
+    static int x = 0, y = 0;
 
+    if (y == 10) {
+        y = 9;
+        memmove(DEBUG_VRAM, DEBUG_VRAM + 80, 80 * 9);
+        memset(DEBUG_VRAM + 80 * 9, 32, 80);
+    }
+    uint8_t * vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
+
+    if ((unsigned)character >= 32) {
+        *vidramptr = character & 0xFF;
+        if (x == 80) {
+            x = 0;
+            y++;
+        } else
+            x++;
+    } else if (character == '\n') {
+        x = 0;
+        y++;
+    } else if (character == '\r') {
+        x = 0;
+    } else if (character == 8 && x > 0) {
+        x--;
+        *vidramptr = 32;
+    }
+}
+#endif
 int main() {
 
 #if PICO_RP2350
@@ -295,6 +326,16 @@ int main() {
     sn76489_reset();
     reset86();
 
+    printf("01234567890123456789012345678901234567890123456789012345678901234567890123456789\n");
+    printf("1 Hello world!\n");
+    printf("2 Hello world!\n");
+    printf("3 Hello world!\n");
+    printf("4 Hello world!\n");
+    printf("5 Hello world!\n");
+    printf("6 Hello world!\n");
+    printf("7 Hello world!\n");
+    printf("8 Hello world!\n");
+    printf("9 Hello world!\n");
     while (true) {
         exec86(32768);
         tight_loop_contents();
