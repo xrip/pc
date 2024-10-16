@@ -2,12 +2,13 @@
 #include "emulator.h"
 #if PICO_ON_DEVICE
 #include "nespad.h"
+#else
+#include "mpu401.c.inl"
+#include <windows.h>
 #endif
 
-#include <windows.h>
-
 #include "i8237.c.inl"
-#include "mpu401.c.inl"
+
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
@@ -190,11 +191,11 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x278:
             covox_sample = (int16_t) (value - 128 << 7);
             return;
-
+#if !PICO_ON_DEVICE
         case 0x330:
         case 0x331:
             return mpu401_write(portnum, value);
-
+#endif
         case 0x378:
         case 0x37A:
             return dss_out(portnum, value);
@@ -412,10 +413,12 @@ uint16_t portin(uint16_t portnum) {
             return rtc_read(portnum);
         case 0x27A: // LPT2 status (covox is always ready)
             return 0;
+#if !PICO_ON_DEVICE
         case 0x330:
         case 0x331:
             // printf("MT-32 Status port \n");
             return mpu401_read(portnum);
+#endif
         case 0x378:
         case 0x379:
             return dss_in(portnum);

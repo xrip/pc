@@ -32,7 +32,7 @@ static int midi_pos, midi_len;
 static uint32_t midi_command;
 static int midi_lengths[8] = {3, 3, 3, 3, 2, 2, 3, 1};
 static int midi_insysex;
-static uint8_t midi_sysex_data[4096 + 2];
+static uint8_t midi_sysex_data[1024 + 2];
 
 static INLINE void midi_send_sysex() {
     MIDIHDR hdr = {
@@ -98,12 +98,12 @@ static INLINE void mpu401_write(uint16_t portnum, uint8_t value) {
         return;
     }
 
-    if (value & 0x80 && !(value == 0xf7 && midi_insysex)) {
+    if (value & 0x80 && !(value == 0xF7 && midi_insysex)) {
         midi_pos = 0;
         midi_len = midi_lengths[value >> 4 & 7];
         midi_command = 0;
 
-        if (value == 0xf0) midi_insysex = 1;
+        if (value == 0xF0) midi_insysex = 1;
     }
 
     if (midi_insysex) {
