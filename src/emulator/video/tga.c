@@ -104,6 +104,7 @@ void tga_portout(uint16_t portnum, uint16_t value) {
 // 3: CRTC A12 is replaced with CRTC RA0, PG0 is replaced with
 //    CRTC RA1. This results in the 4-bank mode.
 //    PG1-2 in effect. 32k range
+            if (videomode == 4) break;
             if ((value & 0xc0) != 0xc0) { // 32kb
                 tga_offset = (value & 0x06) ? 0 : 0x8000;
                 vga_plane_offset = ((value & 0x30) << 11);
@@ -111,7 +112,7 @@ void tga_portout(uint16_t portnum, uint16_t value) {
                 tga_offset = (value & 0x07) ? 0 : 0x8000;
                 vga_plane_offset = (value & 0x38) << 11;
             }
-            //printf("3DF %x %x %x\n", value, tga_offset, vga_plane_offset);
+//            printf("3DF %x %x %x\n", value, tga_offset, vga_plane_offset);
             break;
     }
 }

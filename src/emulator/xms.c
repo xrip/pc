@@ -15,8 +15,10 @@ typedef struct umb {
 
 static umb_t umb_blocks[] = {
 // Used by EMS driver
-        { 0xC000, 0x0800, false },
-        { 0xC800, 0x0800, false },
+//        { 0xC000, 0x0800, false },
+//        { 0xC800, 0x0800, false },
+        { 0xD000, 0x0800, false },
+        { 0xD800, 0x0800, false },
         { 0xE000, 0x0800, false },
         { 0xE800, 0x0800, false },
         { 0xF000, 0x0800, false },
@@ -47,9 +49,10 @@ umb_t *get_free_umb_block(uint16_t size) {
 #define RELEASE_UMB 0x11
 
 uint8_t xms_handler() {
+//    printf("[XMS] %02X\n", CPU_AH);
     switch (CPU_AH) {
         case XMS_VERSION: { // Get XMS Version
-            CPU_AX = 0x0100;
+            CPU_AX = 0x0400;
             CPU_BX = 0x0001; // driver version
             CPU_DX = 0x0001; // HMA Exist
             break;
@@ -91,8 +94,8 @@ uint8_t xms_handler() {
                     umb_t *umb_block = get_free_umb_block(CPU_DX);
                     if (umb_block != NULL) {
                         CPU_DX = umb_block->size;
-                        CPU_AX = 0x1000; // Success
                         CPU_BX = 0x00B0; // Success
+                        CPU_AX = 0x0000; // Success
                         break;
                     }
                 }

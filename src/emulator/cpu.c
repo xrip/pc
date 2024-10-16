@@ -2,9 +2,9 @@
 
 //#define CPU_LIMIT_SHIFT_COUNT
 #define CPU_NO_SALC
-//#define CPU_SET_HIGH_FLAGS
+#define CPU_SET_HIGH_FLAGS
 //#define CPU_286_STYLE_PUSH_SP
-#define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
+//#define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
 #include "disks-rp2350.c.inc"
 #include "graphics.h"
@@ -354,13 +354,12 @@ void intcall86(uint8_t intnum) {
         }
         case 0x13:
             return diskhandler();
-/*        case 0x15:
+        case 0x15: /* XMS */
             if (CPU_AH == 0x88) {
-                printf("Sss");
-                CPU_AX = 240+64;
+                CPU_AX = 64;
                 return;
             }
-            break;*/
+            break;
         case 0x19:
 #if PICO_ON_DEVICE
             insertdisk(0, "\\XT\\fdd0.img");
