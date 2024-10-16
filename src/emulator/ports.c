@@ -4,7 +4,10 @@
 #include "nespad.h"
 #endif
 
+#include <windows.h>
+
 #include "i8237.c.inl"
+#include "mpu401.c.inl"
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
@@ -12,11 +15,12 @@ uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
 
-
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
 
+
 static int8_t joystick_tick;
+
 static INLINE void joystick_out() {
 #if PICO_ON_DEVICE
     joystick_tick = -127;
@@ -54,25 +58,25 @@ static INLINE uint8_t rtc_read(uint16_t addr) {
             ret = 0;
             break;
         case 2:
-            ret = (uint8_t)t->tm_sec;
+            ret = (uint8_t) t->tm_sec;
             break;
         case 3:
-            ret = (uint8_t)t->tm_min;
+            ret = (uint8_t) t->tm_min;
             break;
         case 4:
-            ret = (uint8_t)t->tm_hour;
+            ret = (uint8_t) t->tm_hour;
             break;
         case 5:
-            ret = (uint8_t)t->tm_wday;
+            ret = (uint8_t) t->tm_wday;
             break;
         case 6:
-            ret = (uint8_t)t->tm_mday;
+            ret = (uint8_t) t->tm_mday;
             break;
         case 7:
-            ret = (uint8_t)t->tm_mon + 1;
+            ret = (uint8_t) t->tm_mon + 1;
             break;
         case 9:
-            ret = (uint8_t)t->tm_year % 100;
+            ret = (uint8_t) t->tm_year % 100;
             break;
     }
 
@@ -127,18 +131,18 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x64:
             port64 = value;
             break;
-// i8237 DMA
+        // i8237 DMA
         case 0x81:
         case 0x82:
         case 0x83:
         case 0x87:
             return i8237_writepage(portnum, value);
 
-            // A20
+        // A20
         case 0x92:
             printf("A20 W\n");
             return;
-// Tandy 3 voice
+        // Tandy 3 voice
         case 0x1E0:
         case 0x2C0:
         case 0xC0:
@@ -151,10 +155,10 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC7:
             sn76489_out(value);
             return tandy_write(portnum, value);
-// Gamepad
+        // Gamepad
         case 0x201:
             return joystick_out();
-// GameBlaster / Creative Music System
+        // GameBlaster / Creative Music System
         case 0x220:
         case 0x221:
         case 0x222:
@@ -184,13 +188,17 @@ void portout(uint16_t portnum, uint16_t value) {
             return out_ems(portnum, value);
 
         case 0x278:
-            covox_sample = (int16_t)((value - 128) << 7);
+            covox_sample = (int16_t) (value - 128 << 7);
             return;
+
+        case 0x330:
+        case 0x331:
+            return midi_write(portnum, value);
 
         case 0x378:
         case 0x37A:
             return dss_out(portnum, value);
-// AdLib / OPL
+        // AdLib / OPL
         case 0x388:
             adlib_register = value;
             break;
@@ -204,7 +212,7 @@ void portout(uint16_t portnum, uint16_t value) {
                 }
             }
             return adlib_write_d(adlib_register, value);
-// EGA/VGA
+        // EGA/VGA
         case 0x3C0:
         case 0x3C4:
         case 0x3C5:
@@ -215,10 +223,10 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x3CE:
         case 0x3CF:
             return vga_portout(portnum, value);
-// https://stanislavs.org/helppc/6845.html
-// https://bitsavers.trailing-edge.com/components/motorola/_dataSheets/6845.pdf
-// https://www.theoddys.com/acorn/the_6845_crtc/the_6845_crtc.html
-// MC6845 CRTC
+        // https://stanislavs.org/helppc/6845.html
+        // https://bitsavers.trailing-edge.com/components/motorola/_dataSheets/6845.pdf
+        // https://www.theoddys.com/acorn/the_6845_crtc/the_6845_crtc.html
+        // MC6845 CRTC
         case 0x3B0:
         case 0x3B2:
         case 0x3B4:
@@ -241,19 +249,18 @@ void portout(uint16_t portnum, uint16_t value) {
                 case 0x4: {
                     if (value == 0x3e/* && videomode == 1*/) {
                         videomode = 0x79;
-
                     }
                     break;
                 }
 
                 case 0x6:
-//                    printf("!!! Y = %i\n", value);
+                    //                    printf("!!! Y = %i\n", value);
                     // 160x100x16 or 160x200x16 mode TODO: Add more checks
                     if (value == 0x64 && (videomode <= 3)) {
                         videomode = cga_hires ? 0x76 : 0x77;
                     }
 
-                    // 160x46x16 mode TODO: Add more checks
+                // 160x46x16 mode TODO: Add more checks
                     if (value == 0x2e/* && (videomode <= 3))*/) {
                         videomode = 0x87;
                     }
@@ -261,27 +268,27 @@ void portout(uint16_t portnum, uint16_t value) {
 
                 case 0x8:
                     break;
-// Cursor pos
+                // Cursor pos
                 case 0x0A:
                     cursor_start = value;
-                    //cursor_visible = !(value & 0x20) && (cursor_start < 8);
+                //cursor_visible = !(value & 0x20) && (cursor_start < 8);
                     break;
                 case 0x0B:
                     cursor_end = value;
                     break;
 
-// Screen offset
+                // Screen offset
                 case 0x0C: // Start address (MSB)
                     vram_offset = value;
                     break;
                 case 0x0D: // Start address (LSB)
                     vram_offset = (uint32_t) vram_offset << 8 | (uint32_t) value;
-                    //printf("vram offset %04X\n", vram_offset);
+                //printf("vram offset %04X\n", vram_offset);
                     break;
             }
 
-//            if ((crt_controller_idx != 0x03) && ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F) && (crt_controller_idx != 0x0c) && (crt_controller_idx != 0x0d)))
-//                printf("CRT %x %x\n", crt_controller_idx, value);
+        //            if ((crt_controller_idx != 0x03) && ((crt_controller_idx != 0x0E) && (crt_controller_idx != 0x0F) && (crt_controller_idx != 0x0c) && (crt_controller_idx != 0x0d)))
+        //                printf("CRT %x %x\n", crt_controller_idx, value);
 
             crt_controller[crt_controller_idx] = value;
 
@@ -306,6 +313,7 @@ void portout(uint16_t portnum, uint16_t value) {
             return mouse_portout(portnum, value);
     }
 }
+
 
 uint16_t portin(uint16_t portnum) {
     switch (portnum) {
@@ -335,20 +343,20 @@ uint16_t portin(uint16_t portnum) {
         case 0x43: //i8253
             return in8253(portnum);
 
-// Keyboard
+        // Keyboard
         case 0x60:
             return port60;
         case 0x61:
             return port61;
         case 0x64:
             return port64;
-// i8237 DMA
+        // i8237 DMA
         case 0x81:
         case 0x82:
         case 0x83:
         case 0x87:
             return i8237_readpage(portnum);
-            // A20
+        // A20
         case 0x92:
             printf("A20 R\n");
             return 0xFF;
@@ -376,7 +384,7 @@ uint16_t portin(uint16_t portnum) {
 #else
             return cms_in(portnum);
 #endif
-// RTC
+        // RTC
         case 0x240:
         case 0x241:
         case 0x242:
@@ -404,12 +412,16 @@ uint16_t portin(uint16_t portnum) {
             return rtc_read(portnum);
         case 0x27A: // LPT2 status (covox is always ready)
             return 0;
+        case 0x330:
+        case 0x331:
+            // printf("MT-32 Status port \n");
+            return midi_read(portnum);
         case 0x378:
         case 0x379:
             return dss_in(portnum);
         case 0x37A:
             return 0;
-// Adlib
+        // Adlib
         case 0x388:
         case 0x389:
             if (!adlibregmem[4])
