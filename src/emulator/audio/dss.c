@@ -17,7 +17,7 @@ inline uint16_t dss_sample() {
         memmove(fifo_buffer, fifo_buffer + 1, --fifo_length);
     }
 
-    return sample ? (int16_t )(sample << 7) : 0;
+    return sample ? (int16_t )(sample << 6) : 0;
 }
 
 inline static void fifo_push_byte(uint8_t value) { // core #0
