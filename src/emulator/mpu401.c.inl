@@ -1,4 +1,5 @@
 #include <emulator/emulator.h>
+#include <windows.h>
 
 enum { STATUS_READY = 0, STATUS_OUTPUT_NOT_READY = 0x40, STATUS_INPUT_NOT_READY = 0x80 };
 
