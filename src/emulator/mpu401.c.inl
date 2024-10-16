@@ -33,7 +33,7 @@ static int midi_pos, midi_len;
 static uint32_t midi_command;
 static int midi_lengths[8] = {3, 3, 3, 3, 2, 2, 3, 1};
 static int midi_insysex;
-static uint8_t midi_sysex_data[1024 + 2];
+static uint8_t midi_sysex_data[4096 + 2];
 
 static INLINE void midi_send_sysex() {
     MIDIHDR hdr = {
@@ -85,13 +85,13 @@ static INLINE void mpu401_write(uint16_t portnum, uint8_t value) {
     if (portnum & 1) {
         switch (value) {
             case 0x3F: // Enter UART mode
-                midi_init_once();
                 mpu_rx_data = 0xFE; // Ack
                 mpu_status = STATUS_READY;
                 break;
             default:
                 printf("[MIDI] Unknown %x %x\n", portnum, value);
             case 0xFF: // Reset
+                midi_init_once();
                 mpu_rx_data = 0xFE; // Ack
                 mpu_status = STATUS_READY;
                 break;
