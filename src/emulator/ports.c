@@ -416,7 +416,6 @@ uint16_t portin(uint16_t portnum) {
 #if !PICO_ON_DEVICE
         case 0x330:
         case 0x331:
-            // printf("MT-32 Status port \n");
             return mpu401_read(portnum);
 #endif
         case 0x378:
