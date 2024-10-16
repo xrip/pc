@@ -7,16 +7,10 @@ static int midi_id = 0;
 static HMIDIOUT midi_out_device = NULL;
 
 static INLINE void midi_init() {
-    printf("calling midi_init()\n");
     MMRESULT hr = midiOutOpen(&midi_out_device, midi_id, 0, 0, CALLBACK_NULL);
     if (hr != MMSYSERR_NOERROR) {
-        printf("1 midiOutOpen error - %08X\n", hr);
-        midi_id = 0;
-        hr = midiOutOpen(&midi_out_device, midi_id, 0, 0, CALLBACK_NULL);
-        if (hr != MMSYSERR_NOERROR) {
-            printf("2 midiOutOpen error - %08X\n", hr);
-            return;
-        }
+        printf("midiOutOpen error - %08X\n", hr);
+        return;
     }
 
     midiOutReset(midi_out_device);
@@ -29,16 +23,6 @@ static INLINE void midi_close() {
         midi_out_device = NULL;
     }
 }
-
-static INLINE uint8_t midi_read(uint16_t portnum) {
-    if (portnum & 1) {
-        return mpu_status;
-    }
-
-    mpu_status = STATUS_INPUT_NOT_READY;
-    return mpu_rx_data;
-}
-
 static int midi_pos, midi_len;
 static uint32_t midi_command;
 static int midi_lengths[8] = {3, 3, 3, 3, 2, 2, 3, 1};
@@ -62,7 +46,18 @@ static INLINE void midi_send_sysex() {
 
     midi_insysex = 0;
 }
-static INLINE void midi_write(uint16_t portnum, uint8_t value) {
+
+
+static INLINE uint8_t mpu401_read(uint16_t portnum) {
+    if (portnum & 1) {
+        return mpu_status;
+    }
+
+    mpu_status = STATUS_INPUT_NOT_READY;
+    return mpu_rx_data;
+}
+
+static INLINE void mpu401_write(uint16_t portnum, uint8_t value) {
 
     if (portnum & 1) {
         switch (value) {
@@ -79,6 +74,8 @@ static INLINE void midi_write(uint16_t portnum, uint8_t value) {
             }
             default:
                 printf("[MIDI] Unknown %x %x\n",portnum, value);
+                mpu_rx_data = 0xFE; // Ack
+                mpu_status = STATUS_READY;
                 break;
         }
         return;

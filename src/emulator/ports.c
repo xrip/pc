@@ -193,7 +193,7 @@ void portout(uint16_t portnum, uint16_t value) {
 
         case 0x330:
         case 0x331:
-            return midi_write(portnum, value);
+            return mpu401_write(portnum, value);
 
         case 0x378:
         case 0x37A:
@@ -415,7 +415,7 @@ uint16_t portin(uint16_t portnum) {
         case 0x330:
         case 0x331:
             // printf("MT-32 Status port \n");
-            return midi_read(portnum);
+            return mpu401_read(portnum);
         case 0x378:
         case 0x379:
             return dss_in(portnum);
