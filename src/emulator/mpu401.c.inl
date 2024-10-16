@@ -32,7 +32,7 @@ static int midi_pos, midi_len;
 static uint32_t midi_command;
 static int midi_lengths[8] = {3, 3, 3, 3, 2, 2, 3, 1};
 static int midi_insysex;
-static uint8_t midi_sysex_data[1024 + 2];
+static uint8_t midi_sysex_data[4096 + 2];
 
 static INLINE void midi_send_sysex() {
     MIDIHDR hdr = {
@@ -40,10 +40,33 @@ static INLINE void midi_send_sysex() {
         .dwBufferLength = midi_pos,
         .dwFlags = 0
     };
+    // Prepare the MIDI header for sending
+    MMRESULT result = midiOutPrepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
+    if (result != MMSYSERR_NOERROR) {
+        printf("Error preparing SysEx header: %08X\n", result);
+        return;
+    }
 
-    midiOutPrepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
-    midiOutLongMsg(midi_out_device, &hdr, sizeof(MIDIHDR));
+    // Send the SysEx message
+    result = midiOutLongMsg(midi_out_device, &hdr, sizeof(MIDIHDR));
+    if (result != MMSYSERR_NOERROR) {
+        printf("Error sending SysEx message: %08X\n", result);
+        midiOutUnprepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
+        return;
+    }
 
+    // Wait for the message to be sent
+    while (hdr.dwFlags & MHDR_DONE == 0) {
+        Sleep(1); // Allow time for the message to finish sending
+    }
+
+    // Unprepare the header after sending
+    result = midiOutUnprepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
+    if (result != MMSYSERR_NOERROR) {
+        printf("Error unpreparing SysEx header: %08X\n", result);
+    }
+
+    // Reset the SysEx state
     midi_insysex = 0;
 }
 
