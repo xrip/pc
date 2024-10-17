@@ -266,7 +266,9 @@ static inline uint32_t ps2getcode() {
     return retval;
 }
 
-void KeyboardHandler(void) {
+extern void DataHandler(uint gpio);
+void KeyboardHandler(uint gpio) {
+    if (gpio != KBD_CLOCK_PIN) return DataHandler(gpio);
     static uint8_t incoming = 0;
     static uint32_t prev_ms = 0;
     uint32_t now_ms;

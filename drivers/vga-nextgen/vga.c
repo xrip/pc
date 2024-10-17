@@ -128,11 +128,11 @@ void __time_critical_func() dma_handler_VGA() {
         //указатель откуда начать считывать символы
         uint8_t* text_buffer_line = &DEBUG_VRAM[__fast_mul(y_div_8, 80)];
 
-        for (uint8_t column = 0; column < 80; column++) {
+        for (uint8_t column = 80; column--;) {
             //из таблицы символов получаем "срез" текущего символа
             uint8_t glyph_pixels = font_8x8[*text_buffer_line++ * 8 + glyph_line];
             //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
-            uint16_t* palette_color = &txt_palette_fast[60] ;
+            uint16_t* palette_color = &txt_palette_fast[4 * 15] ;
 
             *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
             glyph_pixels >>= 2;

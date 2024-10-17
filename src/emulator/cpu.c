@@ -3392,7 +3392,7 @@ void exec86(uint32_t execloops) {
                  * cases, but for our pursoses, that's accurate enough.
                  */
 #endif
-                //printf("Unexpected opcode: %02Xh ignored", opcode);
+                printf("Unexpected opcode: %02Xh ignored", opcode);
             }
                 break;
         }

@@ -187,8 +187,9 @@ void mouse_send(uint8_t data) {
     int_on();
     busy_wait_ms(25);
 }
-
-void DataHandler(void) {
+extern void KeyboardHandler(uint gpio);
+void DataHandler(uint gpio) {
+    if (gpio != MOUSE_CLOCK_PIN) return KeyboardHandler(gpio);
     static uint8_t incoming = 0;
     static uint32_t prev_us = 0;
     uint32_t now_us = time_us_64();

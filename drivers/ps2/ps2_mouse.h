@@ -1,8 +1,8 @@
 #ifndef MOUSE_CLOCK_PIN
-#define MOUSE_CLOCK_PIN    (0)
+#define MOUSE_CLOCK_PIN    (23)
 #endif
 #ifndef MOUSE_DATA_PIN
-#define MOUSE_DATA_PIN    (1)
+#define MOUSE_DATA_PIN    (29)
 #endif
 #define MOUSE_BUFFER_SIZE 16
 

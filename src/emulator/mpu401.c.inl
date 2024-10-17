@@ -1,6 +1,8 @@
 #include <emulator/emulator.h>
 #include <windows.h>
 
+#define DEBUG_MPU401 1
+
 enum { STATUS_READY = 0, STATUS_OUTPUT_NOT_READY = 0x40, STATUS_INPUT_NOT_READY = 0x80 };
 
 uint8_t mpu_status = STATUS_INPUT_NOT_READY;
@@ -9,16 +11,16 @@ static int midi_id = 0;
 static HMIDIOUT midi_out_device = NULL;
 
 static INLINE void midi_init_once() {
-    static int initialized = 0;
-    if (initialized) return;
+    if (midi_out_device != NULL) return;
 
     MMRESULT hr = midiOutOpen(&midi_out_device, midi_id, 0, 0, CALLBACK_NULL);
     if (hr != MMSYSERR_NOERROR) {
+#ifdef DEBUG_MPU401
         printf("midiOutOpen error - %08X\n", hr);
+#endif
         return;
     }
     midiOutReset(midi_out_device);
-    initialized = 1;
 }
 
 static INLINE void midi_close() {
@@ -44,27 +46,33 @@ static INLINE void midi_send_sysex() {
     // Prepare the MIDI header for sending
     MMRESULT result = midiOutPrepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
     if (result != MMSYSERR_NOERROR) {
+#ifdef DEBUG_MPU401
         printf("Error preparing SysEx header: %08X\n", result);
+#endif
         return;
     }
 
     // Send the SysEx message
     result = midiOutLongMsg(midi_out_device, &hdr, sizeof(MIDIHDR));
     if (result != MMSYSERR_NOERROR) {
+#ifdef DEBUG_MPU401
         printf("Error sending SysEx message: %08X\n", result);
+#endif
         midiOutUnprepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
         return;
     }
 
     // Wait for the message to be sent
-    while (hdr.dwFlags & MHDR_DONE == 0) {
+    while (!(hdr.dwFlags & MHDR_DONE)) {
         Sleep(1); // Allow time for the message to finish sending
     }
 
     // Unprepare the header after sending
     result = midiOutUnprepareHeader(midi_out_device, &hdr, sizeof(MIDIHDR));
     if (result != MMSYSERR_NOERROR) {
+#ifdef DEBUG_MPU401
         printf("Error unpreparing SysEx header: %08X\n", result);
+#endif
     }
 
     // Reset the SysEx state
@@ -84,18 +92,27 @@ static INLINE uint8_t mpu401_read(uint16_t portnum) {
 static INLINE void mpu401_write(uint16_t portnum, uint8_t value) {
     if (portnum & 1) {
         switch (value) {
-            case 0x3F: // Enter UART mode
+            case 0xDF:
                 mpu_rx_data = 0xFE; // Ack
-                mpu_status = STATUS_READY;
+                midi_send_sysex();
+                break;
+            case 0xD0:  // Enter UART Mode
+                mpu_rx_data = 0xFF; // ???
+                break;
+            case 0x3F: // Enter Intellegent UART mode
+                mpu_rx_data = 0xFE; // Ack
                 break;
             default:
+#ifdef DEBUG_MPU401
                 printf("[MIDI] Unknown %x %x\n", portnum, value);
+#endif
             case 0xFF: // Reset
                 midi_init_once();
                 mpu_rx_data = 0xFE; // Ack
-                mpu_status = STATUS_READY;
                 break;
         }
+
+        mpu_status = STATUS_READY;
         return;
     }
 

@@ -298,7 +298,8 @@ int main() {
     }
 
     keyboard_init();
-//    mouse_init();
+    mouse_init();
+
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     i2s_config = i2s_get_default_config();
