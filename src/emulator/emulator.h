@@ -237,11 +237,11 @@ extern int16_t covox_sample;
 #define INLINE __inline__
 #if PICO_ON_DEVICE
 #define ALING(x, y) __attribute__((__aligned__(x))) y
+#else
+#define ALIGN(x, y) y __attribute__((aligned(x)))
+#endif
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
-#else
-#define ALING(x, y) y __attribute__((aligned(x)))
-#endif
 #else
 #define INLINE inline
 #define ALING(x, y) y __attribute__((aligned(x)))
