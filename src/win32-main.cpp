@@ -209,7 +209,7 @@ static INLINE void renderer() {
                         break;
                 }
 
-                uint8_t *cga_row = vidramptr + (y / 2 >> 1) * 80 + (y / 2 & 1) * 8192; // Precompute row start
+                uint8_t *cga_row = tga_offset + VIDEORAM + (y / 2 >> 1) * 80 + (y / 2 & 1) * 8192; // Precompute row start
 
                 // Each byte containing 8 pixels
                 for (int x = 640 / 8; x--;) {

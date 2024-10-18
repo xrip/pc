@@ -105,14 +105,35 @@ void tga_portout(uint16_t portnum, uint16_t value) {
 //    CRTC RA1. This results in the 4-bank mode.
 //    PG1-2 in effect. 32k range
             if (videomode == 4) break;
-            if ((value & 0xc0) != 0xc0) { // 32kb
-                tga_offset = (value & 0x06) ? 0 : 0x8000;
-                vga_plane_offset = ((value & 0x30) << 11);
-            } else { // 16kb
-                tga_offset = (value & 0x07) ? 0 : 0x8000;
-                vga_plane_offset = (value & 0x38) << 11;
+            /*
+             *             if ((memctrl & 0xc0) != 0xc0) {
+                vram = ((memctrl & 0x06) << 14) + base;
+                b8000 = ((memctrl & 0x30) << 11) + base;
+                b8000_mask = 0x7fff; // 32kb
+            } else {
+                vram = ((memctrl & 0x07) << 14) + base;
+                b8000 = ((memctrl & 0x38) << 11) + base;
+                b8000_mask = 0x3fff; // 16kb
             }
-//            printf("3DF %x %x %x\n", value, tga_offset, vga_plane_offset);
+             */
+            if (value & 0xc0) {
+                tga_offset = (value & 0x07) << 14;
+                tga_offset -= 0x8000;
+                tga_offset &= 0xc000;
+                vga_plane_offset = (value & 0x38) << 11;
+//                vga_plane_offset -= 0x8000;
+                vga_plane_offset &= 0xc000;
+            } else {
+                tga_offset = (value & 0x06) << 14;
+                tga_offset -= 0x18000;
+                tga_offset &= 0x8000;
+                vga_plane_offset = (value & 0x30) << 11;
+                vga_plane_offset -= 0x10000;
+                vga_plane_offset &= 0x8000;
+
+            }
+//                printf("%x tga_offset %x vga_plane_offset %x\n",value, tga_offset, vga_plane_offset);
+
             break;
     }
 }

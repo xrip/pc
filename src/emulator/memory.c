@@ -1,4 +1,4 @@
-#pragma GCC optimize("Ofast")
+#pragma GCC optimize("O3")
 
 #include "includes/bios.h"
 #include "emulator.h"
@@ -57,7 +57,7 @@ uint8_t __time_critical_func() read86(uint32_t address) {
     if (address < VIDEORAM_START) {
         return read8psram(address);
     }
-    if (address >= VIDEORAM_START && address < VIDEORAM_END) {
+    if (unlikely(address >= VIDEORAM_START && address < VIDEORAM_END)) {
         return VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
     }
     if (address >= EMS_START && address < EMS_END) {
@@ -66,10 +66,10 @@ uint8_t __time_critical_func() read86(uint32_t address) {
     if (address >= UMB_START && address < UMB_END) {
         return read8psram(address);
     }
-    if (address == 0xFC000) {
+    if (unlikely(address == 0xFC000)) {
         return 0x21;
     }
-    if (address >= BIOS_START && address < HMA_START) {
+    if (unlikely(address >= BIOS_START && address < HMA_START)) {
         return BIOS[address - BIOS_START];
     }
     if (address >= HMA_START && address < HMA_END) {
@@ -89,7 +89,7 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     if (address < VIDEORAM_START) {
         return read16psram(address);
     }
-    if (address >= VIDEORAM_START && address < VIDEORAM_END) {
+    if (unlikely(address >= VIDEORAM_START && address < VIDEORAM_END)) {
         return *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
     }
     if (address >= EMS_START && address < EMS_END) {
@@ -98,7 +98,7 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     if (address >= UMB_START && address < UMB_END) {
         return read16psram(address);
     }
-    if (address >= BIOS_START && address < HMA_START) {
+    if (unlikely(address >= BIOS_START && address < HMA_START)) {
         return *(uint16_t *) &BIOS[address - BIOS_START];
     }
     if (address >= HMA_START && address < HMA_END) {

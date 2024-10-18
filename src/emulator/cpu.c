@@ -1261,7 +1261,7 @@ void exec86(uint32_t execloops) {
     //tickssource();
     for (uint32_t loopcount = 0; loopcount < execloops; loopcount++) {
 
-        if ((ifl && (i8259.irr & (~i8259.imr)))) {
+        if (unlikely(ifl && (i8259.irr & (~i8259.imr)))) {
             intcall86(nextintr()); // get next interrupt from the i8259, if any d
         }
         reptype = 0;
@@ -1277,7 +1277,7 @@ void exec86(uint32_t execloops) {
 //            saveip = ip;
             // W/A-hack: last byte of interrupts table (actually should not be ever used as CS:IP)
 #if !PICO_RP2350
-            if (CPU_CS == XMS_FN_CS && ip == XMS_FN_IP) {
+            if (unlikely(CPU_CS == XMS_FN_CS && ip == XMS_FN_IP)) {
                 // hook for XMS
                 opcode = xms_handler(); // always returns RET TODO: far/short ret?
             } else
@@ -3392,7 +3392,7 @@ void exec86(uint32_t execloops) {
                  * cases, but for our pursoses, that's accurate enough.
                  */
 #endif
-                printf("Unexpected opcode: %02Xh ignored", opcode);
+                printf("Unexpected opcode: %02Xh ignored\n", opcode);
             }
                 break;
         }

@@ -320,6 +320,7 @@ void __time_critical_func() dma_handler_VGA() {
         case COMPOSITE_160x200x16_force:
         case COMPOSITE_160x200x16:
         case TGA_160x200x16:
+            input_buffer_8bit = tga_offset + graphics_buffer + __fast_mul(y >> 1, 80) + ((y & 1) << 13);
             for (int x = 320 / 4; x--;) {
                 uint8_t cga_byte = *input_buffer_8bit++; // Fetch 8 pixels from TGA memory
                 uint8_t color1 = ((cga_byte >> 4) & 15);

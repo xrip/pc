@@ -226,6 +226,8 @@ extern int16_t covox_sample;
 
 #ifndef INLINE
 #if defined(_MSC_VER)
+#define likely(x)       (x)
+#define unlikely(x)     (x)
 #define INLINE __inline
 #define ALING(x, y) __declspec(align(x)) y
 #elif defined(__GNUC__)
