@@ -67,8 +67,9 @@ static uint8_t text_buffer_height = 0;
 static uint16_t __aligned(4) txt_palette[16];
 
 //буфер 2К текстовой палитры для быстрой работы
-static uint16_t *txt_palette_fast = NULL;
-//static uint16_t txt_palette_fast[256*4];
+//static uint16_t *txt_palette_fast = NULL;
+static uint16_t __aligned(4) txt_palette_fast[256 * 4];
+static int txt_palette_init = 0;
 
 enum graphics_mode_t graphics_mode;
 
@@ -125,14 +126,15 @@ void __time_critical_func() dma_handler_VGA() {
         uint8_t y_div_8 = y / 8;
         uint8_t glyph_line = y % 8;
 
+        const uint8_t colors[4] = { 0x0f, 0xf0, 10, 12 };
         //указатель откуда начать считывать символы
         uint8_t* text_buffer_line = &DEBUG_VRAM[__fast_mul(y_div_8, 80)];
-
         for (uint8_t column = 80; column--;) {
-            //из таблицы символов получаем "срез" текущего символа
-            uint8_t glyph_pixels = font_8x8[*text_buffer_line++ * 8 + glyph_line];
+            const uint8_t character = *text_buffer_line++ ;
+            const uint8_t color = character >> 6;
+            uint8_t glyph_pixels = font_8x8[(32 + (character & 63)) * 8 + glyph_line];
             //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
-            uint16_t* palette_color = &txt_palette_fast[4 * 15] ;
+            uint16_t* palette_color = &txt_palette_fast[4 * colors[color]] ;
 
             *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
             glyph_pixels >>= 2;
@@ -435,7 +437,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
     graphics_mode = mode;
 
     // Если мы уже проиницилизированы - выходим
-    if (txt_palette_fast && lines_pattern_data) {
+    if (txt_palette_init && lines_pattern_data) {
         return;
     };
     uint8_t TMPL_VHS8 = 0;
@@ -458,8 +460,8 @@ void graphics_set_mode(enum graphics_mode_t mode) {
                 txt_palette[i] = txt_palette[i] & 0x3f | palette16_mask >> 8;
             }
 
-            if (!txt_palette_fast) {
-                txt_palette_fast = (uint16_t *) calloc(256 * 4, sizeof(uint16_t));
+            if (!txt_palette_init) {
+                //txt_palette_fast = (uint16_t *) calloc(256 * 4, sizeof(uint16_t));
                 for (int i = 0; i < 256; i++) {
                     const uint8_t c1 = txt_palette[i & 0xf];
                     const uint8_t c0 = txt_palette[i >> 4];
@@ -469,6 +471,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
                     txt_palette_fast[i * 4 + 2] = c0 | c1 << 8;
                     txt_palette_fast[i * 4 + 3] = c1 | c1 << 8;
                 }
+                txt_palette_init = true;
             }
         case CGA_640x200x2:
         case CGA_320x200x4:

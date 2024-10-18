@@ -24,31 +24,8 @@ message(STATUS "")
 
 if (PICO_PLATFORM STREQUAL "host")
     add_compile_options(-fms-extensions)
-    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c )
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-            USE_EMU8950_OPL
-            EMU8950_SLOT_RENDER=1
-            EMU8950_NO_RATECONV=1
-            # slightly slower but only uses 1K of sin tables vs 9K
-            EMU8950_NO_WAVE_TABLE_MAP=1
-
-            EMU8950_NO_TLL=1 # don't use lookup table for total level
-            EMU8950_NO_FLOAT=1 # double check there is no float
-            EMU8950_NO_TIMER=1 # disable timer which isn't used
-            EMU8950_NO_TEST_FLAG=1 # disable test flags (which aren't used)
-            EMU8950_SIMPLER_NOISE=1 # only generate noise bit when needed
-            EMU8950_SHORT_NOISE_UPDATE_CHECK=1 # only update short noise if it is used
-            # actually this doesn't make things faster
-            #EMU8950_LINEAR_NEG_NOT_NOT=1 # negative values rounded towrds -infinity not 0 without this; does it matter?
-
-            EMU8950_LINEAR_SKIP=1 # skip silent slots
-            EMU8950_LINEAR_END_OF_NOTE_OPTIMIZATION # early out envelope when DECAY/SUSTAIN/RELEASE envelope reaches mute
-            EMU8950_NO_PERCUSSION_MODE=1 # rhythm only mode (doom doesn't use percussion; whhhaaaah!?)
-            EMU8950_LINEAR=1 # reorganize to do linear runs of channels
-
-            # things we really don't care about but need for diff-ing with non linear version
-            # BEWARE - need to turn this off for comparison with on device version which doesn't do nitpicks (though could i guess)
-    )
+    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c  src/printf/printf.c)
+    target_include_directories(${PROJECT_NAME} PRIVATE src/printf)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
@@ -61,34 +38,6 @@ else ()
     add_subdirectory(memops_opt)
 
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
-
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-            USE_EMU8950_OPL
-            EMU8950_SLOT_RENDER=1
-            EMU8950_NO_RATECONV=1
-            # slightly slower but only uses 1K of sin tables vs 9K
-            EMU8950_NO_WAVE_TABLE_MAP=1
-
-            EMU8950_NO_TLL=1 # don't use lookup table for total level
-            EMU8950_NO_FLOAT=1 # double check there is no float
-            EMU8950_NO_TIMER=1 # disable timer which isn't used
-            EMU8950_NO_TEST_FLAG=1 # disable test flags (which aren't used)
-            EMU8950_SIMPLER_NOISE=1 # only generate noise bit when needed
-            EMU8950_SHORT_NOISE_UPDATE_CHECK=1 # only update short noise if it is used
-            # actually this doesn't make things faster
-            #EMU8950_LINEAR_NEG_NOT_NOT=1 # negative values rounded towrds -infinity not 0 without this; does it matter?
-
-            EMU8950_LINEAR_SKIP=1 # skip silent slots
-            EMU8950_LINEAR_END_OF_NOTE_OPTIMIZATION # early out envelope when DECAY/SUSTAIN/RELEASE envelope reaches mute
-            EMU8950_NO_PERCUSSION_MODE=1 # rhythm only mode (doom doesn't use percussion; whhhaaaah!?)
-            EMU8950_LINEAR=1 # reorganize to do linear runs of channels
-
-            # things we really don't care about but need for diff-ing with non linear version
-            # BEWARE - need to turn this off for comparison with on device version which doesn't do nitpicks (though could i guess)
-
-            EMU8950_ASM=1
-
-    )
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
@@ -187,6 +136,33 @@ else ()
     pico_add_extra_outputs(${PROJECT_NAME})
 endif ()
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        USE_EMU8950_OPL
+        EMU8950_SLOT_RENDER=1
+        EMU8950_NO_RATECONV=1
+        # slightly slower but only uses 1K of sin tables vs 9K
+        EMU8950_NO_WAVE_TABLE_MAP=1
+
+        EMU8950_NO_TLL=1 # don't use lookup table for total level
+        EMU8950_NO_FLOAT=1 # double check there is no float
+        EMU8950_NO_TIMER=1 # disable timer which isn't used
+        EMU8950_NO_TEST_FLAG=1 # disable test flags (which aren't used)
+        EMU8950_SIMPLER_NOISE=1 # only generate noise bit when needed
+        EMU8950_SHORT_NOISE_UPDATE_CHECK=1 # only update short noise if it is used
+        # actually this doesn't make things faster
+        #EMU8950_LINEAR_NEG_NOT_NOT=1 # negative values rounded towrds -infinity not 0 without this; does it matter?
+
+        EMU8950_LINEAR_SKIP=1 # skip silent slots
+        EMU8950_LINEAR_END_OF_NOTE_OPTIMIZATION # early out envelope when DECAY/SUSTAIN/RELEASE envelope reaches mute
+        EMU8950_NO_PERCUSSION_MODE=1 # rhythm only mode (doom doesn't use percussion; whhhaaaah!?)
+        EMU8950_LINEAR=1 # reorganize to do linear runs of channels
+
+        # things we really don't care about but need for diff-ing with non linear version
+        # BEWARE - need to turn this off for comparison with on device version which doesn't do nitpicks (though could i guess)
+
+        EMU8950_ASM=1
+
+)
 target_include_directories(${PROJECT_NAME} PRIVATE src src/emu8950)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")

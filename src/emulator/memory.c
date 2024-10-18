@@ -107,10 +107,10 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     return 0xFFFF;
 }
 #else
-uint8_t ALING(4, VIDEORAM[VIDEORAM_SIZE + 4]) = { 0 };
-uint8_t ALING(4, RAM[RAM_SIZE + 4]) = { 0 };
-uint8_t ALING(4, UMB[(UMB_END - UMB_START) + 4]) = { 0 };
-uint8_t ALING(4, HMA[(HMA_END - HMA_START) + 4]) = { 0 };
+uint8_t ALIGN(4, VIDEORAM[VIDEORAM_SIZE + 4]) = {0 };
+uint8_t ALIGN(4, RAM[RAM_SIZE + 4]) = {0 };
+uint8_t ALIGN(4, UMB[(UMB_END - UMB_START) + 4]) = {0 };
+uint8_t ALIGN(4, HMA[(HMA_END - HMA_START) + 4]) = {0 };
 
 // Writes a byte to the virtual memory
 void write86(uint32_t address, uint8_t value) {

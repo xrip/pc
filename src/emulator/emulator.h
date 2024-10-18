@@ -2,7 +2,7 @@
 #if PICO_ON_DEVICE
 #include "printf/printf.h"
 #else
-#include "stdio.h"
+#include "printf/printf.h"
 #endif
 #include <stdint.h>
 #include "cpu.h"
@@ -224,12 +224,15 @@ int16_t adlibgensample();
 extern void out_ems(uint16_t port, uint8_t data);
 extern int16_t covox_sample;
 
+
+
+
 #ifndef INLINE
 #if defined(_MSC_VER)
 #define likely(x)       (x)
 #define unlikely(x)     (x)
 #define INLINE __inline
-#define ALING(x, y) __declspec(align(x)) y
+#define ALIGN(x, y) __declspec(align(x)) y
 #elif defined(__GNUC__)
 #define INLINE __inline__
 #if PICO_ON_DEVICE

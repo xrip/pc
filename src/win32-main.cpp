@@ -1,12 +1,13 @@
-#include <cstdio>
 #include <windows.h>
+#include <cwchar>
 #include "MiniFB.h"
 #include "emulator/emulator.h"
 #include "emulator/includes/font8x16.h"
 #include "emulator/includes/font8x8.h"
 #include "emu8950.h"
 
-static uint32_t ALING(4, SCREEN[640 * 400]);
+static uint32_t ALIGN(4, SCREEN[640 * 480]);
+uint8_t ALIGN(4, DEBUG_VRAM[80 * 10]) = { 0 };
 
 int cursor_blink_state = 0;
 uint8_t log_debug = 0;
@@ -37,7 +38,7 @@ static INLINE void renderer() {
     //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
     uint8_t *vidramptr = VIDEORAM + 0x8000 + (vram_offset << 1);
     uint8_t cols = 80;
-    for (int y = 0; y < 400; y++) {
+    for (int y = 0; y < 480; y++) {
         if (y >= 399)
             port3DA = 8;
         else
@@ -47,6 +48,7 @@ static INLINE void renderer() {
             port3DA |= 1;
 
         uint32_t *pixels = SCREEN + y * 640;
+        if (y < 400)
         switch (videomode) {
             case 0x00:
             case 0x01: {
@@ -405,6 +407,25 @@ static INLINE void renderer() {
                 break;
 
         }
+        else {
+            uint8_t ydebug = y - 400;
+            uint8_t y_div_8 = ydebug / 8;
+            uint8_t glyph_line = ydebug % 8;
+
+            const uint8_t colors[4] = { 0x0f, 0xf0, 10, 12 };
+            //указатель откуда начать считывать символы
+            uint8_t* text_buffer_line = &DEBUG_VRAM[y_div_8 * 80];
+            for (uint8_t column = 80; column--;) {
+                const uint8_t character = *text_buffer_line++ ;
+                const uint8_t color = colors[character >> 6];
+                uint8_t glyph_pixels = font_8x8[(32 + (character & 63)) * 8 + glyph_line];
+                //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
+                // Unrolled bit loop: Write 8 pixels with scaling (2x horizontally)
+                for (int bit = 0; bit < 8; bit++) {
+                    *pixels++ = cga_palette[glyph_pixels >> bit & 1 ? color & 0x0f : color >> 4];
+                }
+            }
+        }
     }
 }
 
@@ -441,12 +462,12 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
 
     while (true) {
         if (WaitForSingleObject(waveEvent, INFINITE)) {
-            fprintf(stderr, "Failed to wait for event.\n");
+//            fprintf(stderr, "Failed to wait for event.\n");
             return 1;
         }
 
         if (!ResetEvent(waveEvent)) {
-            fprintf(stderr, "Failed to reset event.\n");
+//            fprintf(stderr, "Failed to reset event.\n");
             return 1;
         }
 
@@ -1049,11 +1070,45 @@ extern "C" BOOL HanldeMenu(int menu_id, BOOL checked) {
     }
     return !checked;
 }
+#if 1
+
+extern "C" void _putchar(char character)
+{
+    putwchar(character);
+    static uint8_t color = 0xf;
+    static int x = 0, y = 0;
+
+    if (y == 10) {
+        y = 9;
+        memmove(DEBUG_VRAM, DEBUG_VRAM + 80, 80 * 9);
+        memset(DEBUG_VRAM + 80 * 9, 0, 80);
+    }
+    uint8_t * vidramptr = DEBUG_VRAM +  y * 80 + x;
+
+    if ((unsigned)character >= 32) {
+        if (character >= 96) character -= 32; // uppercase
+        *vidramptr = ((character - 32) & 63) | 0 << 6;
+        if (x == 80) {
+            x = 0;
+            y++;
+        } else
+            x++;
+    } else if (character == '\n') {
+        x = 0;
+        y++;
+    } else if (character == '\r') {
+        x = 0;
+    }/* else if (character == 8 && x > 0) {
+        x--;
+        *vidramptr = 0;
+    }*/
+}
+#endif
 
 int main(int argc, char **argv) {
     int scale = 2;
 
-    if (!mfb_open("PC", 640, 400, scale))
+    if (!mfb_open("PC", 640, 480, scale))
         return 1;
 
     // Initialize the message queue
@@ -1136,6 +1191,7 @@ int main(int argc, char **argv) {
 
     CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
+
     while (true) {
         exec86(32760);
         if (mfb_update(SCREEN, 0) == -1)

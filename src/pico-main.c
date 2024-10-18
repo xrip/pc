@@ -200,44 +200,9 @@ void __time_critical_func() second_core() {
 }
 extern bool PSRAM_AVAILABLE;
 
-void _putchar1(char character)
-{
-    static uint8_t color = 0xf;
-    static int x = 0, y = 25;
-
-    if (videomode > 4) return;
-
-    if (y == 30) {
-        y = 29;
-        memmove(
-                (25 * 160) + VIDEORAM + 32768,
-                (26 * 160) + VIDEORAM + 32768,
-                160 * 4
-        );
-        memset((29 * 160) + VIDEORAM + 32768, 0, 160);
-    }
-    uint8_t * vidramptr = VIDEORAM + 32768 + (y * 160) + x * 2;
-    if ((unsigned)character >= 32) {
-        *vidramptr++ = character & 0xFF;
-        *vidramptr = color;
-        if (x == 79) {
-            x = 0;
-            y++;
-        } else
-            x++;
-    } else if (character == '\n') {
-        x = 0;
-        y++;
-    } else if (character == '\r') {
-        x = 0;
-    } else if (character == 8 && x > 0) {
-        x--;
-        *vidramptr = 32;
-    }
-}
 #if 1
 uint8_t __aligned(4) DEBUG_VRAM[80*10] = { 0 };
-void _putchar(char character)
+INLINE void _putchar(char character)
 {
     static uint8_t color = 0xf;
     static int x = 0, y = 0;
@@ -250,7 +215,7 @@ void _putchar(char character)
     uint8_t * vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
 
     if ((unsigned)character >= 32) {
-        *vidramptr = character & 0xFF;
+        *vidramptr = ((character - 32) & 63) | 2 << 6;
         if (x == 80) {
             x = 0;
             y++;
@@ -263,7 +228,7 @@ void _putchar(char character)
         x = 0;
     } else if (character == 8 && x > 0) {
         x--;
-        *vidramptr = 32;
+        *vidramptr = 0;
     }
 }
 #endif
@@ -328,7 +293,7 @@ int main() {
     reset86();
 
     printf("01234567890123456789012345678901234567890123456789012345678901234567890123456789\n");
-    printf("1 Hello world!\n");
+    printf("1 ABCDEFGHIJKLMNOPQRSTUVWXYZ\n");
     printf("2 Hello world!\n");
     printf("3 Hello world!\n");
     printf("4 Hello world!\n");

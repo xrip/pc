@@ -39,7 +39,7 @@ void ems_writew(uint32_t addr, uint16_t data) {
         write16psram(EMS_PSRAM_OFFSET+phys_addr, data);
 }
 #else
-uint8_t ALING(4, EMS[EMS_MEMORY_SIZE + 4]) = { 0 };
+uint8_t ALIGN(4, EMS[EMS_MEMORY_SIZE + 4]) = {0 };
 
 static INLINE uint32_t physical_address(uint32_t address) {
     uint32_t page_addr = address & 0x3FFF;
