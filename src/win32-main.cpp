@@ -577,6 +577,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             renderer();
             elapsed_frame_tics = elapsedTime;
         }
+//        _sleep(1);
     }
 }
 
@@ -1098,10 +1099,10 @@ extern "C" void _putchar(char character)
         y++;
     } else if (character == '\r') {
         x = 0;
-    }/* else if (character == 8 && x > 0) {
+    } else if (character == 8 && x > 0) {
         x--;
         *vidramptr = 0;
-    }*/
+    }
 }
 #endif
 

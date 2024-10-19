@@ -210,12 +210,13 @@ INLINE void _putchar(char character)
     if (y == 10) {
         y = 9;
         memmove(DEBUG_VRAM, DEBUG_VRAM + 80, 80 * 9);
-        memset(DEBUG_VRAM + 80 * 9, 32, 80);
+        memset(DEBUG_VRAM + 80 * 9, 0, 80);
     }
     uint8_t * vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
 
     if ((unsigned)character >= 32) {
-        *vidramptr = ((character - 32) & 63) | 2 << 6;
+        if (character >= 96) character -= 32; // uppercase
+        *vidramptr = ((character - 32) & 63) | 0 << 6;
         if (x == 80) {
             x = 0;
             y++;
@@ -248,7 +249,7 @@ int main() {
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(396 * 1000, true);
+    set_sys_clock_khz(378 * 1000, true);
 #endif
 
 
@@ -292,16 +293,6 @@ int main() {
     sn76489_reset();
     reset86();
 
-    printf("01234567890123456789012345678901234567890123456789012345678901234567890123456789\n");
-    printf("1 ABCDEFGHIJKLMNOPQRSTUVWXYZ\n");
-    printf("2 Hello world!\n");
-    printf("3 Hello world!\n");
-    printf("4 Hello world!\n");
-    printf("5 Hello world!\n");
-    printf("6 Hello world!\n");
-    printf("7 Hello world!\n");
-    printf("8 Hello world!\n");
-    printf("9 Hello world!\n");
     while (true) {
         exec86(32768);
         tight_loop_contents();

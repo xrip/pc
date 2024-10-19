@@ -1,7 +1,7 @@
 // https://wiki.osdev.org/ISA_DMA
 // https://pdos.csail.mit.edu/6.828/2004/readings/hardware/8237A.pdf
 /* 	Intel 8237 DMA controller */
-//#define DEBUG_DMA 1
+#define DEBUG_DMA 1
 static struct dma_channel_s {
     uint32_t page;
     uint16_t address;
@@ -64,7 +64,7 @@ static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
                     dma_channels[channel].address = (address & 0x00FF) | ((uint16_t) value << 8);
                     dma_channels[channel].reload_address = dma_channels[channel].address;
 #ifdef DEBUG_DMA
-                    printf("[DMA] Channel %u addr set to %08X\r\n", channel, dma_channels[channel].page + dma_channels[channel].address);
+//                    printf("[DMA] Channel %u addr set to %08X\r\n", channel, dma_channels[channel].page + dma_channels[channel].address);
 #endif
                 } else {
                     address = (dma_channels[channel].address & 0xFF00) | (uint16_t) value;
@@ -131,7 +131,7 @@ static INLINE void i8237_writepage(uint16_t portnum, uint8_t value) {
     }
     dma_channels[channel].page = (uint32_t) value << 16;
 #ifdef DEBUG_DMA
-    printf("[DMA] Channel %u page set to %08X\r\n", channel, dma_channels[channel].page);
+    printf("[DMA] Channel %u page set to %x address now %08X\r\n", channel, dma_channels[channel].page, dma_channels[channel].page | dma_channels[channel].address);
 #endif
 }
 
@@ -210,14 +210,14 @@ static INLINE void update_count(uint8_t channel) {
 }
 
 uint8_t i8237_read(uint8_t channel) {
-//        printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
     register uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
     update_count(channel);
+//    printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
     return read86(address);
 }
 
 void i8237_write(uint8_t channel, uint8_t value) {
-    //        printf("Write to %06X %x value %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count, value);
+           printf("Write to %06X %x value %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count, value);
     register uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
     update_count(channel);
     write86(address, value);
