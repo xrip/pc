@@ -1,6 +1,8 @@
+#pragma GCC optimize("Ofast")
 #include <time.h>
 #include "emulator.h"
 #if PICO_ON_DEVICE
+extern int16_t keyboard_send(uint8_t data);
 #include "nespad.h"
 #else
 #include "mpu401.c.inl"
@@ -130,6 +132,9 @@ void portout(uint16_t portnum, uint16_t value) {
 
             break;
         case 0x64:
+#if PICO_ON_DEVICE
+            keyboard_send(value);
+#endif
             port64 = value;
             break;
         // i8237 DMA

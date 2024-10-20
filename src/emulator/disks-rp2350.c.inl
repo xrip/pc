@@ -1,3 +1,4 @@
+#include <hardware/gpio.h>
 #include "emulator.h"
 #include "ff.h"
 
@@ -17,6 +18,7 @@ struct struct_drive {
     uint8_t readonly;
 } disk[4];
 
+static int led_state = 0;
 
 static inline void ejectdisk(uint8_t drivenum) {
     if (drivenum & 0x80) drivenum -= 126;
@@ -185,9 +187,17 @@ static void readdisk(uint8_t drivenum,
             }
         }
 
+
+        gpio_put(PICO_DEFAULT_LED_PIN, led_state);
+        led_state ^= 1;
+
         // Update file offset for next sector
         fileoffset += 512;
     }
+    led_state = 0;
+    gpio_put(PICO_DEFAULT_LED_PIN, led_state);
+
+
 
     // If no sectors could be read, handle the error
     if (cursect == 0) {
@@ -257,7 +267,11 @@ static void writedisk(uint8_t drivenum,
         // Write the buffer to the file
         size_t bw;
         f_write(&disk[drivenum].diskfile, sectorbuffer, 512, &bw);
+        gpio_put(PICO_DEFAULT_LED_PIN, led_state);
+        led_state ^= 1;
     }
+    led_state = 0;
+    gpio_put(PICO_DEFAULT_LED_PIN, led_state);
 
     // Handle the case where no sectors were written
     if (sectcount && cursect == 0) {
