@@ -64,6 +64,8 @@ void __time_critical_func() second_core() {
 
 
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+    blaster_reset();
+
     graphics_init();
     graphics_set_buffer(VIDEORAM, 320, 200);
     graphics_set_textbuffer(VIDEORAM + 32768);

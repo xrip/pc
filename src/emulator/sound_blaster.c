@@ -285,10 +285,9 @@ int16_t blaster_sample() { //for DMA mode
     if (!sb.dma_active) return 0;
     if (sb.silencedsp == 0) {
         if (sb.dorecord == 0) {
-            i8237_read(SB_dmachan);
-//            sample = i8237_read(SB_dmachan);
-//            sample -= 128;
-//            sample *= 256;
+            sample = i8237_read(SB_dmachan);
+            sample -= 128;
+            sample *= 256;
         } else {
             i8237_write(SB_dmachan, 128); //silence
         }

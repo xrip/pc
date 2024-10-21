@@ -1,23 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-#[[
-# use our own allocator
-
-# the following enables the system malloc/free to be wrapped
-set(SKIP_PICO_MALLOC 1)
-
-# the following enables wrapping in sparkfun_pico builds
-set(SFE_PICO_ALLOC_WRAP 1)
-set(SFE_RP2350_XIP_CSI_PIN 19)
-
-# the following enables the system malloc/free to be wrapped during compilation
-add_definitions(
-        -DSFE_PICO_ALLOC_WRAP
-        -DSFE_RP2350_XIP_CSI_PIN=19
-)
-]]
-
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
-
 
 project(pc C CXX ASM)
 enable_language(CXX)
@@ -35,26 +17,29 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c" "src/emu8950/*.c" "src/emu8950/*.cpp")
 
 message(STATUS "Add source files:")
-foreach(SRC_FILE IN LISTS SRC)
+foreach (SRC_FILE IN LISTS SRC)
     message(STATUS "${SRC_FILE}")
-endforeach()
+endforeach ()
 message(STATUS "")
 
+add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
+
 if (PICO_PLATFORM STREQUAL "host")
-    add_compile_options(-fms-extensions)
-    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c  src/printf/printf.c)
+
+    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
     pico_sdk_init()
 
-    add_compile_options(-fms-extensions -O2)
+    add_compile_options(-flto -fwhole-program)
+
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
 
-#    add_subdirectory(memops_opt)
+    add_subdirectory(memops_opt)
 
-    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
+    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
@@ -62,13 +47,12 @@ else ()
 
     if (PICO_PLATFORM STREQUAL "rp2040")
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
-    target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
-    else()
+        target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
+    else ()
         SET(BUILD_NAME "${BUILD_NAME}-RP2350")
-    target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=3)
+        target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=3)
     endif ()
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
-
 
 
     pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/186/286 emulator")
@@ -81,25 +65,25 @@ else ()
     add_subdirectory(drivers/hdmi)
     add_subdirectory(drivers/graphics)
     add_subdirectory(drivers/audio)
-#    add_subdirectory(drivers/psram)
+    #    add_subdirectory(drivers/psram)
     add_subdirectory(drivers/nespad)
 
-#    add_subdirectory(sparkfun_pico)
+    #    add_subdirectory(sparkfun_pico)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
     target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
     SET(BUILD_NAME "${BUILD_NAME}-VGA")
 
-#    target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
-#    target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
-#    SET(BUILD_NAME "${BUILD_NAME}-HDMI")
+    #    target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
+    #    target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
+    #    SET(BUILD_NAME "${BUILD_NAME}-HDMI")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
             audio
             graphics
-#            psram
+            #            psram
             nespad
 
             pico_runtime
@@ -112,16 +96,15 @@ else ()
             hardware_timer
             hardware_clocks
             hardware_pwm
-            hardware_flash
 
-#            sparkfun_pico
-#            memops_opt
+            #            sparkfun_pico
+            memops_opt
             #            tinyusb_host tinyusb_board
     )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-#            PICO_HEAP_SIZE=0
-#            USE_ZONE_FOR_MALLOC=1
+            #            PICO_HEAP_SIZE=0
+            #            USE_ZONE_FOR_MALLOC=1
             PICO_FLASH_SIZE_BYTES=16777216
 
             # VGA 8 pins starts from pin:
