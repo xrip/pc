@@ -1,5 +1,23 @@
 cmake_minimum_required(VERSION 3.22)
-include(pico_sdk_import.cmake)
+#[[
+# use our own allocator
+
+# the following enables the system malloc/free to be wrapped
+set(SKIP_PICO_MALLOC 1)
+
+# the following enables wrapping in sparkfun_pico builds
+set(SFE_PICO_ALLOC_WRAP 1)
+set(SFE_RP2350_XIP_CSI_PIN 19)
+
+# the following enables the system malloc/free to be wrapped during compilation
+add_definitions(
+        -DSFE_PICO_ALLOC_WRAP
+        -DSFE_RP2350_XIP_CSI_PIN=19
+)
+]]
+
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
 
 project(pc C CXX ASM)
 enable_language(CXX)
@@ -30,11 +48,11 @@ if (PICO_PLATFORM STREQUAL "host")
 else ()
     pico_sdk_init()
 
-    add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
+    add_compile_options(-fms-extensions -O2)
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
 
-    add_subdirectory(memops_opt)
+#    add_subdirectory(memops_opt)
 
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
 
@@ -63,8 +81,10 @@ else ()
     add_subdirectory(drivers/hdmi)
     add_subdirectory(drivers/graphics)
     add_subdirectory(drivers/audio)
-    add_subdirectory(drivers/psram)
+#    add_subdirectory(drivers/psram)
     add_subdirectory(drivers/nespad)
+
+#    add_subdirectory(sparkfun_pico)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
     target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
@@ -79,7 +99,7 @@ else ()
             sdcard
             audio
             graphics
-            psram
+#            psram
             nespad
 
             pico_runtime
@@ -94,7 +114,8 @@ else ()
             hardware_pwm
             hardware_flash
 
-            memops_opt
+#            sparkfun_pico
+#            memops_opt
             #            tinyusb_host tinyusb_board
     )
 
