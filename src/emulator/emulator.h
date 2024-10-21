@@ -236,7 +236,7 @@ extern int16_t covox_sample;
 #elif defined(__GNUC__)
 #define INLINE __inline__
 #if PICO_ON_DEVICE
-#define ALING(x, y) __attribute__((__aligned__(x))) y
+#define ALIGN(x, y) y __attribute__((aligned(x)))
 #else
 #define ALIGN(x, y) y __attribute__((aligned(x)))
 #endif

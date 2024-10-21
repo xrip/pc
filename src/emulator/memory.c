@@ -1,16 +1,38 @@
-#pragma GCC optimize("O3")
+#pragma GCC optimize("Ofast")
 
 #include "includes/bios.h"
 #include "emulator.h"
+
+#if PICO_RP2040
+
+#include "psram_spi.h"
+
+#else
+uint8_t * PSRAM_DATA = (uint8_t*)0x11000000;
+
+static INLINE void write8psram(uint32_t address, uint8_t value) {
+    PSRAM_DATA[address] = value;
+}
+static INLINE void write16psram(uint32_t address, uint16_t value) {
+    *(uint16_t *)&PSRAM_DATA[address] = value;
+}
+static INLINE uint8_t read8psram(uint32_t address) {
+    return PSRAM_DATA[address];
+}
+static INLINE uint16_t read16psram(uint32_t address) {
+    uint16_t result = *(uint16_t *)&PSRAM_DATA[address];
+    return result;
+}
+#endif
+
 #include "emulator/ems.c.inl"
 
 #if PICO_ON_DEVICE
-//#include "psram_spi.h"
+
 #include "pico.h"
 
-
-uint8_t __aligned(4) RAM[RAM_SIZE+4]  = { 0 };
-uint8_t __aligned(4) VIDEORAM[VIDEORAM_SIZE+4]  = { 0 };
+uint8_t ALIGN(4, RAM[RAM_SIZE + 4]) = {0};
+uint8_t ALIGN(4, VIDEORAM[VIDEORAM_SIZE + 4]) = {0};
 
 
 // Writes a byte to the virtual memory
@@ -23,7 +45,7 @@ void __time_critical_func() write86(uint32_t address, uint8_t value) {
         VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
     } else if (address >= EMS_START && address < EMS_END) {
         ems_write(address - EMS_START, value);
-    }  else if (address >= UMB_START && address < UMB_END) {
+    } else if (address >= UMB_START && address < UMB_END) {
         write8psram(address, value);
     } else if (address >= HMA_START && address < HMA_END) {
         write8psram(address, value);
@@ -40,11 +62,11 @@ void __time_critical_func() writew86(uint32_t address, uint16_t value) {
             *(uint16_t *) &RAM[address] = value;
         } else if (address < VIDEORAM_START) {
             write16psram(address, value);
-        }  else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
+        } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
             *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
         } else if (address >= EMS_START && address < EMS_END) {
             ems_writew(address - EMS_START, value);
-        }  else if (address >= UMB_START && address < UMB_END) {
+        } else if (address >= UMB_START && address < UMB_END) {
             write16psram(address, value);
         } else if (address >= HMA_START && address < HMA_END) {
             write16psram(address, value);
@@ -109,6 +131,7 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     }
     return 0xFFFF;
 }
+
 #else
 uint8_t ALIGN(4, VIDEORAM[VIDEORAM_SIZE + 4]) = {0 };
 uint8_t ALIGN(4, RAM[RAM_SIZE + 4]) = {0 };

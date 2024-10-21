@@ -1,14 +1,16 @@
 #pragma GCC optimize("Ofast")
 #include <pico/time.h>
-#include "hardware/clocks.h"
+#include <hardware/clocks.h>
 #include <pico/stdlib.h>
 #include <hardware/vreg.h>
 #include <pico/stdio.h>
 #include <pico/multicore.h>
+#if !PICO_RP2350
+#include "psram_spi.h"
+#include "../../memops_opt/memops_opt.h"
+#else
 #include <hardware/structs/qmi.h>
 #include <hardware/structs/xip.h>
-#if !PICO_RP2350
-#include "../../memops_opt/memops_opt.h"
 #endif
 #include "emulator/emulator.h"
 
@@ -16,11 +18,10 @@
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
-//#include "psram_spi.h"
 #include "nespad.h"
 #include "emu8950.h"
 #include "ps2_mouse.h"
-//#include "sfe_pico.h"
+
 
 FATFS fs;
 i2s_config_t i2s_config;
@@ -64,6 +65,7 @@ void __time_critical_func() second_core() {
 
 
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+
     blaster_reset();
 
     graphics_init();
@@ -240,6 +242,8 @@ INLINE void _putchar(char character)
     }
 }
 #endif
+
+#if PICO_RP2350
 void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     gpio_set_function(cs_pin, GPIO_FUNC_XIP_CS1);
 
@@ -314,6 +318,8 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     // Enable writes to PSRAM
     hw_set_bits(&xip_ctrl_hw->ctrl, XIP_CTRL_WRITABLE_M1_BITS);
 }
+#endif
+
 int main() {
 
 #if PICO_RP2350
@@ -324,6 +330,8 @@ int main() {
     *qmi_m0_timing = 0x60007204;
     set_sys_clock_hz(400000000, 0);
     *qmi_m0_timing = 0x60007303;
+
+    psram_init(19);
 #else
     memcpy_wrapper_replace(NULL);
     //vreg_set_voltage(VREG_VOLTAGE_1_30);
@@ -331,9 +339,13 @@ int main() {
     vreg_disable_voltage_limit();
     sleep_ms(33);
     set_sys_clock_khz(378 * 1000, true);
+
+    if (!init_psram()) {
+        printf("No PSRAM detected.");
+    }
 #endif
 
-    psram_init(19);
+
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -358,26 +370,12 @@ int main() {
 
     sleep_ms(50);
 
-
-
     graphics_set_mode(TEXTMODE_80x25_COLOR);
-//    sfe_pico_alloc_init();
-//    PSRAM_DATA = (uint8_t *)malloc(1024 * 1024);
 
-
-
-/*
-    init_psram();
-        if (!PSRAM_AVAILABLE) {
-            printf("No PSRAM detected.");
-//        while (1);
-    }
-*/
     if (FR_OK != f_mount(&fs, "0", 1)) {
         printf("SD Card not inserted or SD Card error!");
         while (1);
     }
-   // adlib_init(SOUND_FREQUENCY);
 
     sn76489_reset();
     reset86();

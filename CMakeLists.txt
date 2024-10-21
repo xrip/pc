@@ -46,6 +46,8 @@ else ()
 
 
     if (PICO_PLATFORM STREQUAL "rp2040")
+        add_subdirectory(drivers/psram)
+        target_link_libraries(${PROJECT_NAME} PRIVATE psram)
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
         target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
     else ()

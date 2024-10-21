@@ -1,40 +1,8 @@
 #pragma GCC optimize("Ofast")
 #include "psram_spi.h"
-
-static psram_spi_inst_t psram_spi;
-bool PSRAM_AVAILABLE;
-
-void init_psram() {
-    psram_spi = psram_spi_init_clkdiv(pio0, -1, 2.0f, false);
-    psram_write32(&psram_spi, 0x313373, 0xDEADBEEF);
-    PSRAM_AVAILABLE = 0xDEADBEEF == psram_read32(&psram_spi, 0x313373);
-    psram_cleanup();
-}
-
-void psram_cleanup() {
-//    logMsg("PSRAM cleanup"); // TODO: block mode, ensure diapason
-    for (uint32_t addr32 = (1ul << 20); addr32 < (2ul << 20); addr32 += 4) {
-        psram_write32(&psram_spi, addr32, 0xFF);
-    }
-}
-
-__force_inline void write8psram(uint32_t addr32, uint8_t v) {
-    psram_write8(&psram_spi, addr32, v);
-}
-
-__force_inline void write16psram(uint32_t addr32, uint16_t v) {
-    psram_write16(&psram_spi, addr32, v);
-}
-
-__force_inline uint8_t read8psram(uint32_t addr32) {
-    return psram_read8(&psram_spi, addr32);
-}
-
-__force_inline uint16_t read16psram(uint32_t addr32) {
-    return psram_read16(&psram_spi, addr32);
-}
-
 #include <stdio.h>
+psram_spi_inst_t psram_spi;
+
 
 #if defined(PSRAM_ASYNC) && defined(PSRAM_ASYNC_SYNCHRONIZE)
 void __isr psram_dma_complete_handler() {
