@@ -325,10 +325,10 @@ int main() {
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
-    vreg_set_voltage(VREG_VOLTAGE_1_40);
+    vreg_set_voltage(VREG_VOLTAGE_1_50);
     sleep_ms(33);
     *qmi_m0_timing = 0x60007204;
-    set_sys_clock_hz(400000000, 0);
+    set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
 
     psram_init(19);

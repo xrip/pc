@@ -136,6 +136,8 @@ else ()
             NES_GPIO_CLK=14
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
+
+#            AUDIO_PWM_PIN=26
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})
