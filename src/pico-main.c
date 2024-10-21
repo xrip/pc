@@ -173,9 +173,7 @@ void __time_critical_func() second_core() {
 
             if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
                 sample_index = 0;
-#if 0
                 i2s_dma_write(&i2s_config, audio_buffer);
-#endif
                 //active_buffer ^= 1;
             }
 
