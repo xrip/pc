@@ -123,10 +123,14 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x61:
             port61 = value;
             if ((value & 3) == 3) {
-                tandy_write(0, 0b10010000);
+#if !PICO_ON_DEVICE || !I2S_SOUND
+                tandy_write(0xff, 0b10010000);
+#endif
                 speakerenabled = 1;
             } else {
-                tandy_write(0, 0b10011111);
+#if !PICO_ON_DEVICE || !I2S_SOUND
+                tandy_write(0xff, 0b10011111);
+#endif
                 speakerenabled = 0;
             }
 

@@ -1,5 +1,4 @@
 #include "emulator.h"
-
 #define PIT_MODE_LATCHCOUNT  0
 #define PIT_MODE_LOBYTE 1
 #define PIT_MODE_HIBYTE 2
@@ -38,21 +37,31 @@ void out8253(uint16_t portnum, uint8_t value) {
 
             if (i8253.chandata[portnum] == 0) {
                 i8253.effectivedata[portnum] = 65536;
-                tandy_write(0, 0b10011111);
+#if !PICO_ON_DEVICE || !I2S_SOUND
+
+                tandy_write(0xff, 0b10011111);
+#endif
                 speakerenabled = 0;
             } else {
                 i8253.effectivedata[portnum] = i8253.chandata[portnum];
 
                 if (port61 & 2) {
-                    //uint16_t tone = (3579545 / (32 * 1193182 / i8253.effectivedata[portnum])) - 1;
+#if !PICO_ON_DEVICE || !I2S_SOUND
+//                 uint16_t tone = (3579545 / (32 * 1193182 / i8253.effectivedata[portnum])) - 1;
+#if PICO_ON_DEVICE
+                    uint16_t tone = (__fast_mul( i8253.effectivedata[portnum] >> 20, 111860)) - 1;
+#else
                     uint16_t tone = (111860 * i8253.effectivedata[portnum] >> 20) - 1;
-                    tandy_write(0, 0x80 | (tone & 0x0F));
-                    tandy_write(0, (tone >> 4) & 0x3F);
-
-                    tandy_write(0, 0b10010000);
+#endif
+                   tandy_write(0xff, 0x80 | (tone & 0x0F));
+                   tandy_write(0xff, (tone >> 4) & 0x3F);
+                   tandy_write(0xff, 0b10010000);
+#endif
                     speakerenabled = 1; // set 50% (127) duty cycle ==> Sound output on
                 } else {
-                    tandy_write(0, 0b10011111);
+#if !PICO_ON_DEVICE || !I2S_SOUND
+                    tandy_write(0xff, 0b10011111);
+#endif
                     speakerenabled = 0; // set 0% (0) duty clcle ==> Sound output off
                 }
             }

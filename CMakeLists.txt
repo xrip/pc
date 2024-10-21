@@ -137,9 +137,7 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-            I2S_SOUND=1
-            HARDWARE_SOUND=0
-
+            I2S_SOUND
 #            AUDIO_PWM_PIN=26
     )
 

@@ -1016,6 +1016,7 @@ DWORD WINAPI MessageHandler(LPVOID lpParam) {
 }
 
 extern "C" void tandy_write(uint16_t reg, uint8_t value) {
+    if (reg != 0xff) sn76489_out(value);
     Enqueue(&queue, (value & 0xff) << 8 | 0);
 }
 
@@ -1040,6 +1041,7 @@ extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
 }
 
 extern "C" void cms_write(uint16_t reg, uint8_t val) {
+    cms_out(reg, val);
     switch (reg - 0x220) {
         case 0:
             Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0000);

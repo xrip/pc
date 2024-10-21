@@ -1,6 +1,7 @@
 #pragma once
 #if PICO_ON_DEVICE
 #include "printf/printf.h"
+#include <pico.h>
 #else
 #include "printf/printf.h"
 #endif
