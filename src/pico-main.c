@@ -21,12 +21,18 @@
 #include "nespad.h"
 #include "emu8950.h"
 #include "ps2_mouse.h"
+#include "74hc595/74hc595.h"
 
 
 FATFS fs;
 i2s_config_t i2s_config;
 OPL *emu8950_opl;
 void tandy_write(uint16_t reg, uint8_t value) {
+#if I2S_SOUND
+    sn76489_out(value);
+#else
+    sn76489_write(value & 0xff);
+#endif
 }
 
 extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
@@ -34,11 +40,29 @@ extern void adlib_init(uint32_t samplerate);
 extern void adlib_write(uintptr_t idx, uint8_t val);
 
 void adlib_write_d(uint16_t reg, uint8_t value) {
+#if I2S_SOUND
     OPL_writeReg(emu8950_opl, reg, value);
+#else
+    if (reg &1) {
+        ymf262_write_byte(0,0, value & 0xff);
+    } else {
+        ymf262_write_byte(1,0, value & 0xff);
+    }
+#endif
 }
 
 void cms_write(uint16_t reg, uint8_t val) {
+#if I2S_SOUND
+    cms_out(reg, val);
+#else
+    switch (reg - 0x220) {
+        case 0: saa1099_write(0, 0, val & 0xf); break;
+        case 1: saa1099_write(0, 1, val & 0xff); break;
+        case 3: saa1099_write(1, 0, val & 0xf); break;
+        case 4: saa1099_write(1, 1, val & 0xff); break;
 
+    }
+#endif
 }
 
 bool handleScancode(uint32_t ps2scancode) {
@@ -57,12 +81,15 @@ extern uint64_t sb_samplerate;
 extern uint8_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
+#if I2S_SOUND
     i2s_config.sample_freq = SOUND_FREQUENCY;
     i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
+#else
+    init_74hc595();
+#endif
     sleep_ms(100);
-
 
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 
@@ -101,7 +128,8 @@ void __time_critical_func() second_core() {
             last_cursor_blink = tick;
         }
 
-        // Dinse Sound Source frequency 7100
+#if I2S_SOUND
+        // Dinsey Sound Source frequency 7100
         if (tick > last_dss_tick + (1000000 / 7000)) {
             last_dss_sample = dss_sample();
 
@@ -145,13 +173,15 @@ void __time_critical_func() second_core() {
 
             if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
                 sample_index = 0;
+#if 0
                 i2s_dma_write(&i2s_config, audio_buffer);
+#endif
                 //active_buffer ^= 1;
             }
 
             last_sound_tick = tick;
         }
-
+#endif
         if (tick >= last_frame_tick + 16667) {
             static uint8_t old_video_mode;
             if (old_video_mode != videomode) {

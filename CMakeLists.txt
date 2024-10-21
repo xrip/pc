@@ -35,7 +35,7 @@ else ()
     add_compile_options(-flto -fwhole-program)
 
 
-    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
 
     add_subdirectory(memops_opt)
 
@@ -136,6 +136,9 @@ else ()
             NES_GPIO_CLK=14
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
+
+            I2S_SOUND=1
+            HARDWARE_SOUND=0
 
 #            AUDIO_PWM_PIN=26
     )

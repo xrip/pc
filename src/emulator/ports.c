@@ -159,7 +159,6 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC5:
         case 0xC6:
         case 0xC7:
-            sn76489_out(value);
             return tandy_write(portnum, value);
         // Gamepad
         case 0x201:
@@ -184,7 +183,6 @@ void portout(uint16_t portnum, uint16_t value) {
 #if !PICO_RP2040
             blaster_write(portnum, value);
 #endif
-            cms_out(portnum, value);
             return cms_write(portnum, value);
 
         case 0x260:
@@ -472,5 +470,5 @@ void portout16(uint16_t portnum, uint16_t value) {
 }
 
 uint16_t portin16(uint16_t portnum) {
-    return portin(portnum) | portin(portnum + 1) >> 8;
+    return portin(portnum) | portin(portnum + 1) << 8;
 }
