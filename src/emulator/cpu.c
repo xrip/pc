@@ -1,8 +1,8 @@
 #include "emulator.h"
 
-#define CPU_LIMIT_SHIFT_COUNT
+//#define CPU_LIMIT_SHIFT_COUNT
 #define CPU_NO_SALC
-//#define CPU_SET_HIGH_FLAGS
+#define CPU_SET_HIGH_FLAGS
 //#define CPU_286_STYLE_PUSH_SP
 //#define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 #if PICO_ON_DEVICE
