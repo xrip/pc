@@ -83,12 +83,13 @@ extern uint16_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
+    i2s_config = i2s_get_default_config();
     i2s_config.sample_freq = SOUND_FREQUENCY;
     i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
 #else
-    init_74hc595();
+
 #endif
     sleep_ms(100);
 
@@ -128,6 +129,7 @@ void __time_critical_func() second_core() {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
+#if I2S_SOUND
 #if 1 || !PICO_ON_DEVICE
         // Sound Blaster
         if (tick >= last_sb_tick + timeconst) {
@@ -137,7 +139,7 @@ void __time_critical_func() second_core() {
         }
 #endif
 
-#if I2S_SOUND
+
         // Dinsey Sound Source frequency 7100
         if (tick >= last_dss_tick + (1000000 / 7000)) {
             last_dss_sample = dss_sample();
@@ -379,7 +381,7 @@ int main() {
     }
 #endif
 
-
+    init_74hc595();
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -395,8 +397,6 @@ int main() {
     mouse_init();
 
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
-
-    i2s_config = i2s_get_default_config();
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);

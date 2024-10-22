@@ -5,12 +5,16 @@
 #include "hardware/clocks.h"
 #include "pico/platform.h"
 
-
+#if PICO_RP2350
+#define CLOCK_PIN 20
+#define CLOCK_PIN2 21
+#else
 #define CLOCK_PIN 23
-#define CLOCK_FREQUENCY (3579545 * 4)
-
 #define CLOCK_PIN2 29
-#define CLOCK_FREQUENCY2 (3579545 * 2)
+
+#endif
+#define CLOCK_FREQUENCY (3579545 * 2)
+#define CLOCK_FREQUENCY2 (3579545 * 1)
 //(14'318'180)
 
 #define A0 (1 << 8)
