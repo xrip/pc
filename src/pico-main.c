@@ -31,7 +31,7 @@ void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
 #else
-    sn76489_write(value & 0xff);
+    SN76489_write(value & 0xff);
 #endif
 }
 
@@ -44,9 +44,9 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
     OPL_writeReg(emu8950_opl, reg, value);
 #else
     if (reg &1) {
-        ymf262_write_byte(0,0, value & 0xff);
+        OPL2_write_byte(0,0, value & 0xff);
     } else {
-        ymf262_write_byte(1,0, value & 0xff);
+        OPL2_write_byte(1,0, value & 0xff);
     }
 #endif
 }
@@ -56,10 +56,10 @@ void cms_write(uint16_t reg, uint8_t val) {
     cms_out(reg, val);
 #else
     switch (reg - 0x220) {
-        case 0: saa1099_write(0, 0, val & 0xf); break;
-        case 1: saa1099_write(0, 1, val & 0xff); break;
-        case 3: saa1099_write(1, 0, val & 0xf); break;
-        case 4: saa1099_write(1, 1, val & 0xff); break;
+        case 0: SAA1099_write(0, 0, val & 0xf); break;
+        case 1: SAA1099_write(0, 1, val & 0xff); break;
+        case 3: SAA1099_write(1, 0, val & 0xf); break;
+        case 4: SAA1099_write(1, 1, val & 0xff); break;
 
     }
 #endif
