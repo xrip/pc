@@ -141,10 +141,28 @@ uint8_t xms_handler() {
                 move_data_t move_data = { 0 };
                 uint8_t * move_data_ptr = (uint8_t *)&move_data;
                 for (int i = 0; i < sizeof(move_data_t); i++) {
-                    *move_data_ptr++ = read86(struct_offset++);
+                    uint8_t byte = read86(struct_offset++);
+                    *move_data_ptr++ = byte;
+                    printf("0x%02x,", byte);
                 }
+            printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
+                   struct_offset,
+                   move_data.length,
+                   move_data.source_handle,
+                   move_data.source_offset,
+                   move_data.destination_handle,
+                   move_data.destination_offset
+            );
+            struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
+            move_data.length = readw86(struct_offset + 2) << 16 | readw86(struct_offset);
+            move_data.source_handle = readw86(struct_offset + 4);
+            move_data.destination_handle = readw86(struct_offset + 10);
 
-                move_data.source_offset = (move_data.source_offset << 16) | (move_data.source_offset >> 16) & 0xFFFF ;
+            move_data.source_offset = (uint32_t) readw86(struct_offset + 8) << 4 | readw86(struct_offset + 6);
+            move_data.destination_offset =
+                    (uint32_t) readw86(struct_offset + 14) << 4 | readw86(struct_offset + 12);
+
+//                move_data.source_offset = (move_data.source_offset << 16) | (move_data.source_offset >> 16) & 0xFFFF ;
             printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
                    struct_offset,
                    move_data.length,
