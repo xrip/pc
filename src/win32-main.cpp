@@ -486,6 +486,7 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     return 0;
 }
 
+void pcm_write(int16_t sample);
 
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current, queryperf;
@@ -521,14 +522,14 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Disney Sound Source frequency ~7KHz
         if (elapsedTime - last_dss_tick >= hostfreq / 7000) {
             last_dss_sample = dss_sample();
-
+            pcm_write(last_dss_sample);
             last_dss_tick = elapsedTime;
         }
 
         // Sound Blaster
         if (elapsedTime - last_sb_tick >= hostfreq / sb_samplerate) {
             last_sb_sample = blaster_sample();
-
+            pcm_write(last_sb_sample);
             last_sb_tick = elapsedTime;
         }
 
@@ -539,8 +540,10 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             samples[0] += last_dss_sample;
 
-            if (speakerenabled)
+            if (speakerenabled) {
                 samples[0] += speaker_sample();
+                pcm_write(samples[0]);
+            }
 
             samples[0] += sn76489_sample();
 
@@ -1018,6 +1021,16 @@ DWORD WINAPI MessageHandler(LPVOID lpParam) {
 extern "C" void tandy_write(uint16_t reg, uint8_t value) {
     if (reg != 0xff) sn76489_out(value);
     Enqueue(&queue, (value & 0xff) << 8 | 0);
+}
+
+void pcm_write(int16_t value) {
+    if (!value)
+        return;
+    //printf("pcm\n");
+    uint8_t sample_lo = 0xff;
+    uint8_t sample_hi = 0xff;
+    Enqueue(&queue, (sample_lo) << 8 | 6 << 4 | 0b0000);
+    Enqueue(&queue, (sample_hi) << 8 | 6 << 4 | 0b0011);
 }
 
 extern "C" void adlib_init(uint32_t samplerate);

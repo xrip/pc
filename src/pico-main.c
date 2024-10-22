@@ -75,10 +75,11 @@ int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = { 0 };
+int active_buffer = 0;
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
-extern uint8_t timeconst;
+extern uint16_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
@@ -118,7 +119,7 @@ void __time_critical_func() second_core() {
 
 
     while (true) {
-        if (tick >= last_timer_tick + (1000000 / timer_period)) {
+        if (tick >= last_timer_tick + timer_period) {
             doirq(0);
             last_timer_tick = tick;
         }
@@ -127,25 +128,26 @@ void __time_critical_func() second_core() {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
-
-#if I2S_SOUND
-        // Dinsey Sound Source frequency 7100
-        if (tick > last_dss_tick + (1000000 / 7000)) {
-            last_dss_sample = dss_sample();
-
-            last_dss_tick = tick;
-        }
-
 #if 1 || !PICO_ON_DEVICE
         // Sound Blaster
-        if (tick > last_sb_tick + timeconst) {
+        if (tick >= last_sb_tick + timeconst) {
             last_sb_sample = blaster_sample();
 
             last_sb_tick = tick;
         }
 #endif
+
+#if I2S_SOUND
+        // Dinsey Sound Source frequency 7100
+        if (tick >= last_dss_tick + (1000000 / 7000)) {
+            last_dss_sample = dss_sample();
+
+            last_dss_tick = tick;
+        }
+
+
         // Sound frequency 44100
-        if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
+        if (tick >= last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             int16_t samples[2] = { 0, 0 };
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
 
@@ -156,25 +158,29 @@ void __time_critical_func() second_core() {
 
             samples[0] += sn76489_sample();
 
+
+//            samples[0] += adlibgensample() * 32;
+
+            samples[0] += covox_sample;
+
 #if 1 || !PICO_ON_DEVICE
             if (last_sb_sample)
                 samples[0] += last_sb_sample;
 #endif
-//            samples[0] += adlibgensample() * 32;
-            samples[0] += covox_sample;
+
             samples[1] = samples[0];
 
             cms_samples(samples);
 
 
-            audio_buffer[sample_index++] = samples[1];
-            audio_buffer[sample_index++] = samples[0];
+            audio_buffer[active_buffer][sample_index++] = samples[1];
+            audio_buffer[active_buffer][sample_index++] = samples[0];
 
 
             if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
                 sample_index = 0;
-                i2s_dma_write(&i2s_config, audio_buffer);
-                //active_buffer ^= 1;
+                i2s_dma_write(&i2s_config, audio_buffer[active_buffer]);
+                active_buffer ^= 1;
             }
 
             last_sound_tick = tick;

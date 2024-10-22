@@ -76,7 +76,11 @@ void out8253(uint16_t portnum, uint8_t value) {
 #if 1
             if (portnum == 0) {
                 // Timer freq 1,193,180
+#if PICO_ON_DEVICE
+                timer_period =  1000000 / i8253.chanfreq[portnum];
+#else
                 timer_period =  i8253.chanfreq[portnum];
+#endif
             }
 #endif
             break;

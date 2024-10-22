@@ -9,14 +9,12 @@ static uint8_t fifo_length = 0;
 static uint8_t data;
 
 int16_t covox_sample = 0;
-
 inline uint16_t dss_sample() {
     register uint8_t sample = 0;
     if (fifo_length) {
         sample = *fifo_buffer;
         memmove(fifo_buffer, fifo_buffer + 1, --fifo_length);
     }
-
     return sample ? (int16_t )(sample << 6) : 0;
 }
 
