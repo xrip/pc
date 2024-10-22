@@ -359,6 +359,11 @@ void intcall86(uint8_t intnum) {
                 CPU_AX = 64;
                 return;
             }
+            if (CPU_AH == 0x87) {
+                printf("mem move?! %x %x:%x\n", CPU_CX, CPU_ES, CPU_SI);
+                CPU_AX = 02;
+                return;
+            }
             break;
             /**/
         case 0x19:

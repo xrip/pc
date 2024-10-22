@@ -1,6 +1,12 @@
 #include <stdbool.h>
 #include "emulator.h"
-
+/*
+ * -   XMS drivers are required to hook INT 15h and watch for calls to
+    functions 87h (Block Move) and 88h (Extended Memory Available).  The
+    INT 15h Block Move function must be hooked so that the state of the A20
+    line is preserved across the call.	The INT 15h Extended Memory
+    Available function must be hooked to return 0h to protect the HMA.
+ */
 // https://www.phatcode.net/res/218/files/limems40.txt
 // https://www.phatcode.net/res/219/files/xms20.txt
 // http://www.techhelpmanual.com/944-xms_functions.html
