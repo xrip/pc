@@ -51,7 +51,7 @@ static struct sound_blaster_s {
 uint16_t timeconst = 22;
 uint64_t sb_samplerate = 22050;
 
-#define SB_irq 7
+#define SB_irq 3
 #define SB_dmachan 1
 
 const int16_t cmd_E2_table[9] = { 0x01, -0x02, -0x04, 0x08, -0x10, 0x20, 0x40, -0x80, -106 };
