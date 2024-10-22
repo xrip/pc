@@ -9,7 +9,7 @@
 #if PICO_ON_DEVICE
 
 #include "pico.h"
-
+uint8_t * PSRAM_DATA = (uint8_t*)0x11000000;
 uint8_t ALIGN(4, RAM[RAM_SIZE + 4]) = {0};
 uint8_t ALIGN(4, VIDEORAM[VIDEORAM_SIZE + 4]) = {0};
 
