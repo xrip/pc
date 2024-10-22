@@ -70,7 +70,9 @@ umb_t *get_free_umb_block(uint16_t size) {
 #define XMS_SIZE (1024 << 10)
 #define XMS_HANDLES 64
 
-uint8_t ALIGN(4, XMS[XMS_SIZE]) = {0};
+#define XMS_PSRAM_OFFSET (4096*1024)
+
+
 uint32_t xms_available = XMS_SIZE;
 
 struct {
@@ -82,6 +84,14 @@ uint8_t xms_handles = 0;
 
 int a20_enabled = 0;
 
+#if !PICO_ON_DEVICE
+uint8_t ALIGN(4, XMS[XMS_SIZE]) = {0};
+#define xms_move_to(destination, source) XMS[destination] = read86(source)
+#define xms_move_from(source, destination) write86(destination, XMS[source])
+#else
+#define xms_move_to(destination, source) write8psram(destination, read86(source))
+#define xms_move_from(source, destination) write86(destination, read8psram(source))
+#endif
 uint8_t xms_handler() {
 
     switch (CPU_AH) {
@@ -162,15 +172,17 @@ uint8_t xms_handler() {
             if (!move_data.source_handle) {
                 move_data.source_offset = ((uint16_t) ((move_data.source_offset >> 16) & 0xFFFF) << 4) +
                                           (uint16_t) (move_data.source_offset & 0xFFFF);
+                move_data.destination_offset += XMS_PSRAM_OFFSET;
 
                 while (move_data.length--) {
-                    XMS[move_data.destination_offset++] = read86(move_data.source_offset++);
+                    xms_move_to(move_data.destination_offset++, move_data.source_offset++);
                 }
             } else if (!move_data.destination_handle) {
                 move_data.destination_offset = ((uint16_t) ((move_data.destination_offset >> 16) & 0xFFFF) << 4) +
                                                (uint16_t) (move_data.destination_offset & 0xFFFF);
+                move_data.source_offset += XMS_PSRAM_OFFSET;
                 while (move_data.length--) {
-                    write86(move_data.destination_offset++, XMS[move_data.source_offset++]);
+                    xms_move_from(move_data.source_offset++, move_data.destination_offset++);
                 }
             }
 

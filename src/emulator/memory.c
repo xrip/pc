@@ -3,27 +3,6 @@
 #include "includes/bios.h"
 #include "emulator.h"
 
-#if PICO_RP2040
-
-#include "psram_spi.h"
-
-#else
-uint8_t * PSRAM_DATA = (uint8_t*)0x11000000;
-
-static INLINE void write8psram(uint32_t address, uint8_t value) {
-    PSRAM_DATA[address] = value;
-}
-static INLINE void write16psram(uint32_t address, uint16_t value) {
-    *(uint16_t *)&PSRAM_DATA[address] = value;
-}
-static INLINE uint8_t read8psram(uint32_t address) {
-    return PSRAM_DATA[address];
-}
-static INLINE uint16_t read16psram(uint32_t address) {
-    uint16_t result = *(uint16_t *)&PSRAM_DATA[address];
-    return result;
-}
-#endif
 
 #include "emulator/ems.c.inl"
 
