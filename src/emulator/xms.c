@@ -83,10 +83,7 @@ uint8_t xms_handles = 0;
 int a20_enabled = 0;
 
 uint8_t xms_handler() {
-#if 0
-    if (CPU_AH > 0x7 && CPU_AH < 0x10)
-        printf("[XMS] %02X\n", CPU_AH);
-#endif
+
     switch (CPU_AH) {
         case XMS_VERSION: { // Get XMS Version
             CPU_AX = 0x0200; // We are himem 2.06
@@ -237,9 +234,14 @@ uint8_t xms_handler() {
             break;
         }
         default: {
+#if 1
+            if (CPU_AH > 0x7 && CPU_AH < 0x10)
+                printf("[XMS] %02X\n", CPU_AH);
+#endif
             // Unhandled function
             CPU_AX = 0x0001; // Function not supported
             CPU_BL = 0x80; // Function not implemented
+
             break;
         }
     }
