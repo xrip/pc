@@ -172,15 +172,18 @@ uint8_t xms_handler() {
             if (!move_data.source_handle) {
                 move_data.source_offset = ((uint16_t) ((move_data.source_offset >> 16) & 0xFFFF) << 4) +
                                           (uint16_t) (move_data.source_offset & 0xFFFF);
+#if PICO_ON_DEVICE
                 move_data.destination_offset += XMS_PSRAM_OFFSET;
-
+#endif
                 while (move_data.length--) {
                     xms_move_to(move_data.destination_offset++, move_data.source_offset++);
                 }
             } else if (!move_data.destination_handle) {
                 move_data.destination_offset = ((uint16_t) ((move_data.destination_offset >> 16) & 0xFFFF) << 4) +
                                                (uint16_t) (move_data.destination_offset & 0xFFFF);
+#if PICO_ON_DEVICE
                 move_data.source_offset += XMS_PSRAM_OFFSET;
+#endif
                 while (move_data.length--) {
                     xms_move_from(move_data.source_offset++, move_data.destination_offset++);
                 }
