@@ -360,6 +360,7 @@ void intcall86(uint8_t intnum) {
                 return;
             }
             if (CPU_AH == 0x87) {
+                //https://github.com/neozeed/himem.sys-2.06/blob/5761f4fc182543b3964fd0d3a236d04bac7bfb50/oemsrc/himem.asm#L690
                 printf("mem move?! %x %x:%x\n", CPU_CX, CPU_ES, CPU_SI);
                 CPU_AX = 02;
                 return;
