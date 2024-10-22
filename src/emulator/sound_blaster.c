@@ -48,7 +48,7 @@ static struct sound_blaster_s {
     uint8_t readbuf[32];
 } sb;
 //#define DEBUG_BLASTER
-uint8_t timeconst = 22;
+uint16_t timeconst = 22;
 uint64_t sb_samplerate = 22050;
 
 #define SB_irq 7
