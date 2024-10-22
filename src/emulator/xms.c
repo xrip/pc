@@ -74,12 +74,12 @@ umb_t *get_free_umb_block(uint16_t size) {
 
 
 uint32_t xms_available = XMS_SIZE;
-
+/*
 struct {
     uint8_t handle;
     uint32_t size; //
     uint8_t locks;
-} XMS_HANDLE[XMS_HANDLES] = {0};
+} XMS_HANDLE[XMS_HANDLES] = {0};*/
 uint8_t xms_handles = 0;
 
 int a20_enabled = 0;
