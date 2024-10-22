@@ -19,18 +19,18 @@ typedef struct __attribute__((packed)) {
     uint32_t source_offset;
     uint16_t destination_handle;
     uint32_t destination_offset;
-}  move_data_t;
+} move_data_t;
 
 static umb_t umb_blocks[] = {
 // Used by EMS driver
 //        { 0xC000, 0x0800, false },
 //        { 0xC800, 0x0800, false },
-        { 0xD000, 0x0800, false },
-        { 0xD800, 0x0800, false },
-        { 0xE000, 0x0800, false },
-        { 0xE800, 0x0800, false },
-        { 0xF000, 0x0800, false },
-        { 0xF800, 0x0400, false },
+        {0xD000, 0x0800, false},
+        {0xD800, 0x0800, false},
+        {0xE000, 0x0800, false},
+        {0xE800, 0x0800, false},
+        {0xF000, 0x0800, false},
+        {0xF800, 0x0400, false},
 };
 #define UMB_BLOCKS_COUNT (sizeof(umb_blocks) / sizeof(umb_t))
 
@@ -68,22 +68,25 @@ umb_t *get_free_umb_block(uint16_t size) {
 #define RELEASE_UMB 0x11
 
 #define XMS_SIZE (1024 << 10)
-#define XMS_HANDLES
-uint8_t XMS[XMS_SIZE * 4] = { 0 };
+#define XMS_HANDLES 64
+
+uint8_t ALIGN(4, XMS[XMS_SIZE]) = {0};
 uint32_t xms_available = XMS_SIZE;
 
 struct {
     uint8_t handle;
     uint32_t size; //
     uint8_t locks;
-} XMS_HANDLE[XMS_HANDLES] = { 0 };
+} XMS_HANDLE[XMS_HANDLES] = {0};
 uint8_t xms_handles = 0;
 
 int a20_enabled = 0;
 
 uint8_t xms_handler() {
+#if 0
     if (CPU_AH > 0x7 && CPU_AH < 0x10)
-    printf("[XMS] %02X\n", CPU_AH);
+        printf("[XMS] %02X\n", CPU_AH);
+#endif
     switch (CPU_AH) {
         case XMS_VERSION: { // Get XMS Version
             CPU_AX = 0x0200;
@@ -122,6 +125,7 @@ uint8_t xms_handler() {
 
         case QUERY_EMB : { // 08h
             printf("[XMS] Query free\r\n");
+            /**/
             CPU_AX = XMS_SIZE >> 10;
             CPU_DX = 64;
             CPU_BL = 0;
@@ -130,47 +134,61 @@ uint8_t xms_handler() {
         case ALLOCATE_EMB: { // Allocate Extended Memory Block (Function 09h):
             printf("[XMS] Allocate %dKb\n", CPU_DX);
             // Stub: Implement allocating extended memory block functionality
-            CPU_DX = 0xBEEF;
+            CPU_DX = ++xms_handles;
             CPU_AX = 1;
             CPU_BL = 0;
             break;
         }
+        case RELEASE_EMB: {
+            printf("[XMS] Free handle %d\n", CPU_DX);
+            if (xms_handles) {
+                xms_handles--;
+                CPU_AX = 1;
+                CPU_BL = 0;
+                break;
+            }
+            CPU_AX = 0;
+            CPU_BL = 0xA2;
+            break;
+        }
 
-        case MOVE_EMB: {
-                uint32_t struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
-                move_data_t move_data = { 0 };
-                uint8_t * move_data_ptr = (uint8_t *)&move_data;
-                for (int i = 0; i < sizeof(move_data_t); i++) {
-                    uint8_t byte = read86(struct_offset++);
-                    *move_data_ptr++ = byte;
-                    printf("0x%02x,", byte);
+        case MOVE_EMB: { // Move Extended Memory Block (Function 0Bh)
+            uint32_t struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
+            move_data_t move_data;
+            uint16_t *move_data_ptr = (uint16_t *) &move_data;
+
+            for (int i = sizeof(move_data_t) / 2; i--;) {
+                *move_data_ptr++ = readw86(struct_offset++); struct_offset++;
+            }
+
+            // TODO: Add mem<>mem and xms<>xms
+            if (!move_data.source_handle) {
+                move_data.source_offset = ((uint16_t) ((move_data.source_offset >> 16) & 0xFFFF) << 4) +
+                                          (uint16_t) (move_data.source_offset & 0xFFFF);
+
+                while (move_data.length--) {
+                    XMS[move_data.destination_offset++] = read86(move_data.source_offset++);
                 }
-            printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
-                   struct_offset,
-                   move_data.length,
-                   move_data.source_handle,
-                   move_data.source_offset,
-                   move_data.destination_handle,
-                   move_data.destination_offset
-            );
-            struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
-            move_data.length = readw86(struct_offset + 2) << 16 | readw86(struct_offset);
-            move_data.source_handle = readw86(struct_offset + 4);
-            move_data.destination_handle = readw86(struct_offset + 10);
+            } else if (!move_data.destination_handle) {
+                move_data.destination_offset = ((uint16_t) ((move_data.destination_offset >> 16) & 0xFFFF) << 4) +
+                                               (uint16_t) (move_data.destination_offset & 0xFFFF);
+                while (move_data.length--) {
+                    write86(move_data.destination_offset++, XMS[move_data.source_offset++]);
+                }
+            }
 
-            move_data.source_offset = (uint32_t) readw86(struct_offset + 8) << 4 | readw86(struct_offset + 6);
-            move_data.destination_offset =
-                    (uint32_t) readw86(struct_offset + 14) << 4 | readw86(struct_offset + 12);
-
-//                move_data.source_offset = (move_data.source_offset << 16) | (move_data.source_offset >> 16) & 0xFFFF ;
-            printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
-                   struct_offset,
-                   move_data.length,
-                   move_data.source_handle,
-                   move_data.source_offset,
-                   move_data.destination_handle,
-                   move_data.destination_offset
-            );
+#if 0
+                printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
+                       struct_offset,
+                       move_data.length,
+                       move_data.source_handle,
+                       move_data.source_offset,
+                       move_data.destination_handle,
+                       move_data.destination_offset
+                );
+#endif
+            CPU_AX = 1;
+            CPU_BL = 0;
             break;
         }
         case REQUEST_UMB: { // Request Upper Memory Block (Function 10h):
