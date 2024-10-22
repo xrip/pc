@@ -13,13 +13,13 @@ typedef struct umb {
     bool allocated;
 } umb_t;
 
-typedef struct  {
+typedef struct __attribute__((packed)) {
     uint32_t length;
     uint16_t source_handle;
     uint32_t source_offset;
     uint16_t destination_handle;
     uint32_t destination_offset;
-} __attribute__((packed)) move_data_t;
+}  move_data_t;
 
 static umb_t umb_blocks[] = {
 // Used by EMS driver
@@ -141,9 +141,10 @@ uint8_t xms_handler() {
                 move_data_t move_data = { 0 };
                 uint8_t * move_data_ptr = (uint8_t *)&move_data;
                 for (int i = 0; i < sizeof(move_data_t); i++) {
-                    *move_data_ptr++ = readw86(struct_offset++);
+                    *move_data_ptr++ = read86(struct_offset++);
                 }
 
+                move_data.source_offset = (move_data.source_offset << 16) | (move_data.source_offset >> 16) & 0xFFFF ;
             printf("[XMS] Move EMB 0x%06X\r\n\t length 0x%08X \r\n\t src_handle 0x%04X \r\n\t src_offset 0x%08X \r\n\t dest_handle 0x%04X \r\n\t dest_offset 0x%08X \r\n",
                    struct_offset,
                    move_data.length,
