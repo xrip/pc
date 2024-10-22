@@ -1,31 +1,8 @@
-#include <hardware/pwm.h>
-#include <hardware/timer.h>
-#include <pico/time.h>
 #include "74hc595.h"
-#include "hardware/clocks.h"
 #include "pico/platform.h"
 
 
-#define CLOCK_PIN 23
-#define CLOCK_FREQUENCY (3579545 * 4)
-
-#define CLOCK_PIN2 29
-#define CLOCK_FREQUENCY2 (3579545 * 2)
-//(14'318'180)
-
-#define A0 (1 << 8)
-#define A1 (1 << 9)
-
-#define IC (1 << 10)
-
-#define SN_1_CS (1 << 11)
-
-#define SAA_1_CS (1 << 12)
-#define SAA_2_CS (1 << 13)
-
-#define OPL2 (1 << 14)
-#define OPL3 (1 << 15)
-
+#if SN76489_REVERSED
 // Если мы перепутаем пины
 static const uint8_t  __aligned(4) reversed[] = {
         0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
@@ -45,136 +22,47 @@ static const uint8_t  __aligned(4) reversed[] = {
         0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
         0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 };
-
-static const uint16_t program_instructions595[] = {
-        //     .wrap_target
-        0x80a0, //  0: pull   block           side 0
-        0x6001, //  1: out    pins, 1         side 0
-        0x1041, //  2: jmp    x--, 1          side 2
-        0xe82f, //  3: set    x, 15           side 1
-        //     .wrap
-};
-
-static const struct pio_program program595 = {
-        .instructions = program_instructions595,
-        .length = 4,
-        .origin = -1,
-};
-
-static uint16_t control_bits = 0;
-#define LOW(x) (control_bits &= ~(x))
-#define HIGH(x) (control_bits |= (x))
-
-static void clock_init(uint pin, uint32_t frequency) {
-    gpio_set_function(pin, GPIO_FUNC_PWM);
-    uint slice_num = pwm_gpio_to_slice_num(pin);
-
-    pwm_config c_pwm = pwm_get_default_config();
-    pwm_config_set_clkdiv(&c_pwm, clock_get_hz(clk_sys) / (4.0 * frequency));
-    pwm_config_set_wrap(&c_pwm, 3); // MAX PWM value
-    pwm_init(slice_num, &c_pwm, true);
-    pwm_set_gpio_level(pin, 2);
-}
+#endif
 
 // SN76489
-void sn76489_write(uint8_t byte) {
-    const uint8_t data =reversed[byte];
-    write_74hc595(data | LOW(SN_1_CS));
-    busy_wait_us(1);
-    write_74hc595(data | HIGH(SN_1_CS));
+void SN76489_write(uint8_t byte) {
+#if SN76489_REVERSED
+    byte = reversed[byte];
+#endif
+    write_74hc595(byte | LOW(SN_1_CS), 20);
+    write_74hc595(byte | HIGH(SN_1_CS), 0);
+}
+// YM2413
+static inline void YM2413_write(uint8_t addr, uint8_t byte) {
+    const uint16_t a0 = addr ? A0 : 0;
+    write_74hc595(byte | a0 | LOW(OPL2), 4);
+    write_74hc595(byte | a0 | HIGH(OPL2), a0 ? 30 : 5);
 }
 
 // SAA1099
-void saa1099_write(uint8_t chip, uint8_t addr, uint8_t byte) {
+void SAA1099_write(uint8_t addr, uint8_t chip, uint8_t byte) {
     const uint16_t a0 = addr ? A0 : 0;
     const uint16_t cs = chip ? SAA_2_CS : SAA_1_CS;
 
-    write_74hc595(byte | a0 | LOW(cs)); // опускаем только тот который надо
-    busy_wait_us(5);
-    write_74hc595(byte | a0 | HIGH(cs)); // Возвращаем оба обратно
-
-//    write_74hc595(HIGH(chip ? SAA_2_CS : SAA_1_CS));
+    write_74hc595(byte | a0 | LOW(cs), 5);
+    write_74hc595(byte | a0 | HIGH(cs), 0);
 }
 
-
-
-void ymf262_write_byte(uint8_t addr, uint8_t register_set, uint8_t byte) {
+// YM3812 / YM2413
+void OPL2_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
     const uint16_t a0 = addr ? A0 : 0;
     const uint16_t a1 = register_set ? A1 : 0;
-    write_74hc595(byte | a0 | a1 | LOW(OPL3));
-    busy_wait_us(1);
-    write_74hc595(byte | a0 | a1 | HIGH(OPL3));
-    //busy_wait_us(35);
+
+    write_74hc595(byte | a0 | a1 | LOW(OPL2), 5);
+    write_74hc595(byte | a0 | a1 | HIGH(OPL2), 30);
 }
-void static inline reset_chips() {
-    control_bits = 0;
-    write_74hc595(HIGH(SN_1_CS | OPL2 | SAA_1_CS | SAA_2_CS | OPL3));
-    write_74hc595(HIGH(IC));
-    sleep_ms(10);
-    write_74hc595(LOW(IC));
-    sleep_ms(100);
-    write_74hc595(HIGH(IC));
-    sleep_ms(10);
 
-    // Mute SN76489
-    sn76489_write(0x9F);
-    sleep_ms(10);
-    sn76489_write(0xBF);
-    sleep_ms(10);
-    sn76489_write(0xDF);
-    sleep_ms(10);
-    sn76489_write(0xFF);
-    sleep_ms(10);
+// YM3812 / YMF262
+static inline void OPL3_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
+    const uint16_t a0 = addr ? A0 : 0;
+    const uint16_t a1 = register_set ? A1 : 0;
+
+    write_74hc595(byte | a0 | a1 | LOW(OPL3), 5);
+    write_74hc595(byte | a0 | a1 | HIGH(OPL3), 0);
 }
-void init_74hc595() {
-    clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
-    clock_init(CLOCK_PIN2, CLOCK_FREQUENCY2);
 
-    uint offset = pio_add_program(PIO_74HC595, &program595);
-    pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset, offset + (program595.length - 1));
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-
-    // sm_config_set_in_shift(&c, true, false, 32);//??????  
-    // sm_config_set_in_pins(&c, PIN_PS2_DATA);
-
-//     pio_gpio_init(pioAY595, CLK_LATCH_595_BASE_PIN);
-//     pio_gpio_init(pioAY595, CLK_LATCH_595_BASE_PIN+1);
-// //pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-//     sm_config_set_sideset_pins(&c, CLK_LATCH_595_BASE_PIN);
-
-//     sm_config_set_set_pins(&c, CLK_LATCH_595_BASE_PIN, 2);
-//     sm_config_set_sideset(&c, 2, false, false);
-
-
-    //настройка side set
-    sm_config_set_sideset_pins(&c, CLK_LATCH_595_BASE_PIN);
-    sm_config_set_sideset(&c, 2, false, false);
-
-    for (int i = 0; i < 2; i++) {
-        pio_gpio_init(PIO_74HC595, CLK_LATCH_595_BASE_PIN + i);
-    }
-
-    pio_sm_set_pins_with_mask(PIO_74HC595, SM_74HC595, 3u << CLK_LATCH_595_BASE_PIN, 3u << CLK_LATCH_595_BASE_PIN);
-    pio_sm_set_pindirs_with_mask(PIO_74HC595, SM_74HC595, 3u << CLK_LATCH_595_BASE_PIN, 3u << CLK_LATCH_595_BASE_PIN);
-    //
-
-    pio_gpio_init(PIO_74HC595, DATA_595_PIN);//резервируем под выход PIO
-
-    pio_sm_set_consecutive_pindirs(PIO_74HC595, SM_74HC595, DATA_595_PIN, 1, true);//конфигурация пинов на выход
-
-    sm_config_set_out_shift(&c, false, false, 32);
-    sm_config_set_out_pins(&c, DATA_595_PIN, 1);
-
-    pio_sm_init(PIO_74HC595, SM_74HC595, offset, &c);
-    pio_sm_set_enabled(PIO_74HC595, SM_74HC595, true);
-
-    pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, clock_get_hz(clk_sys) / SHIFT_SPEED);
-    PIO_74HC595->txf[SM_74HC595] = 0;
-
-    reset_chips();
-};
-
-void __not_in_flash_func(write_74hc595)(uint16_t data) {
-    PIO_74HC595->txf[SM_74HC595] = data << 16;
-}

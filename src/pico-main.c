@@ -31,7 +31,7 @@ void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
 #else
-    sn76489_write(value & 0xff);
+    SN76489_write(value & 0xff);
 #endif
 }
 
@@ -44,9 +44,9 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
     OPL_writeReg(emu8950_opl, reg, value);
 #else
     if (reg &1) {
-        ymf262_write_byte(0,0, value & 0xff);
+        OPL2_write_byte(0,0, value & 0xff);
     } else {
-        ymf262_write_byte(1,0, value & 0xff);
+        OPL2_write_byte(1,0, value & 0xff);
     }
 #endif
 }
@@ -56,10 +56,10 @@ void cms_write(uint16_t reg, uint8_t val) {
     cms_out(reg, val);
 #else
     switch (reg - 0x220) {
-        case 0: saa1099_write(0, 0, val & 0xf); break;
-        case 1: saa1099_write(0, 1, val & 0xff); break;
-        case 3: saa1099_write(1, 0, val & 0xf); break;
-        case 4: saa1099_write(1, 1, val & 0xff); break;
+        case 0: SAA1099_write(0, 0, val & 0xf); break;
+        case 1: SAA1099_write(0, 1, val & 0xff); break;
+        case 3: SAA1099_write(1, 0, val & 0xf); break;
+        case 4: SAA1099_write(1, 1, val & 0xff); break;
 
     }
 #endif
@@ -83,12 +83,13 @@ extern uint16_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
+    i2s_config = i2s_get_default_config();
     i2s_config.sample_freq = SOUND_FREQUENCY;
     i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
 #else
-    init_74hc595();
+
 #endif
     sleep_ms(100);
 
@@ -128,6 +129,7 @@ void __time_critical_func() second_core() {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
+#if I2S_SOUND
 #if 1 || !PICO_ON_DEVICE
         // Sound Blaster
         if (tick >= last_sb_tick + timeconst) {
@@ -137,7 +139,7 @@ void __time_critical_func() second_core() {
         }
 #endif
 
-#if I2S_SOUND
+
         // Dinsey Sound Source frequency 7100
         if (tick >= last_dss_tick + (1000000 / 7000)) {
             last_dss_sample = dss_sample();
@@ -379,7 +381,7 @@ int main() {
     }
 #endif
 
-
+    init_74hc595();
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -395,8 +397,6 @@ int main() {
     mouse_init();
 
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
-
-    i2s_config = i2s_get_default_config();
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
