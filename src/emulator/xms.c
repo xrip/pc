@@ -67,7 +67,7 @@ umb_t *get_free_umb_block(uint16_t size) {
 #define REQUEST_UMB 0x10
 #define RELEASE_UMB 0x11
 
-#define XMS_SIZE (1024 << 10)
+#define XMS_SIZE (4096 << 10)
 #define XMS_HANDLES 64
 
 #define XMS_PSRAM_OFFSET (4096*1024)
