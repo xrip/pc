@@ -367,7 +367,9 @@ int main() {
     set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
 
-    psram_init(19);
+    if (!init_psram()) {
+        printf("No PSRAM detected.");
+    }
 #else
     memcpy_wrapper_replace(NULL);
     //vreg_set_voltage(VREG_VOLTAGE_1_30);
