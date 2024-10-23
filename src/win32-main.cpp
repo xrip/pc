@@ -486,8 +486,8 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     return 0;
 }
 
-void pcm_write(int16_t sample);
-
+static INLINE void pcm_write(int mode, int16_t sample);
+extern uint16_t timeconst;
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current, queryperf;
 
@@ -507,6 +507,9 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
 
+    uint16_t old_timeconst = timeconst;
+
+
     updateEvent = CreateEvent(NULL, 1, 1, NULL);
     while (true) {
         QueryPerformanceCounter(&current); // Get the current time
@@ -522,19 +525,18 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Disney Sound Source frequency ~7KHz
         if (elapsedTime - last_dss_tick >= hostfreq / 7000) {
             last_dss_sample = dss_sample();
-            pcm_write(last_dss_sample);
+            //pcm_write(last_dss_sample);
             last_dss_tick = elapsedTime;
         }
 
         // Sound Blaster
         if (elapsedTime - last_sb_tick >= hostfreq / sb_samplerate) {
             last_sb_sample = blaster_sample();
-            pcm_write(last_sb_sample);
+            // if (last_sb_sample) pcm_write(1, last_sb_sample);
             last_sb_tick = elapsedTime;
         }
 
         if (elapsedTime - last_sound_tick >= hostfreq / SOUND_FREQUENCY) {
-            static int sound_counter = 0;
             int16_t samples[2] = {0, 0};
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *) samples, 1);
 
@@ -542,7 +544,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             if (speakerenabled) {
                 samples[0] += speaker_sample();
-                pcm_write(samples[0]);
+                // pcm_write(samples[0]);
             }
 
             samples[0] += sn76489_sample();
@@ -925,7 +927,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
     //printf("scancode %c", scancode);
 }
 
-#define QUEUE_SIZE 100
+#define QUEUE_SIZE 1000
 
 typedef struct {
     uint16_t messages[QUEUE_SIZE];
@@ -1023,14 +1025,13 @@ extern "C" void tandy_write(uint16_t reg, uint8_t value) {
     Enqueue(&queue, (value & 0xff) << 8 | 0);
 }
 
-void pcm_write(int16_t value) {
-    if (!value)
-        return;
-    //printf("pcm\n");
-    uint8_t sample_lo = 0xff;
-    uint8_t sample_hi = 0xff;
-    Enqueue(&queue, (sample_lo) << 8 | 6 << 4 | 0b0000);
-    Enqueue(&queue, (sample_hi) << 8 | 6 << 4 | 0b0011);
+static INLINE void pcm_write(int mode, int16_t value) {
+    if (mode) {
+        Enqueue(&queue, (value >> 8) << 8 | 0xe << 4 | 0b0000);
+        Enqueue(&queue, (value & 0xff) << 8 | 0xe << 4 | 0b0001);
+    } else {
+        Enqueue(&queue, (value & 0xff) << 8 | 0xe << 4 | 0b0011);
+    }
 }
 
 extern "C" void adlib_init(uint32_t samplerate);
