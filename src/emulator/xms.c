@@ -19,7 +19,7 @@ typedef struct umb {
     bool allocated;
 } umb_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed, aligned)) {
     uint32_t length;
     uint16_t source_handle;
     uint32_t source_offset;
