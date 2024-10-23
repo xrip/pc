@@ -355,15 +355,24 @@ void intcall86(uint8_t intnum) {
         case 0x13:
             return diskhandler();
         case 0x15: /* XMS */
-            if (CPU_AH == 0x88) {
-                CPU_AX = 64;
-                return;
-            }
-            if (CPU_AH == 0x87) {
-                //https://github.com/neozeed/himem.sys-2.06/blob/5761f4fc182543b3964fd0d3a236d04bac7bfb50/oemsrc/himem.asm#L690
-                printf("mem move?! %x %x:%x\n", CPU_CX, CPU_ES, CPU_SI);
-                CPU_AX = 02;
-                return;
+            switch (CPU_AH) {
+                case 0x87: {
+                    //https://github.com/neozeed/himem.sys-2.06/blob/5761f4fc182543b3964fd0d3a236d04bac7bfb50/oemsrc/himem.asm#L690
+                    printf("mem move?! %x %x:%x\n", CPU_CX, CPU_ES, CPU_SI);
+                    CPU_AX = 02;
+                    return;
+                }
+                    return;
+                case 0x88: {
+                    CPU_AX = 64;
+                    return;
+                }
+                case 0x8A:
+                case 0xC7:
+                case 0xDA:
+                case 0xE8:  {
+                    printf("Other mem funct %x", CPU_AH);
+                }
             }
             break;
             /**/
