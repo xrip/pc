@@ -366,7 +366,9 @@ int main() {
     *qmi_m0_timing = 0x60007204;
     set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
-
+#if !I2S_SOUND
+    init_74hc595();
+#endif
     psram_init(19);
 #else
     memcpy_wrapper_replace(NULL);
@@ -381,7 +383,7 @@ int main() {
     }
 #endif
 
-    init_74hc595();
+
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
