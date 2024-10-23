@@ -39,7 +39,8 @@ extern "C" {
 
 #define BIOS_START (0xFE000)
 
-#define EMS_MEMORY_SIZE 0x200000
+#define EMS_MEMORY_SIZE (2048 << 10)
+#define XMS_SIZE (4096 << 10)
 
 #define BIOS_MEMORY_SIZE                0x413
 #define BIOS_TRUE_MEMORY_SIZE           0x415
@@ -53,7 +54,7 @@ extern uint8_t RAM[RAM_SIZE + 4];
 extern uint8_t UMB[(UMB_END - UMB_START) + 4];
 extern uint8_t HMA[(HMA_END - HMA_START) + 4];
 extern uint8_t EMS[EMS_MEMORY_SIZE + 4];
-
+extern uint8_t XMS[XMS_SIZE];
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];

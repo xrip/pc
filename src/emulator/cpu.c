@@ -1262,7 +1262,8 @@ void reset86() {
 #if !PICO_ON_DEVICE
     memset(UMB, 0, sizeof(UMB));
     memset(HMA, 0, sizeof(HMA));
-    memset(EMS, 0, sizeof(HMA));
+    memset(EMS, 0, sizeof(EMS));
+    memset(XMS, 0, sizeof(HMA));
 #endif
 
     ip = 0x0000;

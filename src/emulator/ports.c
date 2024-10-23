@@ -196,7 +196,7 @@ void portout(uint16_t portnum, uint16_t value) {
             return out_ems(portnum, value);
 
         case 0x278:
-            covox_sample = (int16_t) (value - 128 << 7);
+            covox_sample = (int16_t) (value - 128 << 6);
             return;
 #if !PICO_ON_DEVICE
         case 0x330:
