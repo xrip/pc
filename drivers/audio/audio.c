@@ -163,7 +163,7 @@ void i2s_dma_write(i2s_config_t *i2s_config, const int16_t *samples) {
 #ifdef AUDIO_PWM_PIN
     for(uint16_t i=0;i<i2s_config->dma_trans_count*2;i++) {
            
-            i2s_config->dma_buf[i] = (65536/2+(samples[i]))>>(4+i2s_config->volume);
+            i2s_config->dma_buf[i] = (65536/2+(samples[i]))>>(3+i2s_config->volume);
 
         }
 #else

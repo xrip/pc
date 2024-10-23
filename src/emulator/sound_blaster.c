@@ -109,7 +109,7 @@ static INLINE void blaster_writecmd(uint8_t value) {
             }
             return;
         case 0x40: //set time constant
-            timeconst = value;
+            timeconst = (256 - value);
 //            sb_samplerate = value;
             sb_samplerate = 1000000 / (256 - value);
             //timing_updateIntervalFreq(timer, samplerate);

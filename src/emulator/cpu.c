@@ -358,8 +358,9 @@ void intcall86(uint8_t intnum) {
             switch (CPU_AH) {
                 case 0x87: {
                     //https://github.com/neozeed/himem.sys-2.06/blob/5761f4fc182543b3964fd0d3a236d04bac7bfb50/oemsrc/himem.asm#L690
+                    uint32_t offset = (uint16_t) (CPU_ES << 4) + (uint16_t)CPU_SI;
                     printf("mem move?! %x %x:%x\n", CPU_CX, CPU_ES, CPU_SI);
-                    CPU_AX = 02;
+                    CPU_AX = 0;
                     return;
                 }
                     return;
