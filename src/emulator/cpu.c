@@ -1,3 +1,4 @@
+#include <time.h>
 #include "emulator.h"
 
 //#define CPU_LIMIT_SHIFT_COUNT
@@ -20,7 +21,7 @@ uint8_t opcode, segoverride, reptype;
 uint16_t segregs[4], ip, useseg, oldsp;
 uint8_t tempcf, oldcf, cf, pf, af, zf, sf, tf, ifl, df, of, mode, reg, rm;
 
-uint8_t byteregtable[8] = { regal, regcl, regdl, regbl, regah, regch, regdh, regbh };
+uint8_t byteregtable[8] = {regal, regcl, regdl, regbl, regah, regch, regdh, regbh};
 
 uint8_t oper1b, oper2b, res8, nestlev, addrbyte;
 uint16_t saveip, savecs, oper1, oper2, res16, disp16, temp16, dummy, stacksize, frametemp;
@@ -214,7 +215,7 @@ void intcall86(uint8_t intnum) {
             switch (CPU_AH) {
                 case 0x09:
                 case 0x0a:
-                    if (videomode >=8 && videomode <= 0xa) {
+                    if (videomode >= 8 && videomode <= 0xa) {
                         // TODO: char attr?
                         tga_draw_char(CPU_AL, CURSOR_X, CURSOR_Y, 9);
                         return;
@@ -309,7 +310,7 @@ void intcall86(uint8_t intnum) {
                         }
                         case 0x10: {// Set One DAC Color Register
                             vga_palette[CPU_BL] = rgb((CPU_DH & 63) << 2, (CPU_CH & 63) << 2,
-                                                             (CPU_CL & 63) << 2);
+                                                      (CPU_CL & 63) << 2);
 #if PICO_ON_DEVICE
                             graphics_set_palette(CPU_BL, vga_palette[CPU_BL]);
 #endif
@@ -390,6 +391,28 @@ void intcall86(uint8_t intnum) {
  * ROM BIOS source code page A-16 */
 
                 writew86(BIOS_TRUE_MEMORY_SIZE, 640 - 16);
+#if !PICO_ON_DEVICE
+                time_t uts = time(NULL);
+                struct tm *t = localtime(&uts);
+
+                writew86(0x46E, t->tm_hour); // Hour bcd
+                writew86(0x46C, t->tm_min * 1092 + t->tm_sec * 18); // minute + second
+#endif
+            }
+            break;
+        case 0x1A: /* Timer I/O RTC */
+            switch (CPU_AH) {
+                case 0x02: /* 02H: Read Time from Real-Time Clock */
+                    CPU_CX = 0x2259;
+                    CPU_DX = 0x0001;
+                    CPU_FL_CF = 0;
+                    return;
+                case 0x04: /* 04H: Read Date from Real-Time Clock */
+                    CPU_CX = 0x2024;
+                    CPU_DX = 0x1024;
+                    CPU_AH = 0;
+                    CPU_FL_CF = 0;
+                    return;
             }
             break;
         case 0x2F: /* XMS memory */
@@ -404,9 +427,9 @@ void intcall86(uint8_t intnum) {
                     return;
                 }
 #if 0
-                default:
-                    if (CPU_AH == 0x4A)
-                        printf("2fh %x %x\n", CPU_AX, CPU_BX);
+                    default:
+                        if (CPU_AH == 0x4A)
+                            printf("2fh %x %x\n", CPU_AX, CPU_BX);
 #endif
             }
             break;
@@ -1293,8 +1316,7 @@ void exec86(uint32_t execloops) {
             if (unlikely(CPU_CS == XMS_FN_CS && ip == XMS_FN_IP)) {
                 // hook for XMS
                 opcode = xms_handler(); // always returns RET TODO: far/short ret?
-            } else
-            {
+            } else {
                 opcode = getmem8(CPU_CS, CPU_IP);
             }
 
@@ -3398,8 +3420,8 @@ void exec86(uint32_t execloops) {
 #ifdef CPU_ALLOW_ILLEGAL_OP_EXCEPTION
                 intcall86(6);
                 /* trip invalid opcode exception (this
-					 occurs on the 80186+, 8086/8088 CPUs
-					 treat them as NOPs. */
+                     occurs on the 80186+, 8086/8088 CPUs
+                     treat them as NOPs. */
                 /* technically they aren't exactly like NOPs in most
                  * cases, but for our pursoses, that's accurate enough.
                  */

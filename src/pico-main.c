@@ -357,7 +357,7 @@ int main() {
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
-    vreg_set_voltage(VREG_VOLTAGE_1_50);
+    vreg_set_voltage(VREG_VOLTAGE_1_60);
     sleep_ms(33);
     *qmi_m0_timing = 0x60007204;
     set_sys_clock_hz(444000000, 0);
@@ -373,7 +373,9 @@ int main() {
     vreg_disable_voltage_limit();
     sleep_ms(33);
     set_sys_clock_khz(378 * 1000, true);
-
+    if (!init_psram()) {
+        printf("No PSRAM detected.");
+    }
 #endif
 
 
@@ -387,9 +389,7 @@ int main() {
         sleep_ms(23);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
-    if (!init_psram()) {
-        printf("No PSRAM detected.");
-    }
+
     keyboard_init();
     mouse_init();
 

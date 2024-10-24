@@ -81,7 +81,7 @@ uint8_t xms_handles = 0;
 int a20_enabled = 0;
 
 #if !PICO_ON_DEVICE
-uint8_t ALIGN(4, XMS[XMS_SIZE]) = {0};
+uint8_t ALIGN(4, XMS[XMS_SIZE + 4]) = {0};
 #define xms_move_to(destination, source) XMS[destination] = read86(source)
 #define xms_move_from(source, destination) write86(destination, XMS[source])
 #else

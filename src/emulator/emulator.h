@@ -54,7 +54,7 @@ extern uint8_t RAM[RAM_SIZE + 4];
 extern uint8_t UMB[(UMB_END - UMB_START) + 4];
 extern uint8_t HMA[(HMA_END - HMA_START) + 4];
 extern uint8_t EMS[EMS_MEMORY_SIZE + 4];
-extern uint8_t XMS[XMS_SIZE];
+extern uint8_t XMS[XMS_SIZE + 4];
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];

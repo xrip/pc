@@ -138,7 +138,7 @@ else ()
             NES_GPIO_LAT=15
 
             I2S_SOUND
-            #AUDIO_PWM_PIN=26
+            AUDIO_PWM_PIN=26
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})
