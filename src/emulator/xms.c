@@ -1,24 +1,48 @@
 #include <stdbool.h>
 #include "emulator.h"
-/*
- * -   XMS drivers are required to hook INT 15h and watch for calls to
-    functions 87h (Block Move) and 88h (Extended Memory Available).  The
-    INT 15h Block Move function must be hooked so that the state of the A20
-    line is preserved across the call.	The INT 15h Extended Memory
-    Available function must be hooked to return 0h to protect the HMA.
- */
 // https://www.phatcode.net/res/218/files/limems40.txt
 // https://www.phatcode.net/res/219/files/xms20.txt
 // http://www.techhelpmanual.com/944-xms_functions.html
 // http://www.techhelpmanual.com/651-emm_functions.html
 // http://www.techhelpmanual.com/650-expanded_memory_specification__ems_.html
 // http://www.techhelpmanual.com/943-extended_memory_specification__xms_.html
+// http://www.techhelpmanual.com/698-int_2fh_43xxh__himem_sys__extended_memory_manager__services.html
+
+//#define DEBUG_XMS
+
+#define XMS_VERSION 0x00
+#define REQUEST_HMA 0x01
+#define RELEASE_HMA 0x02
+#define GLOBAL_ENABLE_A20 0x03
+#define GLOBAL_DISABLE_A20 0x04
+#define LOCAL_ENABLE_A20 0x05
+#define LOCAL_DISABLE_A20 0x06
+#define QUERY_A20 0x07
+
+#define QUERY_EMB 0x08
+#define ALLOCATE_EMB 0x09
+#define RELEASE_EMB 0x0A
+#define MOVE_EMB 0x0B
+
+#define LOCK_EMB 0x0C
+#define UNLOCK_EMB 0x0D
+#define EMB_HANDLE_INFO 0x0E
+#define REALLOCATE_EMB 0x0F
+
+#define REQUEST_UMB 0x10
+#define RELEASE_UMB 0x11
+
+#define XMS_HANDLES 64
+// FIXME: Calculate with EMS offset
+#define XMS_PSRAM_OFFSET (4096*1024)
+
 typedef struct umb {
     uint16_t segment;
     uint16_t size; // paragraphs
     bool allocated;
 } umb_t;
 
+//typedef struct __attribute__((packed, aligned)) {
 typedef struct __attribute__((packed, aligned)) {
     uint32_t length;
     uint16_t source_handle;
@@ -51,41 +75,7 @@ umb_t *get_free_umb_block(uint16_t size) {
     return NULL;
 }
 
-
-#define XMS_VERSION 0x00
-#define REQUEST_HMA 0x01
-#define RELEASE_HMA 0x02
-#define GLOBAL_ENABLE_A20 0x03
-#define GLOBAL_DISABLE_A20 0x04
-#define LOCAL_ENABLE_A20 0x05
-#define LOCAL_DISABLE_A20 0x06
-#define QUERY_A20 0x07
-
-#define QUERY_EMB 0x08
-#define ALLOCATE_EMB 0x09
-#define RELEASE_EMB 0x0A
-#define MOVE_EMB 0x0B
-#define LOCK_EMB 0x0C
-#define UNLOCK_EMB 0x0D
-#define EMB_HANDLE_INFO 0x0E
-#define REALLOCATE_EMB 0x0F
-
-#define REQUEST_UMB 0x10
-#define RELEASE_UMB 0x11
-
-
-#define XMS_HANDLES 64
-
-#define XMS_PSRAM_OFFSET (4096*1024)
-
-
 uint32_t xms_available = XMS_SIZE;
-/*
-struct {
-    uint8_t handle;
-    uint32_t size; //
-    uint8_t locks;
-} XMS_HANDLE[XMS_HANDLES] = {0};*/
 uint8_t xms_handles = 0;
 
 int a20_enabled = 0;
@@ -98,6 +88,9 @@ uint8_t ALIGN(4, XMS[XMS_SIZE]) = {0};
 #define xms_move_to(destination, source) write8psram(destination, read86(source))
 #define xms_move_from(source, destination) write86(destination, read8psram(source))
 #endif
+
+#define to_physical_offset(offset) (((uint16_t)(((offset) >> 16) & 0xFFFF) << 4) + (uint16_t)((offset) & 0xFFFF))
+
 uint8_t xms_handler() {
 
     switch (CPU_AH) {
@@ -132,28 +125,36 @@ uint8_t xms_handler() {
             break;
         }
         case QUERY_A20: { // Query A20 (Function 07h):
-            CPU_AX = 1; // Success
+            CPU_AX = a20_enabled; // Success
             break;
         }
 
         case QUERY_EMB : { // 08h
+#if DEBUG_XMS
             printf("[XMS] Query free\r\n");
-            /**/
+#endif
             CPU_AX = XMS_SIZE >> 10;
-            CPU_DX = 64;
+            CPU_DX = XMS_HANDLES;
             CPU_BL = 0;
             break;
         }
         case ALLOCATE_EMB: { // Allocate Extended Memory Block (Function 09h):
+#if DEBUG_XMS
             printf("[XMS] Allocate %dKb\n", CPU_DX);
-            // Stub: Implement allocating extended memory block functionality
-            CPU_DX = ++xms_handles;
-            CPU_AX = 1;
-            CPU_BL = 0;
-            break;
+#endif
+            if (xms_handles + 1 < XMS_HANDLES) {
+                CPU_DX = ++xms_handles;
+                CPU_AX = 1;
+                CPU_BL = 0;
+                break;
+            }
+            CPU_AX = 0;
+            CPU_BL = 0xA2;
         }
         case RELEASE_EMB: {
+#if DEBUG_XMS
             printf("[XMS] Free handle %d\n", CPU_DX);
+#endif
             if (xms_handles) {
                 xms_handles--;
                 CPU_AX = 1;
@@ -166,8 +167,8 @@ uint8_t xms_handler() {
         }
 
         case MOVE_EMB: { // Move Extended Memory Block (Function 0Bh)
-            uint32_t struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
             move_data_t move_data;
+            uint32_t struct_offset = ((uint32_t) CPU_DS << 4) + CPU_SI;
             uint16_t *move_data_ptr = (uint16_t *) &move_data;
 
             for (int i = sizeof(move_data_t) / 2; i--;) {
@@ -176,8 +177,7 @@ uint8_t xms_handler() {
 
             // TODO: Add mem<>mem and xms<>xms
             if (!move_data.source_handle) {
-                move_data.source_offset = ((uint16_t) ((move_data.source_offset >> 16) & 0xFFFF) << 4) +
-                                          (uint16_t) (move_data.source_offset & 0xFFFF);
+                move_data.source_offset = to_physical_offset(move_data.source_offset);
 #if PICO_ON_DEVICE
                 move_data.destination_offset += XMS_PSRAM_OFFSET;
 #endif
@@ -185,8 +185,7 @@ uint8_t xms_handler() {
                     xms_move_to(move_data.destination_offset++, move_data.source_offset++);
                 }
             } else if (!move_data.destination_handle) {
-                move_data.destination_offset = ((uint16_t) ((move_data.destination_offset >> 16) & 0xFFFF) << 4) +
-                                               (uint16_t) (move_data.destination_offset & 0xFFFF);
+                move_data.destination_offset = to_physical_offset(move_data.destination_offset);
 #if PICO_ON_DEVICE
                 move_data.source_offset += XMS_PSRAM_OFFSET;
 #endif
@@ -255,7 +254,7 @@ uint8_t xms_handler() {
             break;
         }
         default: {
-#if 1
+#if DEBUG_XMS
             if (CPU_AH > 0x7 && CPU_AH < 0x10)
                 printf("[XMS] %02X\n", CPU_AH);
 #endif

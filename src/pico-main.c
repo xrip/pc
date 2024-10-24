@@ -1,4 +1,3 @@
-#pragma GCC optimize("Ofast")
 #include <pico/time.h>
 #include <hardware/clocks.h>
 #include <pico/stdlib.h>
@@ -22,7 +21,6 @@
 #include "emu8950.h"
 #include "ps2_mouse.h"
 #include "74hc595/74hc595.h"
-
 
 FATFS fs;
 i2s_config_t i2s_config;
@@ -160,8 +158,6 @@ void __time_critical_func() second_core() {
 
             samples[0] += sn76489_sample();
 
-
-//            samples[0] += adlibgensample() * 32;
 
             samples[0] += covox_sample;
 
@@ -378,9 +374,6 @@ int main() {
     sleep_ms(33);
     set_sys_clock_khz(378 * 1000, true);
 
-    if (!init_psram()) {
-        printf("No PSRAM detected.");
-    }
 #endif
 
 
@@ -394,7 +387,9 @@ int main() {
         sleep_ms(23);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
-
+    if (!init_psram()) {
+        printf("No PSRAM detected.");
+    }
     keyboard_init();
     mouse_init();
 
