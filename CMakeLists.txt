@@ -22,7 +22,7 @@ foreach (SRC_FILE IN LISTS SRC)
 endforeach ()
 message(STATUS "")
 
-add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
+add_compile_options(-ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
 
@@ -44,10 +44,10 @@ else ()
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 
-
+    add_subdirectory(drivers/psram2)
+    target_link_libraries(${PROJECT_NAME} PRIVATE psram2)
     if (PICO_PLATFORM STREQUAL "rp2040")
-        add_subdirectory(drivers/psram)
-        target_link_libraries(${PROJECT_NAME} PRIVATE psram)
+
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
         target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
     else ()

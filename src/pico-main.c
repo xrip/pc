@@ -4,8 +4,8 @@
 #include <hardware/vreg.h>
 #include <pico/stdio.h>
 #include <pico/multicore.h>
+#include "psram_spi2.h"
 #if !PICO_RP2350
-#include "psram_spi.h"
 #include "../../memops_opt/memops_opt.h"
 #else
 #include <hardware/structs/qmi.h>
@@ -21,7 +21,7 @@
 #include "emu8950.h"
 #include "ps2_mouse.h"
 #include "74hc595/74hc595.h"
-
+pio_spi_inst_t psram_spi;
 FATFS fs;
 i2s_config_t i2s_config;
 OPL *emu8950_opl;
@@ -275,7 +275,7 @@ INLINE void _putchar(char character)
 }
 #endif
 
-#if PICO_RP2350
+#if 0 && PICO_RP2350
 void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     gpio_set_function(cs_pin, GPIO_FUNC_XIP_CS1);
 
@@ -365,7 +365,7 @@ int main() {
 #if !I2S_SOUND
     init_74hc595();
 #endif
-    psram_init(19);
+     psram_spi = psram_init();
 #else
     memcpy_wrapper_replace(NULL);
     //vreg_set_voltage(VREG_VOLTAGE_1_30);
@@ -373,7 +373,7 @@ int main() {
     vreg_disable_voltage_limit();
     sleep_ms(33);
     set_sys_clock_khz(378 * 1000, true);
-
+//    psram_spi = psram_init();
 #endif
 
 
@@ -387,9 +387,7 @@ int main() {
         sleep_ms(23);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
-    if (!init_psram()) {
-        printf("No PSRAM detected.");
-    }
+
     keyboard_init();
     mouse_init();
 

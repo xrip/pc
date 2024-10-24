@@ -252,9 +252,9 @@ extern int16_t covox_sample;
 }
 #endif
 
-#if PICO_RP2040
+#if !PICO_RP2040
 
-#include "psram_spi.h"
+#include "psram_spi2.h"
 
 #else
 extern uint8_t * PSRAM_DATA;
