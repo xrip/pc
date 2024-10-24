@@ -5,7 +5,7 @@
 //#define CPU_LIMIT_SHIFT_COUNT
 #define CPU_NO_SALC
 #define CPU_SET_HIGH_FLAGS
-//#define CPU_286_STYLE_PUSH_SP
+#define CPU_286_STYLE_PUSH_SP
 #if PICO_ON_DEVICE
 
 #include "disks-rp2350.c.inl"
@@ -1445,9 +1445,9 @@ void exec86(uint32_t execloops) {
                 oper1 = getreg16(reg);
                 oper2 = readrm16(rm);
                 op_or16();
-                if ((oper1 == 0xF802) && (oper2 == 0xF802)) {
-                    sf = 0;    /* cheap hack to make Wolf 3D think we're a 286 so it plays */
-                }
+/*                if ((oper1 == 0xF802) && (oper2 == 0xF802)) {
+                    sf = 0;    *//* cheap hack to make Wolf 3D think we're a 286 so it plays *//*
+                }*/
 
                 putreg16(reg, res16
                 );
@@ -2063,7 +2063,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x54:    /* 54 PUSH eSP */
-#ifdef USE_286_STYLE_PUSH_SP
+#ifdef CPU_286_STYLE_PUSH_SP
                 push(CPU_SP);
 #else
                 push(CPU_SP - 2);
