@@ -141,6 +141,9 @@ void portout(uint16_t portnum, uint16_t value) {
 #endif
             port64 = value;
             break;
+        case 0x80:
+            printf("[POSTCARD] %x\n", value);
+            break;
         // i8237 DMA
         case 0x81:
         case 0x82:
