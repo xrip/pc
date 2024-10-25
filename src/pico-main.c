@@ -372,7 +372,7 @@ int main() {
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(378 * 1000, true);
+    set_sys_clock_khz(396 * 1000, true);
     if (!init_psram()) {
         printf("No PSRAM detected.");
     }

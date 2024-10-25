@@ -42,7 +42,7 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
 
     FILE *file = fopen(pathname, "rb+");
     if (!file) {
-//        fprintf(stderr, "DISK: ERROR: cannot open disk file %s for drive %02Xh\n", pathname, drivenum);
+        printf( "DISK: ERROR: cannot open disk file %s for drive %02Xh\n", pathname, drivenum);
         return 0;
     }
 
