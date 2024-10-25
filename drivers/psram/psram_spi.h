@@ -614,9 +614,9 @@ static __always_inline bool init_psram() {
     psram_spi = psram_spi_init_clkdiv(pio0, -1, 2.0f, false);
     psram_write32(&psram_spi, 0x313373, 0xDEADBEEF);
     bool PSRAM_AVAILABLE = 0xDEADBEEF == psram_read32(&psram_spi, 0x313373);
-//    for (uint32_t addr32 = (1ul << 20); addr32 < (2ul << 20); addr32 += 4) {
-//        psram_write32(&psram_spi, addr32, 0xFF);
-//    }
+    for (uint32_t addr32 = (1ul << 20); addr32 < (2ul << 20); addr32 += 4) {
+        psram_write32(&psram_spi, addr32, 0xFF);
+    }
     return PSRAM_AVAILABLE;
 }
 #define write8psram(addr32, v) psram_write8(&psram_spi, addr32, v)

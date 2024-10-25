@@ -269,8 +269,7 @@ static INLINE uint8_t read8psram(uint32_t address) {
     return PSRAM_DATA[address];
 }
 static INLINE uint16_t read16psram(uint32_t address) {
-    uint16_t result = *(uint16_t *)&PSRAM_DATA[address];
-    return result;
+    return *(uint16_t *)&PSRAM_DATA[address];
 }
 #endif
 

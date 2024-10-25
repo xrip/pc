@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 #include <stdbool.h>
 #include "emulator.h"
 // https://www.phatcode.net/res/218/files/limems40.txt
@@ -82,11 +83,41 @@ int a20_enabled = 0;
 
 #if !PICO_ON_DEVICE
 uint8_t ALIGN(4, XMS[XMS_SIZE + 4]) = {0};
-#define xms_move_to(destination, source) XMS[destination] = read86(source)
-#define xms_move_from(source, destination) write86(destination, XMS[source])
+static INLINE void xms_move_to(register uint32_t destination, register uint32_t source, register uint32_t length) {
+    register uint16_t *dest_ptr = (uint16_t *)&XMS[destination];
+    length /= 2;
+    while (length--) {
+        *dest_ptr++  = readw86(source);
+        source+=2;
+    }
+}
+static INLINE void xms_move_from(register uint32_t source, register uint32_t destination, register uint32_t length) {
+    register uint16_t *source_ptr = (uint16_t *)&XMS[source];
+    length /= 2;
+    while (length--) {
+        writew86(destination, *source_ptr++);
+        destination+=2;
+    }
+}
 #else
-#define xms_move_to(destination, source) write8psram(destination, read86(source))
-#define xms_move_from(source, destination) write86(destination, read8psram(source))
+static INLINE void xms_move_to(register uint32_t destination, register uint32_t source, register uint32_t length) {
+    length /= 2;
+    while (length--) {
+        write16psram(destination, readw86(source));
+        source+=2;
+        destination+=2;
+    }
+}
+static INLINE void xms_move_from(register uint32_t source, register uint32_t destination, register uint32_t length) {
+    length /= 2;
+    while (length--) {
+        writew86(destination, read16psram(source));
+        destination+=2;
+        source+=2;
+    }
+}
+//#define xms_move_to(destination, source) write8psram(destination, read86(source))
+//#define xms_move_from(source, destination)
 #endif
 
 #define to_physical_offset(offset) (((uint16_t)(((offset) >> 16) & 0xFFFF) << 4) + (uint16_t)((offset) & 0xFFFF))
@@ -181,17 +212,14 @@ uint8_t xms_handler() {
 #if PICO_ON_DEVICE
                 move_data.destination_offset += XMS_PSRAM_OFFSET;
 #endif
-                while (move_data.length--) {
-                    xms_move_to(move_data.destination_offset++, move_data.source_offset++);
-                }
+                xms_move_to(move_data.destination_offset, move_data.source_offset, move_data.length);
             } else if (!move_data.destination_handle) {
                 move_data.destination_offset = to_physical_offset(move_data.destination_offset);
 #if PICO_ON_DEVICE
                 move_data.source_offset += XMS_PSRAM_OFFSET;
 #endif
-                while (move_data.length--) {
-                    xms_move_from(move_data.source_offset++, move_data.destination_offset++);
-                }
+                xms_move_from(move_data.source_offset, move_data.destination_offset, move_data.length);
+
             }
 
 #if 0
