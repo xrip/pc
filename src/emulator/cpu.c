@@ -150,9 +150,7 @@ static INLINE void push(uint16_t pushval) {
 }
 
 static INLINE uint16_t pop() {
-    uint16_t tempval;
-
-    tempval = getmem16(CPU_SS, CPU_SP);
+    uint16_t tempval = getmem16(CPU_SS, CPU_SP);
     CPU_SP = CPU_SP + 2;
     return tempval;
 }
@@ -160,7 +158,7 @@ static INLINE uint16_t pop() {
 static INLINE uint16_t readrm16(uint8_t rmval) {
     if (mode < 3) {
         getea(rmval);
-        return read86(ea) | ((uint16_t) read86(ea + 1) << 8);
+        return readw86(ea);
     }
     return getreg16(rmval);
 }
@@ -176,8 +174,7 @@ static INLINE uint8_t readrm8(uint8_t rmval) {
 static INLINE void writerm16(uint8_t rmval, uint16_t value) {
     if (mode < 3) {
         getea(rmval);
-        write86(ea, value & 0xFF);
-        write86(ea + 1, value >> 8);
+        writew86(ea, value);
     } else {
         putreg16(rmval, value);
     }
@@ -2234,7 +2231,7 @@ void exec86(uint32_t execloops) {
                     break;
                 }
 
-                putmem8(CPU_ES, CPU_DI, portin(CPU_DX) );
+                putmem8(CPU_ES, CPU_DI, portin(CPU_DX));
                 if (df) {
                     CPU_SI = CPU_SI - 1;
                     CPU_DI = CPU_DI - 1;
@@ -3222,10 +3219,7 @@ void exec86(uint32_t execloops) {
                 modregrm();
 
                 getea(rm);
-                putreg16(reg, read86(ea)
-                              +
-                              read86(ea
-                                     + 1) * 256);
+                putreg16(reg, read86(ea) + read86(ea + 1) * 256);
                 CPU_ES = read86(ea + 2) + read86(ea + 3) * 256;
                 break;
 
@@ -3233,10 +3227,7 @@ void exec86(uint32_t execloops) {
                 modregrm();
 
                 getea(rm);
-                putreg16(reg, read86(ea)
-                              +
-                              read86(ea
-                                     + 1) * 256);
+                putreg16(reg, read86(ea) + read86(ea + 1) * 256);
                 CPU_DS = read86(ea + 2) + read86(ea + 3) * 256;
                 break;
 
@@ -3605,7 +3596,8 @@ break;
 
             default:
 #ifdef CPU_ALLOW_ILLEGAL_OP_EXCEPTION
-                intcall86(6); /* trip invalid opcode exception. this occurs on the 80186+, 8086/8088 CPUs treat them as NOPs. */
+                intcall86(
+                        6); /* trip invalid opcode exception. this occurs on the 80186+, 8086/8088 CPUs treat them as NOPs. */
                 /* technically they aren't exactly like NOPs in most cases, but for our pursoses, that's accurate enough. */
                 printf("[CPU] Invalid opcode exception at %04X:%04X\r\n", CPU_CS, firstip);
 #endif
