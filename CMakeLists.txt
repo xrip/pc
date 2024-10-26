@@ -22,7 +22,8 @@ foreach (SRC_FILE IN LISTS SRC)
 endforeach ()
 message(STATUS "")
 
-add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
+#add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
+add_compile_options(-fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
 
@@ -32,7 +33,7 @@ if (PICO_PLATFORM STREQUAL "host")
 else ()
     pico_sdk_init()
 
-    add_compile_options(-flto -fwhole-program)
+    #add_compile_options(-flto -fwhole-program)
 
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
@@ -83,7 +84,7 @@ else ()
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
-            audio
+#            audio
             graphics
             #            psram
             nespad
@@ -137,8 +138,8 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-            I2S_SOUND
-            AUDIO_PWM_PIN=26
+            #I2S_SOUND
+            #AUDIO_PWM_PIN=26
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})

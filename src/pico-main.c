@@ -13,7 +13,7 @@
 #endif
 #include "emulator/emulator.h"
 
-#include "audio.h"
+//#include "audio.h"
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
@@ -23,13 +23,13 @@
 #include "74hc595/74hc595.h"
 
 FATFS fs;
-i2s_config_t i2s_config;
+//i2s_config_t i2s_config;
 OPL *emu8950_opl;
 void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
 #else
-    SN76489_write(value & 0xff);
+    if (reg != 0xff) SN76489_write(value & 0xff);
 #endif
 }
 
@@ -42,9 +42,9 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
     OPL_writeReg(emu8950_opl, reg, value);
 #else
     if (reg &1) {
-        OPL2_write_byte(0,0, value & 0xff);
-    } else {
         OPL2_write_byte(1,0, value & 0xff);
+    } else {
+        OPL2_write_byte(0,0, value & 0xff);
     }
 #endif
 }
@@ -54,10 +54,10 @@ void cms_write(uint16_t reg, uint8_t val) {
     cms_out(reg, val);
 #else
     switch (reg - 0x220) {
-        case 0: SAA1099_write(0, 0, val & 0xf); break;
-        case 1: SAA1099_write(0, 1, val & 0xff); break;
-        case 3: SAA1099_write(1, 0, val & 0xf); break;
-        case 4: SAA1099_write(1, 1, val & 0xff); break;
+        case 0: SAA1099_write(0, 0, val & 0xff); break;
+        case 1: SAA1099_write(1, 0, val & 0xff); break;
+        case 2: SAA1099_write(1, 1, val & 0xff); break;
+        case 3: SAA1099_write(0, 1, val & 0xff); break;
 
     }
 #endif
@@ -362,9 +362,7 @@ int main() {
     *qmi_m0_timing = 0x60007204;
     set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
-#if !I2S_SOUND
-    init_74hc595();
-#endif
+
     psram_init(19);
 #else
     memcpy_wrapper_replace(NULL);
@@ -372,7 +370,7 @@ int main() {
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(396 * 1000, true);
+    set_sys_clock_khz(378 * 1000, true);
     if (!init_psram()) {
         printf("No PSRAM detected.");
     }
@@ -391,9 +389,9 @@ int main() {
     }
 
     keyboard_init();
-    mouse_init();
-
-    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+//    mouse_init();
+//
+//    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
@@ -410,7 +408,14 @@ int main() {
 
     sn76489_reset();
     reset86();
+#if !I2S_SOUND
+    clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
+    clock_init(CLOCK_PIN2, CLOCK_FREQUENCY2);
 
+    init_74hc595();
+
+    reset_chips();
+#endif
     while (true) {
         exec86(32768);
         tight_loop_contents();
