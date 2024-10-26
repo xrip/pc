@@ -100,7 +100,7 @@ void i2s_init(i2s_config_t *i2s_config) {
 
     channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_32);
 
-    uint32_t *addr_write_DMA = &(i2s_config->pio->txf[i2s_config->sm]);
+    volatile uint32_t *addr_write_DMA = &(i2s_config->pio->txf[i2s_config->sm]);
 #ifdef AUDIO_PWM_PIN
     gpio_set_function(PWM_PIN0, GPIO_FUNC_PWM);
     gpio_set_function(PWM_PIN1, GPIO_FUNC_PWM);

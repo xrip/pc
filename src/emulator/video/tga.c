@@ -142,7 +142,7 @@ void tga_draw_char(uint8_t ch, int x, int y, uint8_t color) {
     uint16_t base_offset = tga_offset + (x << 2) + y * 320;
 
     // Iterate over the 8 rows of the font character
-    uint8_t * font_char = &font_8x8[ch << 3];  // Get the bitmap for the current row of the character
+    const uint8_t * font_char = &font_8x8[ch << 3];  // Get the bitmap for the current row of the character
     for (int row = 0; row < 8; row++) {
         uint8_t font_row = *font_char++;
         uint16_t plane_offset = base_offset + ((row & 3) << 13);  // 8192-byte offset per bitplane

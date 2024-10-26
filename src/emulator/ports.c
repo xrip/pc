@@ -51,8 +51,8 @@ static INLINE uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
 
-    time(&tdata);
-    struct tm *t = localtime(&tdata);
+    time((time_t*)&tdata);
+    struct tm *t = localtime((const time_t*)&tdata);
 
     t->tm_year = 24;
     addr &= 0x1F;
