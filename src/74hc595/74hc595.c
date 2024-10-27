@@ -1,6 +1,7 @@
 #include "74hc595.h"
 #include "pico/platform.h"
-volatile uint16_t control_bits = 0;
+
+static volatile uint16_t control_bits = 0;
 #define LOW(x) (control_bits &= ~(x))
 #define HIGH(x) (control_bits |= (x))
 
@@ -48,15 +49,6 @@ static const struct pio_program program595 = {
 
 
 void clock_init(uint pin, uint32_t frequency) {
-/*    gpio_set_function(pin, GPIO_FUNC_PWM);
-    uint slice_num = pwm_gpio_to_slice_num(pin);
-
-    pwm_config c_pwm = pwm_get_default_config();
-    pwm_config_set_clkdiv(&c_pwm, clock_get_hz(clk_sys) / (4.0 * frequency));
-    pwm_config_set_wrap(&c_pwm, 3); // MAX PWM value
-    pwm_init(slice_num, &c_pwm, true);
-    pwm_set_gpio_level(pin, 2);*/
-    // Configure the GPIO pin for PWM
     gpio_set_function(pin, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(pin);
 
@@ -69,6 +61,7 @@ void clock_init(uint pin, uint32_t frequency) {
     pwm_set_gpio_level(pin, wrap / 2);           // Set duty cycle to 50%
     pwm_set_enabled(slice_num, true);                   // Enable PWM
 }
+
 void init_74hc595() {
     uint offset = pio_add_program(PIO_74HC595, &program595);
     pio_sm_config c = pio_get_default_sm_config();
@@ -99,16 +92,14 @@ void init_74hc595() {
     pio_sm_init(PIO_74HC595, SM_74HC595, offset, &c);
     pio_sm_set_enabled(PIO_74HC595, SM_74HC595, true);
 
-    pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, clock_get_hz(clk_sys) / SHIFT_SPEED);
-
+    pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, (396.0f / 80.0f));
 
     // Reset PIO program
     PIO_74HC595->txf[SM_74HC595] = 0;
-    PIO_74HC595->txf[SM_74HC595] = 0;
 }
 
-static inline void write_74hc595(register uint16_t data, register uint16_t delay_us) {
-    PIO_74HC595->txf[SM_74HC595] = (data & 0xffff) << 16 | delay_us << 4; // 1 microsecond per 15 cycles @ 15Mhz
+void write_74hc595(register uint16_t data, register uint16_t delay_us) {
+    PIO_74HC595->txf[SM_74HC595] = (data & 0xffff) << 16 | (delay_us << 4); // 1 microsecond per 15 cycles @ 15Mhz
 //    busy_wait_us_32(delay_us);
 }
 
@@ -142,6 +133,7 @@ void SN76489_write(uint8_t byte) {
     write_74hc595(byte | LOW(SN_1_CS), 20);
     write_74hc595(byte | HIGH(SN_1_CS), 0);
 }
+
 // YM2413
 static inline void YM2413_write(uint8_t addr, uint8_t byte) {
     const uint16_t a0 = addr ? A0 : 0;

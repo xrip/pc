@@ -14,7 +14,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 # INCLUDE FILES THAT SHOULD BE COMPILED:
-file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c" "src/emu8950/*.c" "src/emu8950/*.cpp")
+file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c")
 
 message(STATUS "Add source files:")
 foreach (SRC_FILE IN LISTS SRC)
@@ -33,14 +33,14 @@ if (PICO_PLATFORM STREQUAL "host")
 else ()
     pico_sdk_init()
 
-    #add_compile_options(-flto -fwhole-program)
+#    add_compile_options(-flto)
 
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
 
     add_subdirectory(memops_opt)
 
-    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S)
+#    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})

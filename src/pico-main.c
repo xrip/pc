@@ -24,7 +24,7 @@
 
 FATFS fs;
 //i2s_config_t i2s_config;
-OPL *emu8950_opl;
+//OPL *emu8950_opl;
 void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
@@ -49,16 +49,15 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
 #endif
 }
 
-void cms_write(uint16_t reg, uint8_t val) {
+inline void cms_write(uint16_t reg, uint8_t val) {
 #if I2S_SOUND
     cms_out(reg, val);
 #else
     switch (reg - 0x220) {
-        case 0: SAA1099_write(0, 0, val & 0xff); break;
-        case 1: SAA1099_write(1, 0, val & 0xff); break;
-        case 2: SAA1099_write(1, 1, val & 0xff); break;
-        case 3: SAA1099_write(0, 1, val & 0xff); break;
-
+        case 0: SAA1099_write(0, 0, val); break;
+        case 1: SAA1099_write(1, 0, val); break;
+        case 2: SAA1099_write(0, 1, val); break;
+        case 3: SAA1099_write(1, 1, val); break;
     }
 #endif
 }
@@ -87,11 +86,22 @@ void __time_critical_func() second_core() {
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
 #else
+#if !I2S_SOUND
 
+    clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
+    clock_init(CLOCK_PIN2, CLOCK_FREQUENCY2);
+    sleep_ms(25);
+    init_74hc595();
+    sleep_ms(25);
+
+
+
+    reset_chips();
+#endif
 #endif
     sleep_ms(100);
 
-    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+//    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 
     blaster_reset();
 
@@ -370,7 +380,7 @@ int main() {
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(378 * 1000, true);
+    set_sys_clock_khz(396 * 1000, true);
     if (!init_psram()) {
         printf("No PSRAM detected.");
     }
@@ -391,7 +401,7 @@ int main() {
     keyboard_init();
 //    mouse_init();
 //
-//    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
@@ -408,14 +418,7 @@ int main() {
 
     sn76489_reset();
     reset86();
-#if !I2S_SOUND
-    clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
-    clock_init(CLOCK_PIN2, CLOCK_FREQUENCY2);
 
-    init_74hc595();
-
-    reset_chips();
-#endif
     while (true) {
         exec86(32768);
         tight_loop_contents();

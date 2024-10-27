@@ -3,7 +3,7 @@
 #include <hardware/pwm.h>
 #include <hardware/timer.h>
 
-#define PIO_74HC595 pio1
+#define PIO_74HC595 pio0
 
 #define SHIFT_SPEED (40 * MHZ)
 
