@@ -5,8 +5,6 @@
 
 #define PIO_74HC595 pio0
 
-#define SHIFT_SPEED (40 * MHZ)
-
 #define CLK_LATCH_595_BASE_PIN (26)
 #define DATA_595_PIN (28)
 

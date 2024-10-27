@@ -92,14 +92,18 @@ void __time_critical_func() second_core() {
     clock_init(CLOCK_PIN2, CLOCK_FREQUENCY2);
     sleep_ms(25);
     init_74hc595();
-    sleep_ms(25);
-
-
-
     reset_chips();
+
 #endif
 #endif
     sleep_ms(100);
+    pwm_config config = pwm_get_default_config();
+    gpio_set_function(22, GPIO_FUNC_PWM);
+    pwm_config_set_clkdiv(&config, 1.0f);
+    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
+
+    pwm_init(pwm_gpio_to_slice_num(22), &config, true);
+//    pwm_set_gpio_level(22,0);
 
 //    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 
@@ -137,27 +141,23 @@ void __time_critical_func() second_core() {
             cursor_blink_state ^= 1;
             last_cursor_blink = tick;
         }
-#if I2S_SOUND
-#if 1 || !PICO_ON_DEVICE
         // Sound Blaster
         if (tick >= last_sb_tick + timeconst) {
             last_sb_sample = blaster_sample();
-
             last_sb_tick = tick;
         }
-#endif
 
 
         // Dinsey Sound Source frequency 7100
         if (tick >= last_dss_tick + (1000000 / 7000)) {
             last_dss_sample = dss_sample();
-
             last_dss_tick = tick;
         }
 
-
         // Sound frequency 44100
         if (tick >= last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
+
+#if I2S_SOUND
             int16_t samples[2] = { 0, 0 };
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
 
@@ -190,10 +190,16 @@ void __time_critical_func() second_core() {
                 i2s_dma_write(&i2s_config, audio_buffer[active_buffer]);
                 active_buffer ^= 1;
             }
-
+#else
+            int16_t sample = last_dss_sample;
+            sample += last_sb_sample;
+            if (speakerenabled)
+                sample += speaker_sample();
+            pwm_set_gpio_level(22, (uint16_t)((int32_t)sample + 0x8000L) >> 4);
+#endif
             last_sound_tick = tick;
         }
-#endif
+
         if (tick >= last_frame_tick + 16667) {
             static uint8_t old_video_mode;
             if (old_video_mode != videomode) {
@@ -385,8 +391,6 @@ int main() {
         printf("No PSRAM detected.");
     }
 #endif
-
-
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);

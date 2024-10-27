@@ -1,6 +1,6 @@
 #include "74hc595.h"
 #include "pico/platform.h"
-
+#define SHIFT_SPEED (40 * MHZ)
 static volatile uint16_t control_bits = 0;
 #define LOW(x) (control_bits &= ~(x))
 #define HIGH(x) (control_bits |= (x))
@@ -92,8 +92,8 @@ void init_74hc595() {
     pio_sm_init(PIO_74HC595, SM_74HC595, offset, &c);
     pio_sm_set_enabled(PIO_74HC595, SM_74HC595, true);
 
-    pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, (396.0f / 80.0f));
-
+//    pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, (396.0f / 80.0f));
+    pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, clock_get_hz(clk_sys) / (2 * SHIFT_SPEED));
     // Reset PIO program
     PIO_74HC595->txf[SM_74HC595] = 0;
 }
