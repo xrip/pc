@@ -1039,7 +1039,7 @@ extern "C" void adlib_init(uint32_t samplerate);
 extern "C" void adlib_write(uintptr_t idx, uint8_t val);
 
 extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
-    OPL_writeReg(emu8950_opl, reg, value);
+    static int latch = -1;
     //    printf("Adlib Write %x %x", reg, value);
     uint16_t data = (reg & 0xff) << 8 | 2 << 4 | 0b0000 | (reg >> 8) & 1;
     Enqueue(&queue, data);
@@ -1052,6 +1052,12 @@ extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
     //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
     //        printf("!!!! Error in writing to serial port\n");
     //    }
+    if (latch == -1) {
+        latch = value;
+    } else {
+        OPL_writeReg(emu8950_opl, latch, value);
+        latch = -1;
+    }
 }
 
 extern "C" void cms_write(uint16_t reg, uint8_t val) {

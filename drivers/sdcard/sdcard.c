@@ -3,7 +3,7 @@
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
-#define SDCARD_PIO 1
+//#define SDCARD_PIO 1
 #ifndef SDCARD_PIO
 #include "hardware/spi.h"
 #else

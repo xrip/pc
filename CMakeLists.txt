@@ -14,7 +14,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 # INCLUDE FILES THAT SHOULD BE COMPILED:
-file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c")
+file(GLOB_RECURSE SRC "src/emulator/*.cpp" "src/emulator/*.c" "src/emu8950/*.c" "src/emu8950/*.cpp")
 
 message(STATUS "Add source files:")
 foreach (SRC_FILE IN LISTS SRC)
@@ -26,7 +26,6 @@ message(STATUS "")
 add_compile_options(-fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
-
     add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
@@ -40,7 +39,7 @@ else ()
 
     add_subdirectory(memops_opt)
 
-#    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S)
+    target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
@@ -84,7 +83,7 @@ else ()
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
-#            audio
+            audio
             graphics
             #            psram
             nespad
@@ -141,7 +140,7 @@ else ()
             #I2S_SOUND
             #AUDIO_PWM_PIN=26
 
-            TOTAL_VIRTUAL_MEMORY_KBS=8192
+            #TOTAL_VIRTUAL_MEMORY_KBS=8192
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})

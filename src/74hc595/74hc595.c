@@ -139,7 +139,7 @@ void SN76489_write(uint8_t byte) {
 #endif
     busy_wait_us_32(5);
     write_74hc595(byte | LOW(SN_1_CS), 5);
-    write_74hc595(byte | HIGH(SN_1_CS), 0);
+    write_74hc595(byte | HIGH(SN_1_CS), 1);
 }
 
 // YM2413

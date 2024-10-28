@@ -1,5 +1,6 @@
+#ifdef TOTAL_VIRTUAL_MEMORY_KBS
 #include "emulator.h"
-#include "ram_page.h"
+#include "swap.h"
 #include "f_util.h"
 #include "ff.h"
 #include <pico.h>
@@ -95,10 +96,11 @@ bool init_swap() {
         UINT bytes_written;
         for (size_t i = 0; i < (TOTAL_VIRTUAL_MEMORY_KBS << 10); i += SWAP_PAGE_SIZE) {
             result = f_write(&swap_file, SWAP_PAGES_CACHE, SWAP_PAGE_SIZE, &bytes_written);
+            if(i)printf_("%d         \r", (TOTAL_VIRTUAL_MEMORY_KBS << 10) / i);
             if (result != FR_OK) return printf("Error initializing pagefile\n"), false;
         }
     } else return printf("Error creating pagefile\n"), false;
-
+    printf("Done!\n");
     f_close(&swap_file);
     return f_open(&swap_file, path, FA_READ | FA_WRITE) == FR_OK;
 }
@@ -129,3 +131,4 @@ void swap_file_flush_block(const uint8_t *src, uint32_t offset, uint32_t size) {
     }
     gpio_put(PICO_DEFAULT_LED_PIN, false);
 }
+#endif

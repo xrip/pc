@@ -15,7 +15,7 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #if PICO_RP2350
 #define RAM_SIZE (200 << 10)
-#include "ram_page.h"
+#include "swap.h"
 #else
 #define RAM_SIZE (146 << 10)
 #endif
@@ -253,11 +253,11 @@ extern int16_t covox_sample;
 }
 #endif
 
+#ifndef TOTAL_VIRTUAL_MEMORY_KBS
 #if PICO_RP2040
 #include "psram_spi.h"
 
 #else
-#ifndef TOTAL_VIRTUAL_MEMORY_KBS
 extern uint8_t * PSRAM_DATA;
 
 static INLINE void write8psram(uint32_t address, uint8_t value) {
@@ -272,6 +272,7 @@ static INLINE uint8_t read8psram(uint32_t address) {
 static INLINE uint16_t read16psram(uint32_t address) {
     return *(uint16_t *)&PSRAM_DATA[address];
 }
+#endif
 #else
 static INLINE void write8psram(uint32_t address, uint8_t value) {
     swap_write(address, value);
@@ -286,5 +287,3 @@ static INLINE uint16_t read16psram(uint32_t address) {
     return swap_read16(address);
 }
 #endif
-#endif
-

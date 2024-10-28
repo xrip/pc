@@ -247,7 +247,7 @@ void __time_critical_func() dma_handler_VGA() {
 
     }
 
-    if (screen_line % 2) return;
+    if (screen_line % 2 && (graphics_mode != HERC_640x480x2_90 && graphics_mode != HERC_640x480x2)) return;
     uint32_t y = screen_line >> 1;
 
     if (screen_line >= 400) {

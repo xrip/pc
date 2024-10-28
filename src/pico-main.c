@@ -13,7 +13,7 @@
 #endif
 #include "emulator/emulator.h"
 
-//#include "audio.h"
+#include "audio.h"
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
@@ -23,8 +23,8 @@
 #include "74hc595/74hc595.h"
 
 FATFS fs;
-//i2s_config_t i2s_config;
-//OPL *emu8950_opl;
+i2s_config_t i2s_config;
+OPL *emu8950_opl;
 void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
@@ -100,7 +100,7 @@ void __time_critical_func() second_core() {
 
 //    pwm_set_gpio_level(22,0);
 
-//    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 
     blaster_reset();
 
@@ -414,7 +414,7 @@ int main() {
         while (1);
     }
 
-    init_swap();
+//    init_swap();
 
     sn76489_reset();
     reset86();
