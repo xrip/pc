@@ -3,6 +3,7 @@
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
+#define SDCARD_PIO 1
 #ifndef SDCARD_PIO
 #include "hardware/spi.h"
 #else
@@ -61,8 +62,8 @@ BYTE CardType;			/* Card type flags */
 
 #ifdef SDCARD_PIO
 pio_spi_inst_t pio_spi = {
-		.pio = SDCARD_PIO,
-		.sm = SDCARD_PIO_SM
+		.pio = pio1,
+		.sm = -1
 };
 #endif
 
@@ -160,10 +161,11 @@ void init_spi(void)
     gpio_set_dir(SDCARD_PIN_SPI0_MISO, GPIO_OUT);
     gpio_set_dir(SDCARD_PIN_SPI0_MOSI, GPIO_OUT);
 
-	float clkdiv = 3.0f;
+	float clkdiv = 2.5f;
 	int cpol = 0;
 	int cpha = 0;
 	uint cpha0_prog_offs = pio_add_program(pio_spi.pio, &spi_cpha0_program);
+	pio_spi.sm = pio_claim_unused_sm(pio_spi.pio, true);
 	pio_spi_init(pio_spi.pio, pio_spi.sm,
 				cpha0_prog_offs,
 				8,       // 8 bits per SPI frame
