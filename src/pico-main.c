@@ -414,6 +414,8 @@ int main() {
         while (1);
     }
 
+    init_swap();
+
     sn76489_reset();
     reset86();
 

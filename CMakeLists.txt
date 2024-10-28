@@ -140,6 +140,8 @@ else ()
 
             #I2S_SOUND
             #AUDIO_PWM_PIN=26
+
+            TOTAL_VIRTUAL_MEMORY_KBS=8192
     )
 
     pico_add_extra_outputs(${PROJECT_NAME})
