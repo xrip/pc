@@ -55,7 +55,6 @@ static const uint16_t clock_program_instructions[] = {
         //     .wrap
 };
 
-#if !PICO_NO_HARDWARE
 static const struct pio_program clock_program = {
         .instructions = clock_program_instructions,
         .length = 2,
@@ -87,8 +86,6 @@ static inline void clock3_program_init(PIO pio, uint sm, uint offset, uint pin, 
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
-
-#endif
 
 static inline void init_clock_pio3(PIO pio,uint sm,uint pin, uint freq) {
 

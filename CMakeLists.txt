@@ -33,7 +33,7 @@ if (PICO_PLATFORM STREQUAL "host")
 else ()
     pico_sdk_init()
 
-#    add_compile_options(-flto)
+#    add_compile_options(-flto -fwhole-program)
 
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
