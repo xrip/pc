@@ -1,6 +1,6 @@
 #include "74hc595.h"
 #include "pico/platform.h"
-#define SHIFT_SPEED (40 * MHZ)
+#define SHIFT_SPEED (15 * MHZ)
 static volatile uint16_t control_bits = 0;
 #define LOW(x) (control_bits &= ~(x))
 #define HIGH(x) (control_bits |= (x))
@@ -106,7 +106,7 @@ void init_74hc595() {
 }
 
 void write_74hc595(register uint16_t data, register uint16_t delay_us) {
-    PIO_74HC595->txf[SM_74HC595] = (data & 0xffff) << 16 | (delay_us << 6); // 1 microsecond per 15 cycles @ 15Mhz
+    PIO_74HC595->txf[SM_74HC595] = data << 16 | (delay_us << 6); // 1 microsecond per 15 cycles @ 15Mhz
 //    busy_wait_us_32(delay_us);
 }
 
@@ -137,7 +137,8 @@ void SN76489_write(uint8_t byte) {
 #if SN76489_REVERSED
     byte = reversed[byte];
 #endif
-    write_74hc595(byte | LOW(SN_1_CS), 10);
+    busy_wait_us_32(5);
+    write_74hc595(byte | LOW(SN_1_CS), 5);
     write_74hc595(byte | HIGH(SN_1_CS), 0);
 }
 
@@ -153,7 +154,7 @@ void SAA1099_write(uint8_t addr, uint8_t chip, uint8_t byte) {
     const uint16_t a0 = addr ? A0 : 0;
     const uint16_t cs = chip ? SAA_2_CS : SAA_1_CS;
 
-    write_74hc595(byte | a0 | LOW(cs), 2);
+    write_74hc595(byte | a0 | LOW(cs), 0);
     write_74hc595(byte | a0 | HIGH(cs), 0);
 }
 
@@ -162,8 +163,8 @@ void OPL2_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
     const uint16_t a0 = addr ? A0 : 0;
     const uint16_t a1 = register_set ? A1 : 0;
 
-    write_74hc595(byte | a0 | a1 | LOW(OPL2), 5);
-    write_74hc595(byte | a0 | a1 | HIGH(OPL2), 30);
+    write_74hc595(byte | a0 | a1 | LOW(OPL2), 0);
+    write_74hc595(byte | a0 | a1 | HIGH(OPL2), 0);
 }
 
 // YM3812 / YMF262
