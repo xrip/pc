@@ -63,6 +63,11 @@ void clock_init(uint pin, uint32_t frequency) {
 }
 
 void init_74hc595() {
+    uint sm1 = pio_claim_unused_sm(pio0, true);
+    uint sm2 = pio_claim_unused_sm(pio1, true);
+    init_clock_pio3(pio0,sm1,CLOCK_PIN,CLOCK_FREQUENCY);
+    init_clock_pio3(pio1,sm2,CLOCK_PIN2,CLOCK_FREQUENCY2);
+
     uint offset = pio_add_program(PIO_74HC595, &program595);
     pio_sm_config c = pio_get_default_sm_config();
 
@@ -96,10 +101,12 @@ void init_74hc595() {
     pio_sm_set_clkdiv(PIO_74HC595, SM_74HC595, clock_get_hz(clk_sys) / (2 * SHIFT_SPEED));
     // Reset PIO program
     PIO_74HC595->txf[SM_74HC595] = 0;
+
+    reset_chips();
 }
 
 void write_74hc595(register uint16_t data, register uint16_t delay_us) {
-    PIO_74HC595->txf[SM_74HC595] = (data & 0xffff) << 16 | (delay_us << 4); // 1 microsecond per 15 cycles @ 15Mhz
+    PIO_74HC595->txf[SM_74HC595] = (data & 0xffff) << 16 | (delay_us << 6); // 1 microsecond per 15 cycles @ 15Mhz
 //    busy_wait_us_32(delay_us);
 }
 
@@ -130,7 +137,7 @@ void SN76489_write(uint8_t byte) {
 #if SN76489_REVERSED
     byte = reversed[byte];
 #endif
-    write_74hc595(byte | LOW(SN_1_CS), 20);
+    write_74hc595(byte | LOW(SN_1_CS), 10);
     write_74hc595(byte | HIGH(SN_1_CS), 0);
 }
 
@@ -146,7 +153,7 @@ void SAA1099_write(uint8_t addr, uint8_t chip, uint8_t byte) {
     const uint16_t a0 = addr ? A0 : 0;
     const uint16_t cs = chip ? SAA_2_CS : SAA_1_CS;
 
-    write_74hc595(byte | a0 | LOW(cs), 5);
+    write_74hc595(byte | a0 | LOW(cs), 2);
     write_74hc595(byte | a0 | HIGH(cs), 0);
 }
 

@@ -77,6 +77,7 @@ int active_buffer = 0;
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
+
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
@@ -86,23 +87,17 @@ void __time_critical_func() second_core() {
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
 #else
-#if !I2S_SOUND
-
-    clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
-    clock_init(CLOCK_PIN2, CLOCK_FREQUENCY2);
-    sleep_ms(25);
     init_74hc595();
-    reset_chips();
 
-#endif
-#endif
-    sleep_ms(100);
     pwm_config config = pwm_get_default_config();
     gpio_set_function(22, GPIO_FUNC_PWM);
     pwm_config_set_clkdiv(&config, 1.0f);
     pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
-
     pwm_init(pwm_gpio_to_slice_num(22), &config, true);
+#endif
+
+
+
 //    pwm_set_gpio_level(22,0);
 
 //    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
@@ -191,8 +186,7 @@ void __time_critical_func() second_core() {
                 active_buffer ^= 1;
             }
 #else
-            int16_t sample = last_dss_sample;
-            sample += last_sb_sample;
+            int16_t sample = last_dss_sample + last_sb_sample + covox_sample;
             if (speakerenabled)
                 sample += speaker_sample();
             pwm_set_gpio_level(22, (uint16_t)((int32_t)sample + 0x8000L) >> 4);
@@ -392,6 +386,7 @@ int main() {
     }
 #endif
 
+
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -411,7 +406,6 @@ int main() {
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
 
-    sleep_ms(50);
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
