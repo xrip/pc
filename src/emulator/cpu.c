@@ -4,7 +4,7 @@
 #define CPU_ALLOW_ILLEGAL_OP_EXCEPTION
 //#define CPU_LIMIT_SHIFT_COUNT
 #define CPU_NO_SALC
-#define CPU_SET_HIGH_FLAGS
+//#define CPU_SET_HIGH_FLAGS
 #define CPU_286_STYLE_PUSH_SP
 #if PICO_ON_DEVICE
 
@@ -1478,6 +1478,10 @@ void exec86(uint32_t execloops) {
                 case 0xF: //0F POP CS
             CPU_CS = pop();
             break;
+#else
+            case 0xF: //0F POP CS
+            printf("286 protected mode?!");
+            break;
 #endif
 
             case 0x10:    /* 10 ADC Eb Gb */
@@ -2225,9 +2229,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x6C:    /* 6E INSB */
-                if (
-                        reptype && (CPU_CX
-                                    == 0)) {
+                if (reptype && (CPU_CX == 0)) {
                     break;
                 }
 
@@ -2279,14 +2281,11 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x6E:    /* 6E OUTSB */
-                if (
-                        reptype && (CPU_CX
-                                    == 0)) {
+                if (reptype && (CPU_CX == 0)) {
                     break;
                 }
 
-                portout(CPU_DX, getmem8(useseg, CPU_SI)
-                );
+                portout(CPU_DX, getmem8(useseg, CPU_SI));
                 if (df) {
                     CPU_SI = CPU_SI - 1;
                     CPU_DI = CPU_DI - 1;
@@ -2308,9 +2307,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x6F:    /* 6F OUTSW */
-                if (
-                        reptype && (CPU_CX
-                                    == 0)) {
+                if (reptype && (CPU_CX== 0)) {
                     break;
                 }
 
