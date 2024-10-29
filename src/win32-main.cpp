@@ -1040,21 +1040,13 @@ extern "C" void adlib_write(uintptr_t idx, uint8_t val);
 
 extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
     static int latch = -1;
-    //    printf("Adlib Write %x %x", reg, value);
-    uint16_t data = (reg & 0xff) << 8 | 2 << 4 | 0b0000 | (reg >> 8) & 1;
-    Enqueue(&queue, data);
-    //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
-    //        printf("!!!! Error in writing to serial port\n");
-    //    }
-
-    data = (value & 0xff) << 8 | 2 << 4 | 0b0010 | (reg >> 8) & 1;
-    Enqueue(&queue, data);
-    //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
-    //        printf("!!!! Error in writing to serial port\n");
-    //    }
     if (latch == -1) {
         latch = value;
     } else {
+        uint16_t data = (latch & 0xff) << 8 | 2 << 4 | 0b0000 | (latch >> 8) & 1;
+        Enqueue(&queue, data);
+        data = (value & 0xff) << 8 | 2 << 4 | 0b0010 | (latch >> 8) & 1;
+        Enqueue(&queue, data);
         OPL_writeReg(emu8950_opl, latch, value);
         latch = -1;
     }

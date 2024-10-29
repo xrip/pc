@@ -30,10 +30,8 @@ if (PICO_PLATFORM STREQUAL "host")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
+    add_compile_options(-flto -fwhole-program)
     pico_sdk_init()
-
-#    add_compile_options(-flto -fwhole-program)
-
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
 
@@ -137,8 +135,8 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-            #I2S_SOUND
-            #AUDIO_PWM_PIN=26
+#            I2S_SOUND
+#            AUDIO_PWM_PIN=22
 
             #TOTAL_VIRTUAL_MEMORY_KBS=8192
     )
