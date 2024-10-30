@@ -1474,14 +1474,15 @@ void exec86(uint32_t execloops) {
                 push(CPU_CS);
                 break;
 
-#ifdef CPU_ALLOW_POP_CS //only the 8086/8088 does this.
+#ifdef CPU_8086 //only the 8086/8088 does this.
                 case 0xF: //0F POP CS
             CPU_CS = pop();
             break;
 #else
-            case 0xF: //0F POP CS
-            printf("286 protected mode?!");
+/*
+            case 0xF: // 286 protected mode
             break;
+*/
 #endif
 
             case 0x10:    /* 10 ADC Eb Gb */
@@ -1490,8 +1491,7 @@ void exec86(uint32_t execloops) {
                 oper1b = readrm8(rm);
                 oper2b = getreg8(reg);
                 op_adc8();
-                writerm8(rm, res8
-                );
+                writerm8(rm, res8);
                 break;
 
             case 0x11:    /* 11 ADC Ev Gv */
@@ -1500,8 +1500,7 @@ void exec86(uint32_t execloops) {
                 oper1 = readrm16(rm);
                 oper2 = getreg16(reg);
                 op_adc16();
-                writerm16(rm, res16
-                );
+                writerm16(rm, res16);
                 break;
 
             case 0x12:    /* 12 ADC Gb Eb */
@@ -1510,8 +1509,7 @@ void exec86(uint32_t execloops) {
                 oper1b = getreg8(reg);
                 oper2b = readrm8(rm);
                 op_adc8();
-                putreg8(reg, res8
-                );
+                putreg8(reg, res8);
                 break;
 
             case 0x13:    /* 13 ADC Gv Ev */
@@ -1554,8 +1552,7 @@ void exec86(uint32_t execloops) {
                 oper1b = readrm8(rm);
                 oper2b = getreg8(reg);
                 op_sbb8();
-                writerm8(rm, res8
-                );
+                writerm8(rm, res8);
                 break;
 
             case 0x19:    /* 19 SBB Ev Gv */
@@ -1618,8 +1615,7 @@ void exec86(uint32_t execloops) {
                 oper1b = readrm8(rm);
                 oper2b = getreg8(reg);
                 op_and8();
-                writerm8(rm, res8
-                );
+                writerm8(rm, res8);
                 break;
 
             case 0x21:    /* 21 AND Ev Gv */
@@ -2307,7 +2303,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x6F:    /* 6F OUTSW */
-                if (reptype && (CPU_CX== 0)) {
+                if (reptype && (CPU_CX == 0)) {
                     break;
                 }
 
@@ -2731,8 +2727,7 @@ void exec86(uint32_t execloops) {
 #ifdef CPU_SET_HIGH_FLAGS
                 push(makeflagsword() | 0xF800);
 #else
-                push(makeflagsword()
-| 0x0800);
+                push(makeflagsword() | 0x0800);
 #endif
                 break;
 
@@ -2742,8 +2737,7 @@ void exec86(uint32_t execloops) {
                 break;
 
             case 0x9E:    /* 9E SAHF */
-                decodeflagsword((makeflagsword()
-                                 & 0xFF00) | CPU_AH);
+                decodeflagsword((makeflagsword() & 0xFF00) | CPU_AH);
                 break;
 
             case 0x9F:    /* 9F LAHF */
@@ -3304,8 +3298,12 @@ void exec86(uint32_t execloops) {
             case 0xCF:    /* CF IRET */
                 CPU_IP = pop();
                 CPU_CS = pop();
-                decodeflagsword(pop()
-                );
+#ifdef CPU_SET_HIGH_FLAGS
+                decodeflagsword(pop() | 0xF000);
+#else
+                decodeflagsword(pop() & 0x0FFF);
+#endif
+
 
 /*
  * if (net.enabled) net.canrecv = 1;
@@ -3495,8 +3493,7 @@ break;
 
             case 0xEF:    /* EF OUT regdx eAX */
                 oper1 = CPU_DX;
-                portout16(oper1, CPU_AX
-                );
+                portout16(oper1, CPU_AX);
                 break;
 
             case 0xF0:    /* F0 LOCK */
@@ -3593,10 +3590,9 @@ break;
 
             default:
 #ifdef CPU_ALLOW_ILLEGAL_OP_EXCEPTION
-                intcall86(
-                        6); /* trip invalid opcode exception. this occurs on the 80186+, 8086/8088 CPUs treat them as NOPs. */
+                intcall86(6); /* trip invalid opcode exception. this occurs on the 80186+, 8086/8088 CPUs treat them as NOPs. */
                 /* technically they aren't exactly like NOPs in most cases, but for our pursoses, that's accurate enough. */
-                printf("[CPU] Invalid opcode exception at %04X:%04X\r\n", CPU_CS, firstip);
+                printf("[CPU] Invalid opcode 0x%02x exception at %04X:%04X\r\n", opcode, CPU_CS, firstip);
 #endif
                 break;
         }

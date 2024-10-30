@@ -36,7 +36,7 @@ static INLINE void renderer() {
 
 
     //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
-    uint8_t *vidramptr = VIDEORAM + 0x8000 + (vram_offset << 1);
+    uint8_t *vidramptr = VIDEORAM + 0x8000 + ((vram_offset & 0xffff) << 1);
     uint8_t cols = 80;
     for (int y = 0; y < 480; y++) {
         if (y >= 399)
