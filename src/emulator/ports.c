@@ -212,7 +212,7 @@ void portout(uint16_t portnum, uint16_t value) {
         // AdLib / OPL
         case 0x388:
             adlib_register = value;
-            adlib_write_d(portnum, value);
+//            adlib_write_d(portnum, value);
             break;
         case 0x389:
             if (adlib_register <= 4) {
@@ -223,8 +223,8 @@ void portout(uint16_t portnum, uint16_t value) {
                     adlibregmem[4] = 0;
                 }
             }
-            return             adlib_write_d(portnum, value);
-//            return adlib_write_d(adlib_register, value);
+//            return             adlib_write_d(portnum, value);
+            return adlib_write_d(adlib_register, value);
         // EGA/VGA
         case 0x3C0:
         case 0x3C4:

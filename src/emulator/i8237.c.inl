@@ -1,7 +1,7 @@
 // https://wiki.osdev.org/ISA_DMA
 // https://pdos.csail.mit.edu/6.828/2004/readings/hardware/8237A.pdf
 /* 	Intel 8237 DMA controller */
-//#define DEBUG_DMA 1
+// #define DEBUG_DMA 1
 static struct dma_channel_s {
     uint32_t page;
     uint16_t address;
@@ -64,7 +64,7 @@ static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
                     dma_channels[channel].address = (address & 0x00FF) | ((uint16_t) value << 8);
                     dma_channels[channel].reload_address = dma_channels[channel].address;
 #ifdef DEBUG_DMA
-//                    printf("[DMA] Channel %u addr set to %08X\r\n", channel, dma_channels[channel].page + dma_channels[channel].address);
+                    printf("[DMA] Channel %u addr set to %08X\r\n", channel, dma_channels[channel].page + dma_channels[channel].address);
 #endif
                 } else {
                     address = (dma_channels[channel].address & 0xFF00) | (uint16_t) value;

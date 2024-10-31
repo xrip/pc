@@ -14,8 +14,8 @@ extern "C" {
 #ifdef PICO_ON_DEVICE
 #define VIDEORAM_SIZE (64 << 10)
 #if PICO_RP2350
-#define RAM_SIZE (200 << 10)
-#include "swap.h"
+#define RAM_SIZE (400 << 10)
+//#include "swap.h"
 #else
 #define RAM_SIZE (146 << 10)
 #endif
@@ -254,7 +254,7 @@ extern int16_t covox_sample;
 #endif
 
 #ifndef TOTAL_VIRTUAL_MEMORY_KBS
-#if PICO_RP2040
+#if !PICO_RP2040
 #include "psram_spi.h"
 
 #else

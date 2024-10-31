@@ -23,7 +23,7 @@ endforeach ()
 message(STATUS "")
 
 #add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
-add_compile_options(-fms-extensions -O2)
+add_compile_options(-ffast-math -fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
     add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
@@ -34,18 +34,17 @@ else ()
     pico_sdk_init()
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
-
-    add_subdirectory(memops_opt)
-
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 
+    add_subdirectory(drivers/psram)
+    add_subdirectory(memops_opt)
+    target_link_libraries(${PROJECT_NAME} PRIVATE psram memops_opt)
 
     if (PICO_PLATFORM STREQUAL "rp2040")
-        add_subdirectory(drivers/psram)
-        target_link_libraries(${PROJECT_NAME} PRIVATE psram)
+        target_link_libraries(${PROJECT_NAME} PRIVATE memops_opt)
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
         target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
     else ()
@@ -55,7 +54,7 @@ else ()
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
 
-    pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/186/286 emulator")
+    pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/80186/80286 emulator")
     pico_set_program_version(${PROJECT_NAME} "wip")
 
     add_subdirectory(drivers/ps2)
@@ -83,7 +82,6 @@ else ()
             sdcard
             audio
             graphics
-            #            psram
             nespad
 
             pico_runtime
@@ -96,10 +94,6 @@ else ()
             hardware_timer
             hardware_clocks
             hardware_pwm
-
-            #            sparkfun_pico
-            memops_opt
-            #            tinyusb_host tinyusb_board
     )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -124,7 +118,7 @@ else ()
             PSRAM_SPINLOCK=1
             PSRAM_ASYNC=1
 
-            PSRAM_PIN_CS=22
+            PSRAM_PIN_CS=18
             PSRAM_PIN_SCK=19
             PSRAM_PIN_MOSI=20
             PSRAM_PIN_MISO=21
@@ -135,8 +129,8 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-#            I2S_SOUND
-#            AUDIO_PWM_PIN=22
+            I2S_SOUND
+            AUDIO_PWM_PIN=26
 
             #TOTAL_VIRTUAL_MEMORY_KBS=8192
     )

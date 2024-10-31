@@ -22,7 +22,7 @@
 	Emulation of the Sound Blaster 2.0
 */
 
-#define DEBUG_BLASTER
+// #define DEBUG_BLASTER
 
 #include "emulator.h"
 volatile int16_t sample;

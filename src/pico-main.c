@@ -25,6 +25,7 @@
 #include "emu8950.h"
 #include "ps2_mouse.h"
 #include "74hc595/74hc595.h"
+#include "psram_spi.h"
 
 FATFS fs;
 i2s_config_t i2s_config;
@@ -384,17 +385,16 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
 #endif
 
 int main() {
-
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
     vreg_set_voltage(VREG_VOLTAGE_1_60);
     sleep_ms(33);
     *qmi_m0_timing = 0x60007204;
-    set_sys_clock_hz(444000000, 0);
+    set_sys_clock_hz(460000000, 0);
     *qmi_m0_timing = 0x60007303;
-
-    psram_init(19);
+//    psram_init(19);
+    int p = init_psram();
 #else
     memcpy_wrapper_replace(NULL);
     //vreg_set_voltage(VREG_VOLTAGE_1_30);
@@ -402,9 +402,7 @@ int main() {
     vreg_disable_voltage_limit();
     sleep_ms(33);
     set_sys_clock_khz(396 * 1000, true);
-    if (!init_psram()) {
-        printf("No PSRAM detected.");
-    }
+
 #endif
 
 
@@ -433,6 +431,9 @@ int main() {
     if (FR_OK != f_mount(&fs, "0", 1)) {
         printf("SD Card not inserted or SD Card error!");
         while (1);
+    }
+    if (!p) {
+        printf("No PSRAM detected.");
     }
 
 //    init_swap();
