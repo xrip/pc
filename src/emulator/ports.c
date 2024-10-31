@@ -1,7 +1,9 @@
 #pragma GCC optimize("Ofast")
 #include <time.h>
+
 #include "emulator.h"
 #if PICO_ON_DEVICE
+#include <hardware/pwm.h>
 extern int16_t keyboard_send(uint8_t data);
 #include "nespad.h"
 #else
@@ -123,15 +125,17 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x61:
             port61 = value;
             if ((value & 3) == 3) {
-#if !PICO_ON_DEVICE || !I2S_SOUND
-                tandy_write(0xff, 0b10010000);
-#endif
+#if I2S_SOUND || HARDWARE_SOUND || !PICO_ON_DEVICE
                 speakerenabled = 1;
-            } else {
-#if !PICO_ON_DEVICE || !I2S_SOUND
-                tandy_write(0xff, 0b10011111);
+#else
+                pwm_set_gpio_level(PWM_BEEPER, 127);
 #endif
+            } else {
+#if I2S_SOUND || HARDWARE_SOUND || !PICO_ON_DEVICE
                 speakerenabled = 0;
+#else
+                pwm_set_gpio_level(PWM_BEEPER, 0);
+#endif
             }
 
             break;

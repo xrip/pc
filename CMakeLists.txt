@@ -113,8 +113,6 @@ else ()
             SDCARD_PIN_SPI0_MOSI=3
             SDCARD_PIN_SPI0_MISO=4
 
-            PSRAM
-            #PSRAM_MUTEX=1
             PSRAM_SPINLOCK=1
             PSRAM_ASYNC=1
 
@@ -129,8 +127,11 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-            I2S_SOUND
-            AUDIO_PWM_PIN=26
+#            I2S_SOUND
+            PWM_SOUND
+            PWM_LEFT_CHANNEL=26
+            PWM_RIGHT_CHANNEL=27
+            PWM_BEEPER=28
 
             #TOTAL_VIRTUAL_MEMORY_KBS=8192
     )

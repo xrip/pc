@@ -94,7 +94,9 @@ int active_buffer = 0;
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
-
+extern pwm_config config;
+#define PWM_PIN0 (26)
+#define PWM_PIN1 (27)
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
@@ -103,7 +105,25 @@ void __time_critical_func() second_core() {
     i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
-#else
+#endif
+#if PWM_SOUND
+    config = pwm_get_default_config();
+
+    gpio_set_function(PWM_LEFT_CHANNEL, GPIO_FUNC_PWM);
+    gpio_set_function(PWM_RIGHT_CHANNEL, GPIO_FUNC_PWM);
+
+    pwm_config_set_clkdiv(&config, 1.0f);
+    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
+
+    pwm_init(pwm_gpio_to_slice_num(PWM_LEFT_CHANNEL), &config, true);
+    pwm_init(pwm_gpio_to_slice_num(PWM_RIGHT_CHANNEL), &config, true);
+
+    gpio_set_function(PWM_BEEPER, GPIO_FUNC_PWM);
+//    pwm_config_set_clkdiv(&config, clock_get_hz(clk_sys) / (1.19318f * MHZ));
+    pwm_config_set_clkdiv(&config, 127);
+    pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &config, true);
+#endif
+#if HARDWARE_SOUND
     init_74hc595();
 
     pwm_config config = pwm_get_default_config();
@@ -114,11 +134,11 @@ void __time_critical_func() second_core() {
 #endif
 
 
-
-//    pwm_set_gpio_level(22,0);
-
+#if HARDWARE_SOUND
+    pwm_set_gpio_level(22,0);
+#else
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
-
+#endif
     blaster_reset();
 
     graphics_init();
@@ -172,39 +192,37 @@ void __time_critical_func() second_core() {
         // Sound frequency 44100
         if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
 
-#if I2S_SOUND
+#if I2S_SOUND || PWM_SOUND
             int16_t samples[2] = { 0, 0 };
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
 
-            if (last_dss_sample)
-                samples[0] += last_dss_sample;
+            samples[0] += last_dss_sample;
+            samples[0] += sn76489_sample();
+            samples[0] += covox_sample;
+            samples[0] += last_sb_sample;
+
             if (speakerenabled)
                 samples[0] += speaker_sample();
-
-            samples[0] += sn76489_sample();
-
-
-            samples[0] += covox_sample;
-
-#if 1 || !PICO_ON_DEVICE
-            if (last_sb_sample)
-                samples[0] += last_sb_sample;
-#endif
 
             samples[1] = samples[0];
 
             cms_samples(samples);
 
-
+#if I2S_SOUND
             audio_buffer[active_buffer][sample_index++] = samples[1];
             audio_buffer[active_buffer][sample_index++] = samples[0];
-
 
             if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
                 sample_index = 0;
                 i2s_dma_write(&i2s_config, audio_buffer[active_buffer]);
                 active_buffer ^= 1;
+
             }
+#else
+            pwm_set_gpio_level(PWM_PIN0, (uint16_t) ((int32_t) samples[0] + 0x8000L) >> 4);
+            pwm_set_gpio_level(PWM_PIN1, (uint16_t) ((int32_t) samples[1] + 0x8000L) >> 4);
+#endif
+
 #else
             int16_t sample = last_dss_sample + last_sb_sample + covox_sample;
             if (speakerenabled)
