@@ -4,13 +4,17 @@
 #include <hardware/vreg.h>
 #include <pico/stdio.h>
 #include <pico/multicore.h>
+
 #if !PICO_RP2350
+
 #include "psram_spi.h"
 #include "../../memops_opt/memops_opt.h"
+
 #else
 #include <hardware/structs/qmi.h>
 #include <hardware/structs/xip.h>
 #endif
+
 #include "emulator/emulator.h"
 
 #include "audio.h"
@@ -25,6 +29,7 @@
 FATFS fs;
 i2s_config_t i2s_config;
 OPL *emu8950_opl;
+
 void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
@@ -34,17 +39,19 @@ void tandy_write(uint16_t reg, uint8_t value) {
 }
 
 extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
+
 extern void adlib_init(uint32_t samplerate);
+
 extern void adlib_write(uintptr_t idx, uint8_t val);
 
 void adlib_write_d(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     OPL_writeReg(emu8950_opl, reg, value);
 #else
-    if (reg &1) {
-        OPL2_write_byte(1,0, value & 0xff);
+    if (reg & 1) {
+        OPL2_write_byte(1, 0, value & 0xff);
     } else {
-        OPL2_write_byte(0,0, value & 0xff);
+        OPL2_write_byte(0, 0, value & 0xff);
     }
 #endif
 }
@@ -54,10 +61,18 @@ inline void cms_write(uint16_t reg, uint8_t val) {
     cms_out(reg, val);
 #else
     switch (reg - 0x220) {
-        case 0: SAA1099_write(0, 0, val); break;
-        case 1: SAA1099_write(1, 0, val); break;
-        case 2: SAA1099_write(0, 1, val); break;
-        case 3: SAA1099_write(1, 1, val); break;
+        case 0:
+            SAA1099_write(0, 0, val);
+            break;
+        case 1:
+            SAA1099_write(1, 0, val);
+            break;
+        case 2:
+            SAA1099_write(0, 1, val);
+            break;
+        case 3:
+            SAA1099_write(1, 1, val);
+            break;
     }
 #endif
 }
@@ -68,11 +83,12 @@ bool handleScancode(uint32_t ps2scancode) {
     doirq(1);
     return true;
 }
+
 int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = {0};
 int active_buffer = 0;
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
@@ -117,40 +133,43 @@ void __time_critical_func() second_core() {
 
     sem_acquire_blocking(&vga_start_semaphore);
 
-    uint64_t tick = time_us_64();
-    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
+    absolute_time_t  now = get_absolute_time();
+    absolute_time_t  last_timer_tick = now,
+                     last_cursor_blink = now,
+                     last_sound_tick = now,
+                     last_frame_tick = now,
+                     last_dss_tick = now,
+                     last_sb_tick = now;
 
-    uint64_t last_dss_tick = 0;
-    uint64_t last_sb_tick = 0;
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
 
 
     while (true) {
-        if (tick >= last_timer_tick + timer_period) {
+        if (absolute_time_diff_us(last_timer_tick, now) >= timer_period) {
             doirq(0);
-            last_timer_tick = tick;
+            last_timer_tick = now;
         }
 
-        if (tick >= last_cursor_blink + 333333) {
+        if (absolute_time_diff_us(last_cursor_blink, now) >= 333333) {
             cursor_blink_state ^= 1;
-            last_cursor_blink = tick;
-        }
-        // Sound Blaster
-        if (tick >= last_sb_tick + timeconst) {
-            last_sb_sample = blaster_sample();
-            last_sb_tick = tick;
+            last_cursor_blink = now;
         }
 
+        // Sound Blaster
+        if (absolute_time_diff_us(last_sb_tick, now) >= timeconst) {
+            last_sb_sample = blaster_sample();
+            last_sb_tick = now;
+        }
 
         // Dinsey Sound Source frequency 7100
-        if (tick >= last_dss_tick + (1000000 / 7000)) {
+        if (absolute_time_diff_us(last_dss_tick, now) >= (1000000 / 7000)) {
             last_dss_sample = dss_sample();
-            last_dss_tick = tick;
+            last_dss_tick = now;
         }
 
         // Sound frequency 44100
-        if (tick >= last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
+        if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
 
 #if I2S_SOUND
             int16_t samples[2] = { 0, 0 };
@@ -189,12 +208,12 @@ void __time_critical_func() second_core() {
             int16_t sample = last_dss_sample + last_sb_sample + covox_sample;
             if (speakerenabled)
                 sample += speaker_sample();
-            pwm_set_gpio_level(22, (uint16_t)((int32_t)sample + 0x8000L) >> 4);
+            pwm_set_gpio_level(22, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
 #endif
-            last_sound_tick = tick;
+            last_sound_tick = now;
         }
 
-        if (tick >= last_frame_tick + 16667) {
+        if (absolute_time_diff_us(last_frame_tick, now) >= 16667) {
             static uint8_t old_video_mode;
             if (old_video_mode != videomode) {
 
@@ -241,20 +260,21 @@ void __time_critical_func() second_core() {
 
 
             }
-            last_frame_tick = tick;
+            last_frame_tick = now;
         }
-        tick = time_us_64();
+        now = time_us_64();
         tight_loop_contents();
 
     }
     __unreachable();
 }
+
 extern bool PSRAM_AVAILABLE;
 
 #if 1
-uint8_t __aligned(4) DEBUG_VRAM[80*10] = { 0 };
-INLINE void _putchar(char character)
-{
+uint8_t __aligned(4) DEBUG_VRAM[80 * 10] = {0};
+
+INLINE void _putchar(char character) {
     static uint8_t color = 0xf;
     static int x = 0, y = 0;
 
@@ -265,7 +285,7 @@ INLINE void _putchar(char character)
     }
     uint8_t * vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
 
-    if ((unsigned)character >= 32) {
+    if ((unsigned) character >= 32) {
         if (character >= 96) character -= 32; // uppercase
         *vidramptr = ((character - 32) & 63) | 0 << 6;
         if (x == 80) {
@@ -283,6 +303,7 @@ INLINE void _putchar(char character)
         *vidramptr = 0;
     }
 }
+
 #endif
 
 #if PICO_RP2350
