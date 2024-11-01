@@ -9,16 +9,10 @@
 #define CLK_LATCH_595_BASE_PIN (26)
 #define DATA_595_PIN (28)
 
-#if PICO_RP2350
-#define CLOCK_PIN 20
-#define CLOCK_PIN2 21
-#else
-#define CLOCK_PIN 23
-#define CLOCK_PIN2 29
 
-#endif
-#define CLOCK_FREQUENCY (3579545 * 2)
-#define CLOCK_FREQUENCY2 (3579545 * 1)
+#define CLOCK_PIN1 17
+#define CLOCK_FREQUENCY (3579545)
+
 //(14'318'180)
 
 

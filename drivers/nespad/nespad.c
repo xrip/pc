@@ -44,15 +44,15 @@ int nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,uint8_t latPi
     sm_config_set_set_pins(&c, latPin, 1);
     pio_gpio_init(pio, clkPin);
     pio_gpio_init(pio, dataPin);
-    pio_gpio_init(pio, dataPin+1);  // +1 Pin for Joystick2
+//    pio_gpio_init(pio, dataPin+1);  // +1 Pin for Joystick2
     pio_gpio_init(pio, latPin);
     gpio_set_pulls(dataPin, true, false); // Pull data high, 0xFF if unplugged
-    gpio_set_pulls(dataPin+1, true, false); // Pull data high, 0xFF if unplugged for Joystick2
+//    gpio_set_pulls(dataPin+1, true, false); // Pull data high, 0xFF if unplugged for Joystick2
 
     pio_sm_set_pindirs_with_mask(pio, sm,
                                  (1 << clkPin) | (1 << latPin), // Outputs
                                  (1 << clkPin) | (1 << latPin) | 
-                                 (1 << dataPin) | (1 << (dataPin+1))
+                                 (1 << dataPin) /*| (1 << (dataPin+1))*/
                                 ); // All pins
     sm_config_set_in_shift(&c, true, true, 32); // R shift, autopush @ 8 bits (@ 16 bits for 2 Joystick)
 
@@ -90,7 +90,7 @@ void nespad_read()
   uint32_t temp=pio->rxf[sm]^ 0xFFFFFFFF;
   pio->txf[sm]=0;
   nespad_state  = temp & 0x555555;         //  Joy1
-  nespad_state2 = temp >> 1 & 0x555555;  //  Joy2
+//  nespad_state2 = temp >> 1 & 0x555555;  //  Joy2
 }
 
 

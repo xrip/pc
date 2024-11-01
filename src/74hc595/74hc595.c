@@ -49,7 +49,12 @@ static const struct pio_program program595 = {
 
 
 void clock_init(uint pin, uint32_t frequency) {
-    gpio_set_function(pin, GPIO_FUNC_PWM);
+    static uint sm = 0;
+    if (!sm) {
+        sm = pio_claim_unused_sm(pio0, true);
+    }
+    init_clock_pio3(pio0, sm, pin, frequency);
+/*    gpio_set_function(pin, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(pin);
 
     // Calculate the PWM wrap value for the target frequency
@@ -59,14 +64,16 @@ void clock_init(uint pin, uint32_t frequency) {
     // Configure PWM
     pwm_set_wrap(slice_num, wrap);                      // Set the PWM period
     pwm_set_gpio_level(pin, wrap / 2);           // Set duty cycle to 50%
-    pwm_set_enabled(slice_num, true);                   // Enable PWM
+    pwm_set_enabled(slice_num, true);                   // Enable PWM*/
 }
 
 void init_74hc595() {
-    uint sm1 = pio_claim_unused_sm(pio0, true);
-    uint sm2 = pio_claim_unused_sm(pio1, true);
-    init_clock_pio3(pio0,sm1,CLOCK_PIN,CLOCK_FREQUENCY);
-    init_clock_pio3(pio1,sm2,CLOCK_PIN2,CLOCK_FREQUENCY2);
+#if PICO_RP2350
+    clock_init(CLOCK_PIN1, CLOCK_FREQUENCY);
+#else
+    init_clock_pio3(pio0, pio_claim_unused_sm(pio0, true), CLOCK_PIN1, CLOCK_FREQUENCY * 2);
+    init_clock_pio3(pio1, pio_claim_unused_sm(pio1, true), CLOCK_PIN2, CLOCK_FREQUENCY);
+#endif
 //    clock_init(CLOCK_PIN,CLOCK_FREQUENCY);
 //    clock_init(CLOCK_PIN2,CLOCK_FREQUENCY2);
     uint offset = pio_add_program(PIO_74HC595, &program595);

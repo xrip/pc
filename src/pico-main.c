@@ -30,11 +30,15 @@
 FATFS fs;
 i2s_config_t i2s_config;
 OPL *emu8950_opl;
-
+int sound_chips_clock = 0;
 void tandy_write(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     sn76489_out(value);
 #else
+    if (!sound_chips_clock) {
+        clock_init(CLOCK_PIN1, CLOCK_FREQUENCY);
+        sound_chips_clock = 1;
+    }
     if (reg != 0xff) SN76489_write(value & 0xff);
 #endif
 }
@@ -45,10 +49,16 @@ extern void adlib_init(uint32_t samplerate);
 
 extern void adlib_write(uintptr_t idx, uint8_t val);
 
+
+
 void adlib_write_d(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
     OPL_writeReg(emu8950_opl, reg, value);
 #else
+    if (!sound_chips_clock) {
+        clock_init(CLOCK_PIN1, CLOCK_FREQUENCY);
+        sound_chips_clock = 1;
+    }
     if (reg & 1) {
         OPL2_write_byte(1, 0, value & 0xff);
     } else {
@@ -61,6 +71,10 @@ inline void cms_write(uint16_t reg, uint8_t val) {
 #if I2S_SOUND
     cms_out(reg, val);
 #else
+    if (sound_chips_clock) {
+        clock_init(CLOCK_PIN1, CLOCK_FREQUENCY * 2);
+        sound_chips_clock = 0;
+    }
     switch (reg - 0x220) {
         case 0:
             SAA1099_write(0, 0, val);
@@ -125,17 +139,16 @@ void __time_critical_func() second_core() {
 #endif
 #if HARDWARE_SOUND
     init_74hc595();
-
-    pwm_config config = pwm_get_default_config();
-    gpio_set_function(22, GPIO_FUNC_PWM);
+    config = pwm_get_default_config();
+    gpio_set_function(PCM_PIN, GPIO_FUNC_PWM);
     pwm_config_set_clkdiv(&config, 1.0f);
     pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
-    pwm_init(pwm_gpio_to_slice_num(22), &config, true);
+    pwm_init(pwm_gpio_to_slice_num(PCM_PIN), &config, true);
 #endif
 
 
 #if HARDWARE_SOUND
-    pwm_set_gpio_level(22,0);
+//    pwm_set_gpio_level(22,0);
 #else
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 #endif
@@ -224,10 +237,8 @@ void __time_critical_func() second_core() {
 #endif
 
 #else
-            int16_t sample = last_dss_sample + last_sb_sample + covox_sample;
-            if (speakerenabled)
-                sample += speaker_sample();
-            pwm_set_gpio_level(22, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
+            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample();
+            pwm_set_gpio_level(PCM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
 #endif
             last_sound_tick = now;
         }
@@ -412,7 +423,7 @@ int main() {
     set_sys_clock_hz(460000000, 0);
     *qmi_m0_timing = 0x60007303;
 //    psram_init(19);
-    int p = init_psram();
+
 #else
     memcpy_wrapper_replace(NULL);
     //vreg_set_voltage(VREG_VOLTAGE_1_30);
@@ -422,7 +433,7 @@ int main() {
     set_sys_clock_khz(396 * 1000, true);
 
 #endif
-
+    int p = init_psram();
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);

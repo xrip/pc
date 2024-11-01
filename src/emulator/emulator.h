@@ -254,7 +254,7 @@ extern int16_t covox_sample;
 #endif
 
 #ifndef TOTAL_VIRTUAL_MEMORY_KBS
-#if PICO_RP2040
+#if PICO_ON_DEVICE
 #include "psram_spi.h"
 
 #else
