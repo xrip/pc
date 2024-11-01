@@ -60,7 +60,7 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
     OPL_writeReg(emu8950_opl, reg, value);
 #else
     if (!sound_chips_clock) {
-        clock_init(CLOCK_PIN, CLOCK_FREQUENCY*4);
+        clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
         sound_chips_clock = 1;
     }
     if (reg & 1) {

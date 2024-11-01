@@ -1,4 +1,5 @@
 // https://isdaman.com/alsos/hardware/mouse/ps2interface.htm
+// https://wiki.osdev.org/Mouse_Input#Resolution,_Scaling_and_Sample_Rate
 #include "ps2_mouse.h"
 #include <pico/stdlib.h>
 #include <stdbool.h>
@@ -8,7 +9,7 @@ extern int printf_(const char* format, ...);
 
 #define INTELLI_MOUSE 3
 #define SCALING_1_TO_1 0xE6
-#define RESOLUTION_8_COUNTS_PER_MM 3
+#define RESOLUTION_8_COUNTS_PER_MM 0
 
 enum Commands {
     SET_RESOLUTION = 0xE8,
@@ -215,10 +216,15 @@ void DataHandler(uint gpio) {
 void mouse_init(void) {
     bitcount = 0;
 
+
     gpio_init(MOUSE_CLOCK_PIN);
     gpio_init(MOUSE_DATA_PIN);
-    gpio_disable_pulls(MOUSE_CLOCK_PIN);
-    gpio_disable_pulls(MOUSE_DATA_PIN);
+    gpio_pull_up(MOUSE_DATA_PIN);
+    gpio_pull_up(MOUSE_CLOCK_PIN);
+//    gpio_disable_pulls(MOUSE_CLOCK_PIN);
+//    gpio_disable_pulls(MOUSE_DATA_PIN);
+
+
     gpio_set_drive_strength(MOUSE_CLOCK_PIN, GPIO_DRIVE_STRENGTH_12MA);
     gpio_set_drive_strength(MOUSE_DATA_PIN, GPIO_DRIVE_STRENGTH_12MA);
     gpio_set_dir(MOUSE_CLOCK_PIN, GPIO_IN);
@@ -229,6 +235,7 @@ void mouse_init(void) {
     mouse_send(RESET);
     busy_wait_ms(100);
 
+
     mouse_send(SET_RESOLUTION);
     busy_wait_ms(100);
     mouse_send(RESOLUTION_8_COUNTS_PER_MM);
@@ -236,6 +243,7 @@ void mouse_init(void) {
 
     mouse_send(SCALING_1_TO_1 );
     busy_wait_ms(100);
+
 
 
     mouse_send(SET_SAMPLE_RATE);

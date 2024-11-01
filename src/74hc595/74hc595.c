@@ -189,7 +189,7 @@ void SAA1099_write(uint8_t addr, uint8_t chip, uint8_t byte) {
 }
 
 // YM3812 / YM2413
-void OPL3_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
+void OPL2_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
     const uint16_t a0 = addr << 8;
     const uint16_t a1 = register_set << 9;
 
@@ -198,7 +198,7 @@ void OPL3_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
 }
 
 // YM3812 / YMF262
-void OPL2_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
+void OPL3_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
     const uint16_t a0 = addr << 8;
     const uint16_t a1 = register_set << 9;
 
