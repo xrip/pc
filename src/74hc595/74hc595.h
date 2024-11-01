@@ -10,7 +10,7 @@
 #define DATA_595_PIN (28)
 
 
-#define CLOCK_PIN1 17
+#define CLOCK_PIN 17
 #define CLOCK_FREQUENCY (3579545)
 
 //(14'318'180)

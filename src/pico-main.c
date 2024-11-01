@@ -36,7 +36,7 @@ void tandy_write(uint16_t reg, uint8_t value) {
     sn76489_out(value);
 #else
     if (!sound_chips_clock) {
-        clock_init(CLOCK_PIN1, CLOCK_FREQUENCY);
+        (CLOCK_PIN, CLOCK_FREQUENCY);
         sound_chips_clock = 1;
     }
     if (reg != 0xff) SN76489_write(value & 0xff);
@@ -56,7 +56,7 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
     OPL_writeReg(emu8950_opl, reg, value);
 #else
     if (!sound_chips_clock) {
-        clock_init(CLOCK_PIN1, CLOCK_FREQUENCY);
+        (CLOCK_PIN, CLOCK_FREQUENCY);
         sound_chips_clock = 1;
     }
     if (reg & 1) {
@@ -72,7 +72,7 @@ inline void cms_write(uint16_t reg, uint8_t val) {
     cms_out(reg, val);
 #else
     if (sound_chips_clock) {
-        clock_init(CLOCK_PIN1, CLOCK_FREQUENCY * 2);
+        (CLOCK_PIN, CLOCK_FREQUENCY * 2);
         sound_chips_clock = 0;
     }
     switch (reg - 0x220) {

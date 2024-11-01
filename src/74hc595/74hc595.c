@@ -68,12 +68,7 @@ void clock_init(uint pin, uint32_t frequency) {
 }
 
 void init_74hc595() {
-#if PICO_RP2350
-    clock_init(CLOCK_PIN1, CLOCK_FREQUENCY);
-#else
-    init_clock_pio3(pio0, pio_claim_unused_sm(pio0, true), CLOCK_PIN1, CLOCK_FREQUENCY * 2);
-    init_clock_pio3(pio1, pio_claim_unused_sm(pio1, true), CLOCK_PIN2, CLOCK_FREQUENCY);
-#endif
+    clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
 //    clock_init(CLOCK_PIN,CLOCK_FREQUENCY);
 //    clock_init(CLOCK_PIN2,CLOCK_FREQUENCY2);
     uint offset = pio_add_program(PIO_74HC595, &program595);
