@@ -442,9 +442,16 @@ int main() {
     }
 
     keyboard_init();
-    mouse_init();
-//
-//    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+
+    gpio_init(NES_GPIO_DATA);
+    gpio_set_dir(NES_GPIO_DATA, 0);
+
+    if (gpio_get(NES_GPIO_DATA)) {
+        nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    } else {
+        mouse_init();
+    }
+
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
