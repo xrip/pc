@@ -53,24 +53,12 @@ void clock_init(uint pin, uint32_t frequency) {
     if (!sm) {
         sm = pio_claim_unused_sm(pio0, true);
     }
-    init_clock_pio3(pio0, sm, pin, frequency);
-/*    gpio_set_function(pin, GPIO_FUNC_PWM);
-    uint slice_num = pwm_gpio_to_slice_num(pin);
-
-    // Calculate the PWM wrap value for the target frequency
-    uint32_t pwm_clk = clock_get_hz(clk_sys);           // System clock
-    uint32_t wrap = (pwm_clk / frequency) - 1;   // Wrap value
-
-    // Configure PWM
-    pwm_set_wrap(slice_num, wrap);                      // Set the PWM period
-    pwm_set_gpio_level(pin, wrap / 2);           // Set duty cycle to 50%
-    pwm_set_enabled(slice_num, true);                   // Enable PWM*/
+    init_clock_pio(pio0, sm, pin, frequency);
 }
 
 void init_74hc595() {
     clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
-//    clock_init(CLOCK_PIN,CLOCK_FREQUENCY);
-//    clock_init(CLOCK_PIN2,CLOCK_FREQUENCY2);
+
     uint offset = pio_add_program(PIO_74HC595, &program595);
     pio_sm_config c = pio_get_default_sm_config();
 

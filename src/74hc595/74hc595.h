@@ -81,7 +81,7 @@ static inline void clock3_program_init(PIO pio, uint sm, uint offset, uint pin, 
     pio_sm_set_enabled(pio, sm, true);
 }
 
-static inline void init_clock_pio3(PIO pio,uint sm,uint pin, uint freq) {
+static inline void init_clock_pio(PIO pio, uint sm, uint pin, uint freq) {
 
     uint offset = pio_add_program(pio, &clock_program);
     clock3_program_init(pio,sm,offset,pin,freq);
