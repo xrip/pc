@@ -114,6 +114,9 @@ extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
 extern pwm_config config;
 
+
+int mouse_available = false;
+
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
@@ -166,13 +169,14 @@ void __time_critical_func() second_core() {
 
     sem_acquire_blocking(&vga_start_semaphore);
 
-    absolute_time_t  now = get_absolute_time();
-    absolute_time_t  last_timer_tick = now,
-                     last_cursor_blink = now,
-                     last_sound_tick = now,
-                     last_frame_tick = now,
-                     last_dss_tick = now,
-                     last_sb_tick = now;
+    absolute_time_t now = get_absolute_time();
+    absolute_time_t last_timer_tick = now,
+            last_cursor_blink = now,
+            last_sound_tick = now,
+            last_frame_tick = now,
+            last_dss_tick = now,
+            last_sb_tick = now,
+            last_nespad_tick = now;
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
@@ -203,7 +207,6 @@ void __time_critical_func() second_core() {
 
         // Sound frequency 44100
         if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
-
 #if I2S_SOUND || PWM_SOUND
             int16_t samples[2] = { 0, 0 };
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
@@ -244,8 +247,14 @@ void __time_critical_func() second_core() {
 
         if (absolute_time_diff_us(last_frame_tick, now) >= 16667) {
             static uint8_t old_video_mode;
-            if (old_video_mode != videomode) {
 
+            if (!mouse_available) {
+#define MOUSE_SPEED 4
+                nespad_read();
+                sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
+            }
+
+            if (old_video_mode != videomode) {
                 if (1) {
                     switch (videomode) {
                         case TGA_160x200x16:
@@ -286,14 +295,11 @@ void __time_critical_func() second_core() {
                     graphics_set_mode(videomode);
                     old_video_mode = videomode;
                 }
-
-
             }
             last_frame_tick = now;
         }
         now = time_us_64();
         tight_loop_contents();
-
     }
     __unreachable();
 }
@@ -312,7 +318,7 @@ INLINE void _putchar(char character) {
         memmove(DEBUG_VRAM, DEBUG_VRAM + 80, 80 * 9);
         memset(DEBUG_VRAM + 80 * 9, 0, 80);
     }
-    uint8_t * vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
+    uint8_t *vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
 
     if ((unsigned) character >= 32) {
         if (character >= 96) character -= 32; // uppercase
@@ -443,15 +449,6 @@ int main() {
 
     keyboard_init();
 
-    gpio_init(NES_GPIO_DATA);
-    gpio_set_dir(NES_GPIO_DATA, 0);
-
-    if (gpio_get(NES_GPIO_DATA)) {
-        nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
-    } else {
-        mouse_init();
-    }
-
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
@@ -459,6 +456,16 @@ int main() {
 
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
+
+    gpio_init(NES_GPIO_DATA);
+    gpio_set_dir(NES_GPIO_DATA, 0);
+
+    if (gpio_get(NES_GPIO_DATA)) {
+        nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    } else {
+        mouse_init();
+        mouse_available = 1;
+    }
 
     if (FR_OK != f_mount(&fs, "0", 1)) {
         printf("SD Card not inserted or SD Card error!");
@@ -468,7 +475,7 @@ int main() {
         printf("No PSRAM detected.");
     }
 
-//    init_swap();
+    //    init_swap();
 
     sn76489_reset();
     reset86();
@@ -478,5 +485,4 @@ int main() {
         tight_loop_contents();
     }
     __unreachable();
-
 }
