@@ -1,3 +1,5 @@
+#include <hardware/clocks.h>
+
 #include "hardware/pio.h"
 
 #define nespad_wrap_target 0
@@ -30,10 +32,10 @@ static inline pio_sm_config nespad_program_get_default_config(uint offset) {
 
 static PIO pio = pio1;
 static uint8_t sm = -1;
-uint32_t nespad_state  = 0;  // Joystick 1
+uint32_t nespad_state  = 0xFF;  // Joystick 1
 uint32_t nespad_state2 = 0;  // Joystick 2
 
-int nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,uint8_t latPin) {
+int nespad_begin(uint8_t clkPin, uint8_t dataPin,uint8_t latPin) {
   if (pio_can_add_program(pio, &nespad_program) &&
       ((sm = pio_claim_unused_sm(pio, true)) >= 0)) {
     uint offset = pio_add_program(pio, &nespad_program);
@@ -56,7 +58,7 @@ int nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,uint8_t latPi
                                 ); // All pins
     sm_config_set_in_shift(&c, true, true, 32); // R shift, autopush @ 8 bits (@ 16 bits for 2 Joystick)
 
-    sm_config_set_clkdiv_int_frac(&c, cpu_khz / 1000, 0); // 1 MHz clock
+    sm_config_set_clkdiv_int_frac(&c, clock_get_hz(clk_sys) / 1000000, 0); // 1 MHz clock
 
 
 

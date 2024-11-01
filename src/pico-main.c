@@ -457,12 +457,11 @@ int main() {
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
-    gpio_init(NES_GPIO_DATA);
-    gpio_set_dir(NES_GPIO_DATA, 0);
+    nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    sleep_ms(5);
+    nespad_read();
 
-    if (gpio_get(NES_GPIO_DATA)) {
-        nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
-    } else {
+    if (nespad_state) {
         mouse_init();
         mouse_available = 1;
     }
