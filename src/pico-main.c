@@ -4,12 +4,10 @@
 #include <hardware/vreg.h>
 #include <pico/stdio.h>
 #include <pico/multicore.h>
+#include "psram_spi.h"
 
 #if !PICO_RP2350
-
-#include "psram_spi.h"
 #include "../../memops_opt/memops_opt.h"
-
 #else
 #include <hardware/structs/qmi.h>
 #include <hardware/structs/xip.h>
@@ -25,23 +23,18 @@
 #include "emu8950.h"
 #include "ps2_mouse.h"
 #include "74hc595/74hc595.h"
-#include "psram_spi.h"
 
 FATFS fs;
-i2s_config_t i2s_config;
-OPL *emu8950_opl;
-int sound_chips_clock = 0;
-void tandy_write(uint16_t reg, uint8_t value) {
+
 #if I2S_SOUND
-    sn76489_out(value);
-#else
-    if (!sound_chips_clock) {
-        (CLOCK_PIN, CLOCK_FREQUENCY);
-        sound_chips_clock = 1;
-    }
-    if (reg != 0xff) SN76489_write(value & 0xff);
+i2s_config_t i2s_config;
 #endif
-}
+
+#if !HARDWARE_SOUND
+OPL *emu8950_opl;
+#endif
+int sound_chips_clock = 0;
+
 
 extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
 
@@ -49,6 +42,17 @@ extern void adlib_init(uint32_t samplerate);
 
 extern void adlib_write(uintptr_t idx, uint8_t val);
 
+void tandy_write(uint16_t reg, uint8_t value) {
+#if I2S_SOUND
+    sn76489_out(value);
+#else
+    if (!sound_chips_clock) {
+        clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
+        sound_chips_clock = 1;
+    }
+    SN76489_write(value);
+#endif
+}
 
 
 void adlib_write_d(uint16_t reg, uint8_t value) {
@@ -56,7 +60,7 @@ void adlib_write_d(uint16_t reg, uint8_t value) {
     OPL_writeReg(emu8950_opl, reg, value);
 #else
     if (!sound_chips_clock) {
-        (CLOCK_PIN, CLOCK_FREQUENCY);
+        clock_init(CLOCK_PIN, CLOCK_FREQUENCY*4);
         sound_chips_clock = 1;
     }
     if (reg & 1) {
@@ -72,10 +76,10 @@ inline void cms_write(uint16_t reg, uint8_t val) {
     cms_out(reg, val);
 #else
     if (sound_chips_clock) {
-        (CLOCK_PIN, CLOCK_FREQUENCY * 2);
+        clock_init(CLOCK_PIN, CLOCK_FREQUENCY * 2);
         sound_chips_clock = 0;
     }
-    switch (reg - 0x220) {
+    switch (reg & 3) {
         case 0:
             SAA1099_write(0, 0, val);
             break;
@@ -109,8 +113,7 @@ static int sample_index = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
 extern pwm_config config;
-#define PWM_PIN0 (26)
-#define PWM_PIN1 (27)
+
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
 #if I2S_SOUND
@@ -119,8 +122,7 @@ void __time_critical_func() second_core() {
     i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
-#endif
-#if PWM_SOUND
+#elif PWM_SOUND
     config = pwm_get_default_config();
 
     gpio_set_function(PWM_LEFT_CHANNEL, GPIO_FUNC_PWM);
@@ -136,8 +138,7 @@ void __time_critical_func() second_core() {
 //    pwm_config_set_clkdiv(&config, clock_get_hz(clk_sys) / (1.19318f * MHZ));
     pwm_config_set_clkdiv(&config, 127);
     pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &config, true);
-#endif
-#if HARDWARE_SOUND
+#elif HARDWARE_SOUND
     init_74hc595();
     config = pwm_get_default_config();
     gpio_set_function(PCM_PIN, GPIO_FUNC_PWM);
@@ -147,9 +148,7 @@ void __time_critical_func() second_core() {
 #endif
 
 
-#if HARDWARE_SOUND
-//    pwm_set_gpio_level(22,0);
-#else
+#if !HARDWARE_SOUND
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 #endif
     blaster_reset();
@@ -423,17 +422,14 @@ int main() {
     set_sys_clock_hz(460000000, 0);
     *qmi_m0_timing = 0x60007303;
 //    psram_init(19);
-
 #else
     memcpy_wrapper_replace(NULL);
-    //vreg_set_voltage(VREG_VOLTAGE_1_30);
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
     set_sys_clock_khz(396 * 1000, true);
-
 #endif
-    int p = init_psram();
+    int psram = init_psram();
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -446,9 +442,9 @@ int main() {
     }
 
     keyboard_init();
-//    mouse_init();
+    mouse_init();
 //
-    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+//    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
@@ -461,7 +457,7 @@ int main() {
         printf("SD Card not inserted or SD Card error!");
         while (1);
     }
-    if (!p) {
+    if (!psram) {
         printf("No PSRAM detected.");
     }
 

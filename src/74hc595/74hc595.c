@@ -28,7 +28,6 @@ static const uint8_t  __aligned(4) reversed[] = {
 #endif
 
 static int SM_74HC595 = -1;
-
 static const uint16_t program_instructions595[] = {
         //     .wrap_target
         0x80a0, //  0: pull   block           side 0
@@ -47,13 +46,50 @@ static const struct pio_program program595 = {
         .origin = -1,
 };
 
+static int SM_CLOCK = -1;
+
+static const uint16_t clock_program_instructions[] = {
+        //     .wrap_target
+        0xa042, //  0: nop                    side 0
+        0x1000, //  1: jmp    0               side 1
+        //     .wrap
+};
+
+static const struct pio_program clock_program = {
+        .instructions = clock_program_instructions,
+        .length = 2,
+        .origin = -1,
+};
+
 
 void clock_init(uint pin, uint32_t frequency) {
-    static uint sm = 0;
-    if (!sm) {
-        sm = pio_claim_unused_sm(pio0, true);
+    if (-1 == SM_CLOCK) {
+        SM_CLOCK = pio_claim_unused_sm(PIO_CLOCK, true);
+
+        uint offset = pio_add_program(PIO_CLOCK, &clock_program);
+
+        pio_sm_config c = pio_get_default_sm_config();
+        sm_config_set_wrap(&c, offset, offset + 1);
+        sm_config_set_sideset(&c, 1, false, false);
+
+        // Map the state machine's OUT pin group to one pin, namely the `pin`
+        // parameter to this function.
+        sm_config_set_out_pins(&c, pin, 1);
+        // Set this pin's GPIO function (connect PIO to the pad)
+        pio_gpio_init(PIO_CLOCK, pin);
+
+        sm_config_set_sideset_pins(&c, pin);
+        // Set the pin direction to output at the PIO
+        pio_sm_set_consecutive_pindirs(PIO_CLOCK, SM_CLOCK, pin, 1, true);
+        // Load our configuration, and jump to the start of the program
+        pio_sm_init(PIO_CLOCK, SM_CLOCK, offset, &c);
+
+        pio_sm_set_clkdiv(PIO_CLOCK, SM_CLOCK, clock_get_hz(clk_sys) / (frequency * 2));
+        // Set the state machine running
+        pio_sm_set_enabled(PIO_CLOCK, SM_CLOCK, true);
+    } else {
+        pio_sm_set_clkdiv(PIO_CLOCK, SM_CLOCK, clock_get_hz(clk_sys) / (frequency * 2));
     }
-    init_clock_pio(pio0, sm, pin, frequency);
 }
 
 void init_74hc595() {
@@ -138,14 +174,14 @@ void SN76489_write(uint8_t byte) {
 
 // YM2413
 static inline void YM2413_write(uint8_t addr, uint8_t byte) {
-    const uint16_t a0 = addr ? A0 : 0;
+    const uint16_t a0 = addr << 8;
     write_74hc595(byte | a0 | LOW(OPL2), 4);
     write_74hc595(byte | a0 | HIGH(OPL2), a0 ? 30 : 5);
 }
 
 // SAA1099
 void SAA1099_write(uint8_t addr, uint8_t chip, uint8_t byte) {
-    const uint16_t a0 = addr ? A0 : 0;
+    const uint16_t a0 = addr << 8;
     const uint16_t cs = chip ? SAA_2_CS : SAA_1_CS;
 
     write_74hc595(byte | a0 | LOW(cs), 5);
@@ -153,18 +189,18 @@ void SAA1099_write(uint8_t addr, uint8_t chip, uint8_t byte) {
 }
 
 // YM3812 / YM2413
-void OPL2_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
-    const uint16_t a0 = addr ? A0 : 0;
-    const uint16_t a1 = register_set ? A1 : 0;
+void OPL3_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
+    const uint16_t a0 = addr << 8;
+    const uint16_t a1 = register_set << 9;
 
     write_74hc595(byte | a0 | a1 | LOW(OPL2), 5);
     write_74hc595(byte | a0 | a1 | HIGH(OPL2), 30);
 }
 
 // YM3812 / YMF262
-void OPL3_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
-    const uint16_t a0 = addr ? A0 : 0;
-    const uint16_t a1 = register_set ? A1 : 0;
+void OPL2_write_byte(uint16_t addr, uint16_t register_set, uint8_t byte) {
+    const uint16_t a0 = addr << 8;
+    const uint16_t a1 = register_set << 9;
 
     write_74hc595(byte | a0 | a1 | LOW(OPL3), 5);
     write_74hc595(byte | a0 | a1 | HIGH(OPL3), 0);
