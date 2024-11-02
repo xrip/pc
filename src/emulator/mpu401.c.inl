@@ -19,7 +19,7 @@ static int midi_insysex;
 
 
 #if defined(EMULATED_MIDI)
-struct {
+struct midi_channel_s {
     uint8_t playing;
     uint8_t note;
     uint8_t velocity;
@@ -61,20 +61,19 @@ static INLINE void parse_midi(uint32_t midi_command) {
         uint8_t velocity;
         uint8_t other;
     } *message = &midi_command;
+    struct midi_channel_s *channel = &midi_channels[ message->command & 0xf];
     switch (message->command >> 4) {
         case 0x9: {
             // Note ON
-            uint8_t channel = message->command & 0xf;
-            midi_channels[channel].playing = 1;
-            midi_channels[channel].sample_position = 0;
-            midi_channels[channel].note = message->note;
-            midi_channels[channel].velocity = message->velocity;
+            channel->playing = 1;
+            channel->sample_position = 0;
+            channel->note = message->note;
+            channel->velocity = message->velocity;
             break;
         }
         case 0x8: // Note OFF
-            uint8_t channel = message->command & 0xf;
-            midi_channels[channel].playing = 0;
-            midi_channels[channel].velocity = message->velocity;
+            channel->playing = 0;
+            channel->velocity = message->velocity;
             break;
         default:
             // printf("Unknown command %x message %04x \n", message->command, message->raw);
