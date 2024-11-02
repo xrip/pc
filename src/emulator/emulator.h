@@ -226,7 +226,7 @@ int16_t adlibgensample();
 
 extern void out_ems(uint16_t port, uint8_t data);
 extern int16_t covox_sample;
-
+extern int16_t midi_sample();
 
 
 #ifndef INLINE

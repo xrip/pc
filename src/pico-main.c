@@ -239,7 +239,7 @@ void __time_critical_func() second_core() {
 #endif
 
 #else
-            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample();
+            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample() + midi_sample();
             pwm_set_gpio_level(PCM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
 #endif
             last_sound_tick = now;

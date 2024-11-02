@@ -7,10 +7,9 @@
 extern int16_t keyboard_send(uint8_t data);
 #include "nespad.h"
 #else
-#include "mpu401.c.inl"
 #include <windows.h>
 #endif
-
+#include "mpu401.c.inl"
 #include "i8237.c.inl"
 
 
@@ -205,11 +204,9 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x278:
             covox_sample = (int16_t) (value - 128 << 6);
             return;
-#if !PICO_ON_DEVICE
         case 0x330:
         case 0x331:
             return mpu401_write(portnum, value);
-#endif
         case 0x378:
         case 0x37A:
             return dss_out(portnum, value);
@@ -428,11 +425,9 @@ uint16_t portin(uint16_t portnum) {
             return rtc_read(portnum);
         case 0x27A: // LPT2 status (covox is always ready)
             return 0;
-#if !PICO_ON_DEVICE
         case 0x330:
         case 0x331:
             return mpu401_read(portnum);
-#endif
         case 0x378:
         case 0x379:
             return dss_in(portnum);

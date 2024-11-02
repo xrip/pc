@@ -558,7 +558,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             samples[0] += covox_sample;
 
 
-            samples[0] = midi_sample();
+            samples[0] += midi_sample();
 
             samples[1] = samples[0];
 
