@@ -66,8 +66,6 @@ static INLINE void parse_midi(uint32_t midi_command) {
         case 0x9: {
             // Note ON
             uint8_t channel = message->command & 0xf;
-            // printf("%x %x %x %x %x\n", message->command, message->note, message->velocity, message->other, midi_command );
-            // printf("Note %d %d ON\n", message->note & 0x7f, message->velocity);
             midi_channels[channel].playing = 1;
             midi_channels[channel].sample_position = 0;
             midi_channels[channel].note = message->note;
@@ -76,8 +74,6 @@ static INLINE void parse_midi(uint32_t midi_command) {
         }
         case 0x8: // Note OFF
             uint8_t channel = message->command & 0xf;
-        // printf("%x %x %x %x %x\n", message->command, message->note, message->velocity, message->other, midi_command );
-        // printf("Note %d %d OFF\n", message->note & 0x7f, message->velocity);
             midi_channels[channel].playing = 0;
             midi_channels[channel].velocity = message->velocity;
             break;
