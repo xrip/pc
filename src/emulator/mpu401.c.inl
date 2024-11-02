@@ -51,7 +51,7 @@ int16_t midi_sample() {
             sample += midi_channels[channel].velocity * sinf(6.283f * frequency * midi_channels[channel].sample_position++ / SOUND_FREQUENCY);
         }
 
-    return (sample * 4);
+    return (sample * 64);
 }
 
 static INLINE void parse_midi(uint32_t midi_command) {
