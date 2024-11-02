@@ -2,10 +2,9 @@
 // https://www.blitter.com/~russtopia/MIDI/~jglatt/tech/midispec/messages.htm
 // https://newt.phys.unsw.edu.au/jw/notes.html
 // https://massimo-nazaria.github.io/midi-synth.html
-#include <math.h>
 #include <emulator/emulator.h>
 #define EMULATED_MIDI
-#define DEBUG_MPU401 1
+// #define DEBUG_MPU401 1
 
 enum { STATUS_READY = 0, STATUS_OUTPUT_NOT_READY = 0x40, STATUS_INPUT_NOT_READY = 0x80 };
 
@@ -22,6 +21,7 @@ static int midi_insysex;
 struct midi_channel_s {
     uint8_t playing;
     uint8_t note;
+    float frequency;
     uint8_t velocity;
     float sample_position;
 } midi_channels[16] = {0};
@@ -29,29 +29,17 @@ struct midi_channel_s {
 
 // Precomputed frequency table for MIDI notes 0 to 127
 static const float note_frequencies[128] = {
-    8.18, 8.66, 9.18, 9.72, 10.30, 10.91, 11.56, 12.25, 12.98, 13.75, 14.57, 15.43,
-    16.35, 17.32, 18.35, 19.45, 20.60, 21.83, 23.12, 24.50, 25.96, 27.50, 29.14, 30.87,
-    32.70, 34.65, 36.71, 38.89, 41.20, 43.65, 46.25, 49.00, 51.91, 55.00, 58.27, 61.74,
-    65.41, 69.30, 73.42, 77.78, 82.41, 87.31, 92.50, 98.00, 103.83, 110.00, 116.54, 123.47,
-    130.81, 138.59, 146.83, 155.56, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00, 233.08, 246.94,
-    261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
-    523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77,
-    1046.50, 1108.73, 1174.66, 1244.51, 1318.51, 1396.91, 1479.98, 1567.98, 1661.22, 1760.00, 1864.66, 1975.53,
-    2093.00, 2217.46, 2349.32, 2489.02, 2637.02, 2793.83, 2959.96, 3135.96, 3322.44, 3520.00, 3729.31, 3951.07,
-    4186.01, 4434.92, 4698.64, 4978.03, 5274.04, 5587.65, 5919.91, 6271.93, 6644.88, 7040.00, 7458.62, 7902.13,
-    8372.02, 8869.84, 9397.27, 9956.06, 10548.08, 11175.30, 11839.82, 12543.85
+    8.176,8.662,9.177,9.723,10.301,10.913,11.562,12.25,12.978,13.75,14.568,15.434,16.352,17.324,18.354,19.445,20.602,21.827,23.125,24.5,25.957,27.5,29.135,30.868,32.703,34.648,36.708,38.891,41.203,43.654,46.249,48.999,51.913,55,58.27,61.735,65.406,69.296,73.416,77.782,82.407,87.307,92.499,97.999,103.826,110,116.541,123.471,130.813,138.591,146.832,155.563,164.814,174.614,184.997,195.998,207.652,220,233.082,246.942,261.626,277.183,293.665,311.127,329.628,349.228,369.994,391.995,415.305,440,466.164,493.883,523.251,554.365,587.33,622.254,659.255,698.456,739.989,783.991,830.609,880,932.328,987.767,1046.502,1108.731,1174.659,1244.508,1318.51,1396.913,1479.978,1567.982,1661.219,1760,1864.655,1975.533,2093.005,2217.461,2349.318,2489.016,2637.02,2793.826,2959.955,3135.963,3322.438,3520,3729.31,3951.066,4186.009,4434.922,4698.636,4978.032,5274.041,5587.652,5919.911,6271.927,6644.875,7040,7458.62,7902.133,8372.018,8869.844,9397.273,9956.063,10548.082,11175.303,11839.822,12543.854
 };
 
 int16_t midi_sample() {
     float sample = 0;
     for (int channel = 0; channel < 16; channel++)
         if (midi_channels[channel].playing) {
-            const float frequency = note_frequencies[midi_channels[channel].note];
-
-            sample += midi_channels[channel].velocity * sinf(6.283f * frequency * midi_channels[channel].sample_position++ / SOUND_FREQUENCY);
+            sample += midi_channels[channel].velocity * sinf(6.283f * midi_channels[channel].frequency * midi_channels[channel].sample_position++ / SOUND_FREQUENCY);
         }
 
-    return (sample * 32);
+    return (sample*32);
 }
 
 static INLINE void parse_midi(uint32_t midi_command) {
@@ -60,7 +48,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
         uint8_t note;
         uint8_t velocity;
         uint8_t other;
-    } *message = &midi_command;
+    } * message = &midi_command;
     struct midi_channel_s *channel = &midi_channels[ message->command & 0xf];
     switch (message->command >> 4) {
         case 0x9: {
@@ -68,6 +56,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
             channel->playing = 1;
             channel->sample_position = 0;
             channel->note = message->note;
+            channel->frequency = note_frequencies[message->note];
             channel->velocity = message->velocity;
             break;
         }
@@ -76,8 +65,10 @@ static INLINE void parse_midi(uint32_t midi_command) {
             channel->velocity = message->velocity;
             break;
         default:
-            // printf("Unknown command %x message %04x \n", message->command, message->raw);
-
+#ifdef DEBUG_MPU401
+             printf("Unknown command %x message %04x \n", message->command >> 4, midi_command);
+#endif
+            break;
 
     }
     // printf("%x %x %x %x %x\n", message->command, message->note, message->velocity, message->other, midi_command );
