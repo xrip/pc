@@ -49,7 +49,7 @@ int16_t midi_sample() {
             const float amplitude = (float) midi_channels[channel].velocity / 127.0f;
             const float frequency = note_frequencies[midi_channels[channel].note];
 
-            sample += amplitude * sinf(2.0f * M_PI * frequency * (midi_channels[channel].sample_position++ / SOUND_FREQUENCY));
+            sample += amplitude * sinf(6.283 * frequency * midi_channels[channel].sample_position++ / SOUND_FREQUENCY);
         }
 
     return roundf(sample * 4096);
