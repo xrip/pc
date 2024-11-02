@@ -488,6 +488,8 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
 
 static INLINE void pcm_write(int mode, int16_t sample);
 extern uint16_t timeconst;
+
+extern "C" int16_t midi_sample();
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current, queryperf;
 
@@ -554,6 +556,9 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
 
             samples[0] += covox_sample;
+
+
+            samples[0] = midi_sample();
 
             samples[1] = samples[0];
 
