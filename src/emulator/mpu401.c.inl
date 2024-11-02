@@ -46,13 +46,12 @@ int16_t midi_sample() {
     float sample = 0;
     for (int channel = 0; channel < 16; channel++)
         if (midi_channels[channel].playing) {
-            const float amplitude = (float) midi_channels[channel].velocity / 127.0f;
             const float frequency = note_frequencies[midi_channels[channel].note];
 
-            sample += amplitude * sinf(6.283 * frequency * midi_channels[channel].sample_position++ / SOUND_FREQUENCY);
+            sample += midi_channels[channel].velocity * sinf(6.283f * frequency * midi_channels[channel].sample_position++ / SOUND_FREQUENCY);
         }
 
-    return roundf(sample * 4096);
+    return (sample * 4);
 }
 
 static INLINE void parse_midi(uint32_t midi_command) {

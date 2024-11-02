@@ -215,6 +215,7 @@ void __time_critical_func() second_core() {
             samples[0] += sn76489_sample();
             samples[0] += covox_sample;
             samples[0] += last_sb_sample;
+            samples[0] += midi_sample();
 
             if (speakerenabled)
                 samples[0] += speaker_sample();
@@ -234,8 +235,8 @@ void __time_critical_func() second_core() {
 
             }
 #else
-            pwm_set_gpio_level(PWM_PIN0, (uint16_t) ((int32_t) samples[0] + 0x8000L) >> 4);
-            pwm_set_gpio_level(PWM_PIN1, (uint16_t) ((int32_t) samples[1] + 0x8000L) >> 4);
+            pwm_set_gpio_level(PWM_LEFT_CHANNEL, (uint16_t) ((int32_t) samples[0] + 0x8000L) >> 4);
+            pwm_set_gpio_level(PWM_RIGHT_CHANNEL, (uint16_t) ((int32_t) samples[1] + 0x8000L) >> 4);
 #endif
 
 #else
