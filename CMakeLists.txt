@@ -23,14 +23,14 @@ endforeach ()
 message(STATUS "")
 
 #add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
-add_compile_options(-fms-extensions -O2)
+add_compile_options(-ffast-math -fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
     add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
-#    add_compile_options(-flto -fwhole-program)
+    add_compile_options(-flto -fwhole-program)
     pico_sdk_init()
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)

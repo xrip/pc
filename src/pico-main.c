@@ -176,10 +176,11 @@ void __time_critical_func() second_core() {
             last_frame_tick = now,
             last_dss_tick = now,
             last_sb_tick = now,
-            last_nespad_tick = now;
+            last_midi_tick = now;
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
+    int16_t last_midi_sample = 0;
 
 
     while (true) {
@@ -205,6 +206,12 @@ void __time_critical_func() second_core() {
             last_dss_tick = now;
         }
 
+#if PICO_RP2040
+        if (absolute_time_diff_us(last_midi_tick, now) >= (1000000 / 22050)) {
+            last_midi_sample = midi_sample();
+            last_midi_tick = now;
+        }
+#endif
         // Sound frequency 44100
         if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
 #if I2S_SOUND || PWM_SOUND
@@ -219,7 +226,9 @@ void __time_critical_func() second_core() {
 
             if (speakerenabled)
                 samples[0] += speaker_sample();
-
+#if PICO_RP2350
+            samples[0] = midi_sample();
+#endif
             samples[1] = samples[0];
 
             cms_samples(samples);
@@ -240,7 +249,10 @@ void __time_critical_func() second_core() {
 #endif
 
 #else
-            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample() + midi_sample();
+#if PICO_RP2350
+            last_midi_sample = midi_sample();
+#endif
+            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample() + last_midi_sample;
             pwm_set_gpio_level(PCM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
 #endif
             last_sound_tick = now;

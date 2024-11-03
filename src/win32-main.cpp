@@ -17,7 +17,7 @@ DWORD bytesWritten;
 DCB dcb;
 OPL *emu8950_opl;
 
-#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 50))
+#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 10))
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {};
 static int sample_index = 0;
 
@@ -504,10 +504,12 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     uint32_t elapsed_frame_tics = 0;
     uint32_t last_dss_tick = 0;
     uint32_t last_sb_tick = 0;
+    uint32_t last_midi_tick = 0;
     uint32_t last_sound_tick = 0;
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
+    int16_t last_midi_sample = 0;
 
     uint16_t old_timeconst = timeconst;
 
@@ -529,6 +531,13 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             last_dss_sample = dss_sample();
             //pcm_write(last_dss_sample);
             last_dss_tick = elapsedTime;
+        }
+
+        // Disney Sound Source frequency ~7KHz
+        if (elapsedTime - last_midi_tick >= hostfreq / 22050) {
+             // last_midi_sample = midi_sample();
+            //pcm_write(last_dss_sample);
+            last_midi_tick = elapsedTime;
         }
 
         // Sound Blaster
