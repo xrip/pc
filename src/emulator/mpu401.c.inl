@@ -4,7 +4,7 @@
 // https://massimo-nazaria.github.io/midi-synth.html
 #include <math.h>
 #include <emulator/emulator.h>
-// #define EMULATED_MIDI
+#define EMULATED_MIDI
 #define DEBUG_MPU401 1
 
 enum { STATUS_READY = 0, STATUS_OUTPUT_NOT_READY = 0x40, STATUS_INPUT_NOT_READY = 0x80 };
