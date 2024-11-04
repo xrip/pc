@@ -23,7 +23,7 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
-#define SOUND_FREQUENCY (49716)
+#define SOUND_FREQUENCY (44100)
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 #define VIDEORAM_START (0xA0000)
