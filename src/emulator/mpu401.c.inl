@@ -5,7 +5,7 @@
 #include <math.h>
 #include <emulator/emulator.h>
 #define EMULATED_MIDI
-//#define DEBUG_MPU401 1
+// #define DEBUG_MPU401 1
 
 enum { STATUS_READY = 0, STATUS_OUTPUT_NOT_READY = 0x40, STATUS_INPUT_NOT_READY = 0x80 };
 
@@ -167,9 +167,6 @@ static INLINE void parse_midi(uint32_t midi_command) {
             channel->note = message->note;
             channel->frequency_m100 = note_frequencies_m_100[message->note];
             channel->velocity = message->velocity;
-            if ((message->command & 0xf) == 9) {
-                 channel->frequency_m100 = note_frequencies_m_100[message->note] / 2; /// ???
-            }
             break;
         }
         case 0x8: // Note OFF
