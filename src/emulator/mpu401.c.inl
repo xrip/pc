@@ -99,13 +99,14 @@ static const int8_t sin_m128[1024] = {
 
 
 #define MAX_MIDI_VOICES 32
-struct __attribute__((packed, aligned)) midi_voice_s  {
+
+struct __attribute__((packed, aligned)) midi_voice_s {
     uint8_t playing;
     uint8_t channel;
     uint8_t note;
     int32_t frequency_m100;
     uint8_t velocity;
-} midi_voices[MAX_MIDI_VOICES] = { 0 };
+} midi_voices[MAX_MIDI_VOICES] = {0};
 
 
 static INLINE int8_t sin_m_128(size_t idx) {
@@ -124,7 +125,7 @@ int16_t midi_sample() {
     static uint32_t sample_position = 0;
     int32_t sample = 0;
     struct midi_voice_s *voice = &midi_voices;
-    for (int voice_number = 0; voice_number < 16; ++voice_number) {
+    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
         if (voice->playing) {
             sample += voice->velocity * sin100sf_m_128_t(voice->frequency_m100 * sample_position);
         }
@@ -133,20 +134,24 @@ int16_t midi_sample() {
     sample_position++;
     return sample >> 4; // / 128 * 32
 }
+
 // Sample usage
 static inline int32_t apply_pitch_bend(int32_t original_freq_m_100, int pitch_bend_value) {
-    int deviation_percent = ((pitch_bend_value - 8192) * 100) / 8192;  // Integer deviation
+    int deviation_percent = ((pitch_bend_value - 8192) * 100) / 8192; // Integer deviation
     int pitch_bend_factor;
 
-    if (deviation_percent > 0) {  // Upward bend
-        pitch_bend_factor = 1000 + (deviation_percent * 123) / 100;  // 1123 for +2 semitones
-    } else {  // Downward bend
-        pitch_bend_factor = 1000 + (deviation_percent * 109) / 100;  // 891 for -2 semitones
+    if (deviation_percent > 0) {
+        // Upward bend
+        pitch_bend_factor = 1000 + (deviation_percent * 123) / 100; // 1123 for +2 semitones
+    } else {
+        // Downward bend
+        pitch_bend_factor = 1000 + (deviation_percent * 109) / 100; // 891 for -2 semitones
     }
 
     int32_t new_freq_m_100 = (original_freq_m_100 * pitch_bend_factor) / 1000;
     return new_freq_m_100;
 }
+
 typedef struct __attribute__((packed)) {
     uint8_t command;
     uint8_t note;
@@ -155,7 +160,7 @@ typedef struct __attribute__((packed)) {
 } midi_command_t;
 
 static INLINE void parse_midi(uint32_t midi_command) {
-    const midi_command_t *message = (midi_command_t*)&midi_command;
+    const midi_command_t *message = (midi_command_t *) &midi_command;
     // struct midi_voice_s *channel = &midi_voices[message->command & 0xf];
     switch (message->command >> 4) {
         case 0x8: // Note OFF
@@ -166,7 +171,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
                     break;
                 }
             }
-        break;
+            break;
         case 0x9: // Note ON
             for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                 struct midi_voice_s *voice = &midi_voices[voice_number];
@@ -186,7 +191,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
         case 0xC: {
             channel->instrument = message->note;
             break;
-        }
+        } */
         // MIDI Controller message
         case 0xB: {
             switch (message->note) {
@@ -194,10 +199,17 @@ static INLINE void parse_midi(uint32_t midi_command) {
                     //  Left-rigt pan
                     break;
                 case 0x7:
-                    channel->velocity += message->velocity;
+                    /*
+                        Artyom Chitailo, [05.11.2024 18:59]
+ну перемножить vol на vel и сдвинуть на 7 бит вправо
+                */
+                    // channel->velocity += message->velocity;
                     break;
+                case 0x78:
                 case 0x7b:
-                    channel->playing = 0;
+                    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
+                        midi_voices[voice_number].playing = 0;
+                    }
                     break;
                 case 0x79: // all controllers off
                     break;
@@ -206,13 +218,12 @@ static INLINE void parse_midi(uint32_t midi_command) {
             }
             break;
         }
-        case 0xE: {
+        case 0xE:
             // should it take base freq or current?
-            channel->frequency_m100 = apply_pitch_bend(note_frequencies_m_100[channel->note], message->note * 128 + message->velocity);
+            //channel->frequency_m100 = apply_pitch_bend(note_frequencies_m_100[channel->note], message->note * 128 + message->velocity);
             //channel->frequency_m100 = apply_pitch_bend(channel->frequency_m100, message->note * 128 + message->velocity);
             break;
-        }
-*/
+
         default:
 #ifdef DEBUG_MPU401
             printf("Unknown command %x message %04x \n", message->command >> 4, midi_command);
