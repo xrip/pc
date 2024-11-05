@@ -111,6 +111,7 @@ struct __attribute__((packed, aligned)) midi_voice_s {
 #define MIDI_CHANNELS 16
 
 struct __attribute__((packed, aligned)) midi_channel_s {
+    uint8_t program;
     uint8_t sustain;
     uint8_t volume;
     int pitch;
@@ -187,18 +188,22 @@ static INLINE void parse_midi(uint32_t midi_command) {
                     voice->channel = message->command & 0xf;
                     voice->note = message->note;
                     voice->frequency_m100 = note_frequencies_m_100[message->note];
-                    voice->velocity = message->velocity;
+                    if (midi_channels[voice->channel].volume) {
+                        voice->velocity = (midi_channels[voice->channel].volume * message->velocity) >> 7;
+                    } else {
+                        voice->velocity = message->velocity;
+                    }
                     break;
                 }
             }
 
             break;
 
-        /*
         case 0xC: {
-            channel->instrument = message->note;
+            midi_channels[message->command & 0xf].program = message->note;
+            printf("channel %i program %i\n", message->command & 0xf, message->note);
             break;
-        } */
+        }
         // MIDI Controller message
         case 0xB: {
             uint8_t channel = message->command & 0xf;
@@ -208,7 +213,11 @@ static INLINE void parse_midi(uint32_t midi_command) {
                     break;
                 case 0x7:
                     midi_channels[channel].volume = message->velocity;
-                // printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
+                    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
+                        if (midi_voices[voice_number].channel == channel) {
+                            midi_voices[voice_number].velocity = (message->velocity * midi_voices[voice_number].velocity) >> 7;
+                        }
+                    printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
                 /*
                     Artyom Chitailo, [05.11.2024 18:59]
 ну перемножить vol на vel и сдвинуть на 7 бит вправо
