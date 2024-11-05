@@ -131,7 +131,7 @@ int16_t midi_sample() {
         voice++;
     }
     sample_position++;
-    return sample >> 2; // / 128 * 32
+    return sample >> 4; // / 128 * 32
 }
 // Sample usage
 static inline int32_t apply_pitch_bend(int32_t original_freq_m_100, int pitch_bend_value) {
