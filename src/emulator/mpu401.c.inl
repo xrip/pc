@@ -109,9 +109,11 @@ struct __attribute__((packed, aligned)) midi_voice_s {
 } midi_voices[MAX_MIDI_VOICES] = {0};
 
 #define MIDI_CHANNELS 16
+
 struct __attribute__((packed, aligned)) midi_channel_s {
     uint8_t sustain;
     uint8_t volume;
+    int pitch;
 } midi_channels[MIDI_CHANNELS] = {0};
 
 static INLINE int8_t sin_m_128(size_t idx) {
@@ -206,23 +208,25 @@ static INLINE void parse_midi(uint32_t midi_command) {
                     break;
                 case 0x7:
                     midi_channels[channel].volume = message->velocity;
-                    // printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
-                    /*
-                        Artyom Chitailo, [05.11.2024 18:59]
+                // printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
+                /*
+                    Artyom Chitailo, [05.11.2024 18:59]
 ну перемножить vol на vel и сдвинуть на 7 бит вправо
-                */
-                    // channel->velocity += message->velocity;
+            */
+                // channel->velocity += message->velocity;
                     break;
                 case 0x40:
-                        midi_channels[channel].sustain = message->velocity > 63;
-                        printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
+                    midi_channels[channel].sustain = message->velocity > 63;
+                    printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
                     break;
                 case 0x78:
                 case 0x7b:
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
+                        // if (midi_voices[voice_number].channel == message->velocity)
                             midi_voices[voice_number].playing = 0;
                     break;
                 case 0x79: // all controllers off
+                    memset(midi_channels, 0, sizeof(midi_channels));
                     break;
                 default:
                     printf("unknown controller %x\n", message->note);
@@ -233,7 +237,9 @@ static INLINE void parse_midi(uint32_t midi_command) {
             // should it take base freq or current?
             //channel->frequency_m100 = apply_pitch_bend(note_frequencies_m_100[channel->note], message->note * 128 + message->velocity);
             //channel->frequency_m100 = apply_pitch_bend(channel->frequency_m100, message->note * 128 + message->velocity);
-            break;
+                midi_channels[message->command & 0xf].pitch = message->note * 128 + message->velocity;
+                printf("channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
+                break;
 
         default:
 #ifdef DEBUG_MPU401
