@@ -98,14 +98,14 @@ static const int8_t sin_m128[1024] = {
 };
 
 
-struct midi_channel_s {
+#define MAX_MIDI_VOICES 32
+struct __attribute__((packed, aligned)) midi_voice_s  {
     uint8_t playing;
+    uint8_t channel;
     uint8_t note;
-    uint8_t instrument;
     int32_t frequency_m100;
     uint8_t velocity;
-    int32_t sample_position;
-} midi_channels[16] = {0};
+} midi_voices[MAX_MIDI_VOICES] = { 0 };
 
 
 static INLINE int8_t sin_m_128(size_t idx) {
@@ -121,14 +121,16 @@ static INLINE int32_t sin100sf_m_128_t(int32_t a) {
 }
 
 int16_t midi_sample() {
+    static uint32_t sample_position = 0;
     int32_t sample = 0;
-    struct midi_channel_s *channel = &midi_channels;
-    for (int channel_number = 0; channel_number < 16; ++channel_number) {
-        if (channel->playing) {
-            sample += channel->velocity * sin100sf_m_128_t(channel->frequency_m100 * channel->sample_position++);
+    struct midi_voice_s *voice = &midi_voices;
+    for (int voice_number = 0; voice_number < 16; ++voice_number) {
+        if (voice->playing) {
+            sample += voice->velocity * sin100sf_m_128_t(voice->frequency_m100 * sample_position);
         }
-        channel++;
+        voice++;
     }
+    sample_position++;
     return sample >> 2; // / 128 * 32
 }
 // Sample usage
@@ -153,25 +155,38 @@ typedef struct __attribute__((packed)) {
 } midi_command_t;
 
 static INLINE void parse_midi(uint32_t midi_command) {
-    midi_command_t *message = (midi_command_t*)&midi_command;
-    struct midi_channel_s *channel = &midi_channels[message->command & 0xf];
+    const midi_command_t *message = (midi_command_t*)&midi_command;
+    // struct midi_voice_s *channel = &midi_voices[message->command & 0xf];
     switch (message->command >> 4) {
+        case 0x8: // Note OFF
+            for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
+                struct midi_voice_s *voice = &midi_voices[voice_number];
+                if (voice->playing && voice->note == message->note) {
+                    voice->playing = 0;
+                    break;
+                }
+            }
+        break;
+        case 0x9: // Note ON
+            for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
+                struct midi_voice_s *voice = &midi_voices[voice_number];
+                if (!voice->playing) {
+                    voice->playing = 1;
+                    voice->channel = message->command & 0x0f;
+                    voice->note = message->note;
+                    voice->frequency_m100 = note_frequencies_m_100[message->note];
+                    voice->velocity = message->velocity;
+                    break;
+                }
+            }
+
+            break;
+
+        /*
         case 0xC: {
             channel->instrument = message->note;
             break;
         }
-        case 0x9: {
-            // Note ON
-            channel->playing = 1;
-            channel->sample_position = 0;
-            channel->note = message->note;
-            channel->frequency_m100 = note_frequencies_m_100[message->note];
-            channel->velocity = message->velocity;
-            break;
-        }
-        case 0x8: // Note OFF
-            channel->playing = 0;
-            break;
         // MIDI Controller message
         case 0xB: {
             switch (message->note) {
@@ -197,7 +212,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
             //channel->frequency_m100 = apply_pitch_bend(channel->frequency_m100, message->note * 128 + message->velocity);
             break;
         }
-
+*/
         default:
 #ifdef DEBUG_MPU401
             printf("Unknown command %x message %04x \n", message->command >> 4, midi_command);
