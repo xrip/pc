@@ -252,6 +252,8 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                         // if (midi_voices[voice_number].channel == channel)
                         midi_voices[voice_number].playing = 0;
+
+                    active_voice_bitmask = 0;
                     break;
                 case 0x79: // all controllers off
                     memset(midi_channels, 0, sizeof(midi_channels));
