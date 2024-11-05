@@ -224,7 +224,7 @@ static INLINE void parse_midi(const uint32_t midi_command) {
             break;
 
         case 0xC: {
-            midi_channels[message->command & 0xf].program = message->note;
+            midi_channels[channel].program = message->note;
             // printf("channel %i program %i\n", message->command & 0xf, message->note);
             break;
         }
