@@ -169,6 +169,7 @@ typedef struct __attribute__((packed)) {
 
 static INLINE void parse_midi(uint32_t midi_command) {
     const midi_command_t *message = (midi_command_t *) &midi_command;
+    uint8_t channel = message->command & 0xf;
     // struct midi_voice_s *channel = &midi_voices[message->command & 0xf];
     switch (message->command >> 4) {
         case 0x8: // Note OFF
@@ -185,11 +186,14 @@ static INLINE void parse_midi(uint32_t midi_command) {
                 struct midi_voice_s *voice = &midi_voices[voice_number];
                 if (!voice->playing) {
                     voice->playing = 1;
-                    voice->channel = message->command & 0xf;
+                    voice->channel = channel;
                     voice->note = message->note;
-                    voice->frequency_m100 = note_frequencies_m_100[message->note];
+
+                    voice->frequency_m100 = apply_pitch_bend(
+                        note_frequencies_m_100[message->note], midi_channels[channel].pitch);
+
                     if (midi_channels[voice->channel].volume) {
-                        voice->velocity = (midi_channels[voice->channel].volume * message->velocity) >> 7;
+                        voice->velocity = (midi_channels[channel].volume * message->velocity) >> 7;
                     } else {
                         voice->velocity = message->velocity;
                     }
@@ -201,44 +205,39 @@ static INLINE void parse_midi(uint32_t midi_command) {
 
         case 0xC: {
             midi_channels[message->command & 0xf].program = message->note;
-            printf("channel %i program %i\n", message->command & 0xf, message->note);
+            // printf("channel %i program %i\n", message->command & 0xf, message->note);
             break;
         }
         // MIDI Controller message
         case 0xB: {
-            uint8_t channel = message->command & 0xf;
             switch (message->note) {
                 case 0x0A:
                     //  Left-rigt pan
                     break;
                 case 0x7:
+                    // printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
                     midi_channels[channel].volume = message->velocity;
-                    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
+                    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                         if (midi_voices[voice_number].channel == channel) {
-                            midi_voices[voice_number].velocity = (message->velocity * midi_voices[voice_number].velocity) >> 7;
+                            midi_voices[voice_number].velocity = message->velocity * midi_voices[voice_number].velocity >> 7;
                         }
-                    printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
-                /*
-                    Artyom Chitailo, [05.11.2024 18:59]
-ну перемножить vol на vel и сдвинуть на 7 бит вправо
-            */
-                // channel->velocity += message->velocity;
+                    }
                     break;
                 case 0x40:
                     midi_channels[channel].sustain = message->velocity > 63;
-                    printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
+                    // printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
                     break;
                 case 0x78:
                 case 0x7b:
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
-                        // if (midi_voices[voice_number].channel == message->velocity)
+                        if (midi_voices[voice_number].channel == channel)
                             midi_voices[voice_number].playing = 0;
                     break;
                 case 0x79: // all controllers off
                     memset(midi_channels, 0, sizeof(midi_channels));
                     break;
                 default:
-                    printf("unknown controller %x\n", message->note);
+                    // printf("unknown controller %x\n", message->note);
             }
             break;
         }
@@ -246,8 +245,15 @@ static INLINE void parse_midi(uint32_t midi_command) {
             // should it take base freq or current?
             //channel->frequency_m100 = apply_pitch_bend(note_frequencies_m_100[channel->note], message->note * 128 + message->velocity);
             //channel->frequency_m100 = apply_pitch_bend(channel->frequency_m100, message->note * 128 + message->velocity);
-                midi_channels[message->command & 0xf].pitch = message->note * 128 + message->velocity;
-                printf("channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
+                midi_channels[channel].pitch = message->note * 128 + message->velocity;
+                // printf("channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
+
+            for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
+                if (midi_voices[voice_number].channel == channel) {
+                    // printf("123 channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
+                    midi_voices[voice_number].frequency_m100 = apply_pitch_bend(
+                        midi_voices[voice_number].frequency_m100, midi_channels[channel].pitch);
+                }
                 break;
 
         default:
