@@ -230,7 +230,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
                 case 0x78:
                 case 0x7b:
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
-                        if (midi_voices[voice_number].channel == channel)
+                        // if (midi_voices[voice_number].channel == channel)
                             midi_voices[voice_number].playing = 0;
                     break;
                 case 0x79: // all controllers off
