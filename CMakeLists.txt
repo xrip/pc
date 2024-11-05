@@ -133,7 +133,7 @@ else ()
 
 #            I2S_SOUND
 
-            #PWM_SOUND
+#            PWM_SOUND
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
             PWM_BEEPER=28

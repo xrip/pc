@@ -108,6 +108,11 @@ struct __attribute__((packed, aligned)) midi_voice_s {
     uint8_t velocity;
 } midi_voices[MAX_MIDI_VOICES] = {0};
 
+#define MIDI_CHANNELS 16
+struct __attribute__((packed, aligned)) midi_channel_s {
+    uint8_t sustain;
+    uint8_t volume;
+} midi_channels[MIDI_CHANNELS] = {0};
 
 static INLINE int8_t sin_m_128(size_t idx) {
     if (idx < 1024) return sin_m128[idx];
@@ -126,13 +131,13 @@ int16_t midi_sample() {
     int32_t sample = 0;
     struct midi_voice_s *voice = &midi_voices;
     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
-        if (voice->playing) {
+        if (voice->playing || midi_channels[voice->channel].sustain) {
             sample += voice->velocity * sin100sf_m_128_t(voice->frequency_m100 * sample_position);
         }
         voice++;
     }
     sample_position++;
-    return sample >> 4; // / 128 * 32
+    return sample >> 3; // / 128 * 32
 }
 
 // Sample usage
@@ -177,7 +182,7 @@ static INLINE void parse_midi(uint32_t midi_command) {
                 struct midi_voice_s *voice = &midi_voices[voice_number];
                 if (!voice->playing) {
                     voice->playing = 1;
-                    voice->channel = message->command & 0x0f;
+                    voice->channel = message->command & 0xf;
                     voice->note = message->note;
                     voice->frequency_m100 = note_frequencies_m_100[message->note];
                     voice->velocity = message->velocity;
@@ -194,26 +199,32 @@ static INLINE void parse_midi(uint32_t midi_command) {
         } */
         // MIDI Controller message
         case 0xB: {
+            uint8_t channel = message->command & 0xf;
             switch (message->note) {
                 case 0x0A:
                     //  Left-rigt pan
                     break;
                 case 0x7:
+                    midi_channels[channel].volume = message->velocity;
+                    // printf("channel %i volume %i\n", channel, midi_channels[channel].volume);
                     /*
                         Artyom Chitailo, [05.11.2024 18:59]
 ну перемножить vol на vel и сдвинуть на 7 бит вправо
                 */
                     // channel->velocity += message->velocity;
                     break;
+                case 0x40:
+                        midi_channels[channel].sustain = message->velocity > 63;
+                        printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
+                    break;
                 case 0x78:
                 case 0x7b:
-                    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
-                        midi_voices[voice_number].playing = 0;
-                    }
+                    for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
+                            midi_voices[voice_number].playing = 0;
                     break;
                 case 0x79: // all controllers off
                     break;
-                defautl:
+                default:
                     printf("unknown controller %x\n", message->note);
             }
             break;
