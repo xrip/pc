@@ -1,7 +1,7 @@
 #pragma once
 #pragma GCC optimize("Ofast")
 #include "general-midi.h"
-// #define USE_SAMPLES
+#define USE_SAMPLES
 #if defined(USE_SAMPLES)
 #include "emulator/drum/drum.h"
 #include "emulator/acoustic/acoustic.h"
@@ -70,7 +70,7 @@ int16_t midi_sample() {
     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
         if (IS_ACTIVE_VOICE(voice_number) || IS_CHANNEL_SUSTAIN(voice->channel)) {
 #if defined(USE_SAMPLES)
-            if (channel->program < 7) {
+            if (midi_channels[voice->channel].program < 7) {
                 const int16_t* smpl = (int16_t*)_Yamaha_TG77_Ivory_Piano_C6_wav; /// _Casio_VZ_10M_Piano_C2_wav;
                 size_t z = __fast_mul(voice->frequency_m100, voice->sample_position++) / 104650;
                 if (z < 217022 / 2)
@@ -210,7 +210,7 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                     }
                     break;
                 case 0x40:
-                    message->velocity >= 64 ? SET_CHANNEL_SUSTAIN(channel) : SET_CHANNEL_SUSTAIN(channel);
+                    message->velocity & 64 ? SET_CHANNEL_SUSTAIN(channel) : SET_CHANNEL_SUSTAIN(channel);
                     // printf("channel %i sustain %i\n", channel, message->velocity);
                     break;
                 case 0x78:
@@ -245,8 +245,9 @@ static INLINE void parse_midi(const uint32_t midi_command) {
             break;
 
         default:
-#ifdef DEBUG_MPU401
             printf("Unknown command %x message %04x \n", message->command >> 4, midi_command);
+            #ifdef DEBUG_MPU401
+
 #endif
             break;
     }
