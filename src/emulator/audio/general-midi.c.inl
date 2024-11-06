@@ -37,7 +37,7 @@ midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
 uint32_t active_voice_bitmask = 0;
 uint32_t channels_sustain_bitmask = 0;
 
-static const int32_t note_frequencies_m_100[128] = {
+static const  int32_t note_frequencies_m_100[128] = {
     818, 866, 918, 972, 1030, 1091, 1156, 1225, 1298, 1375, 1457, 1543, 1635, 1732, 1835, 1945, 2060, 2183, 2312, 2450,
     2596, 2750, 2914, 3087, 3270, 3465, 3671, 3889, 4120, 4365, 4625, 4900, 5191, 5500, 5827, 6174, 6541, 6930, 7342,
     7778, 8241, 8731, 9250, 9800, 10383, 11000, 11654, 12347, 13081, 13859, 14683, 15556, 16481, 17461, 18500, 19600,
@@ -47,7 +47,7 @@ static const int32_t note_frequencies_m_100[128] = {
     295996, 313596, 332244, 352000, 372931, 395107, 418601, 443492, 469864, 497803, 527404, 558765, 591991, 627193,
     664488, 704000, 745862, 790213, 837202, 886984, 939727, 995606, 1054808, 1117530, 1183982, 1254385
 };
-static const int8_t sin_m128[1024] = {
+static const   int8_t sin_m128[1024] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02,
     0x03, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x05, 0x06,
     0x06, 0x06, 0x06, 0x06, 0x07, 0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x08, 0x08, 0x08, 0x09, 0x09,
@@ -137,6 +137,8 @@ static INLINE int32_t sin100sf_m_128_t(int32_t a) {
 }
 
 int16_t midi_sample() {
+    if (!active_voice_bitmask && !channels_sustain_bitmask) return 0;
+
     int32_t sample = 0;
     struct midi_voice_s *voice = (struct midi_voice_s *) midi_voices;
     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {

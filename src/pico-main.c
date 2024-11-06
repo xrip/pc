@@ -109,7 +109,6 @@ struct semaphore vga_start_semaphore;
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
 static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = {0};
 int active_buffer = 0;
-static int sample_index = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
 extern pwm_config config;
@@ -182,7 +181,7 @@ void __time_critical_func() second_core() {
     int16_t last_sb_sample = 0;
     int16_t last_midi_sample = 0;
 
-
+    int sample_index = 0;
     while (true) {
         if (absolute_time_diff_us(last_timer_tick, now) >= timer_period) {
             doirq(0);
@@ -206,12 +205,6 @@ void __time_critical_func() second_core() {
             last_dss_tick = now;
         }
 
-#if PICO_RP2040
-        if (absolute_time_diff_us(last_midi_tick, now) >= (1000000 / 22050)) {
-            last_midi_sample = midi_sample();
-            last_midi_tick = now;
-        }
-#endif
         // Sound frequency 44100
         if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
 #if I2S_SOUND || PWM_SOUND
@@ -226,9 +219,7 @@ void __time_critical_func() second_core() {
 
             if (speakerenabled)
                 samples[0] += speaker_sample();
-#if PICO_RP2350
-            samples[0] = midi_sample();
-#endif
+
             samples[1] = samples[0];
 
             cms_samples(samples);
