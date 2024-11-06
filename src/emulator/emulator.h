@@ -228,6 +228,9 @@ extern void out_ems(uint16_t port, uint8_t data);
 extern int16_t covox_sample;
 extern int16_t midi_sample();
 
+#if !PICO_ON_DEVICE
+#define __fast_mul(x,y) (x*y)
+#endif
 
 #ifndef INLINE
 #if defined(_MSC_VER)

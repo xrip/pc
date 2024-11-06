@@ -4,7 +4,12 @@
 // https://massimo-nazaria.github.io/midi-synth.html
 #include <math.h>
 #include <emulator/emulator.h>
+#include "drum/drum.h"
+#include "acoustic/acoustic.h"
+
 #define EMULATED_MIDI
+#define EMULATED_MIDI_USE_SAMPLES
+
 // #define DEBUG_MPU401 1
 
 enum { STATUS_READY = 0, STATUS_OUTPUT_NOT_READY = 0x40, STATUS_INPUT_NOT_READY = 0x80 };
@@ -98,14 +103,16 @@ static const int8_t sin_m128[1024] = {
 };
 
 
-#define MAX_MIDI_VOICES 32
+#define MAX_MIDI_VOICES 24
 
-struct midi_voice_s {
+struct /// __attribute__((packed, aligned))
+ midi_voice_s {
     uint8_t playing;
     uint8_t channel;
     uint8_t note;
-    int32_t frequency_m100;
     uint8_t velocity;
+    int32_t frequency_m100;
+    int32_t sample_position;
 } midi_voices[MAX_MIDI_VOICES] = {0};
 
 // Bitmask for active voices
@@ -113,7 +120,7 @@ uint32_t active_voice_bitmask = 0;
 
 // Set active voice in bitmask
 static INLINE void set_active_voice(int voice_idx) {
-    active_voice_bitmask |= (1 << voice_idx);
+    active_voice_bitmask |= 1 << voice_idx;
 }
 
 // Clear active voice in bitmask
@@ -128,18 +135,20 @@ static INLINE int is_active_voice(int voice_idx) {
 
 #define MIDI_CHANNELS 16
 
-struct midi_channel_s {
+typedef struct //__attribute__((packed, aligned))
+ midi_channel_s {
     uint8_t program;
     uint8_t sustain;
     uint8_t volume;
     int pitch;
-} midi_channels[MIDI_CHANNELS] = {0};
+} midi_channel_t;
+midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
 
-static INLINE int8_t sin_m_128(size_t angle) {
-    if (angle < 1024) return sin_m128[angle];
-    if (angle < 2048) return sin_m128[2047 - angle];
-    if (angle < (2048 + 1024)) return -sin_m128[angle - 2048];
-    return -sin_m128[4095 - angle];
+static INLINE int8_t sin_m_128(size_t idx) {
+    if (idx < 1024) return sin_m128[idx];
+    if (idx < 2048) return sin_m128[2047 - idx];
+    if (idx < (2048 + 1024)) return -sin_m128[idx - 2048];
+    return -sin_m128[4095 - idx];
 }
 
 static INLINE int32_t sin100sf_m_128_t(int32_t a) {
@@ -148,32 +157,93 @@ static INLINE int32_t sin100sf_m_128_t(int32_t a) {
 }
 
 int16_t midi_sample() {
-    static uint32_t sample_position = 0;
     int32_t sample = 0;
-    struct midi_voice_s *voice = &midi_voices;
+    struct midi_voice_s* voice = (struct midi_voice_s*)midi_voices;
     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
-        if (is_active_voice(voice_number)/* || midi_channels[voice->channel].sustain */) {
-            sample += voice->velocity * sin100sf_m_128_t(voice->frequency_m100 * sample_position);
+        midi_channel_t* channel = &midi_channels[voice->channel];
+        if (is_active_voice(voice_number) || channel->sustain) {
+#if defined(EMULATED_MIDI_USE_SAMPLES)
+            if (channel->program < 7) {
+                const int16_t* smpl = (int16_t*)_Yamaha_TG77_Ivory_Piano_C6_wav; /// _Casio_VZ_10M_Piano_C2_wav;
+                size_t z = __fast_mul(voice->frequency_m100, voice->sample_position++) / 104650;
+                if (z < 217022 / 2)
+                    sample += __fast_mul(voice->velocity, smpl[z]);  /// C6 == 1046.5 Hz;  6541]; // C2 == 65.41Hz
+                else
+                    voice->playing = 0;
+            } else if (voice->channel == 9) {
+                const int8_t* smpl;
+                switch (voice->note) {
+                    case 35: smpl = _35_wav; break;
+                    case 36: smpl = _36_wav; break;
+                    case 37: smpl = _37_wav; break;
+                    case 38: smpl = _38_wav; break;
+                    case 39: smpl = _39_wav; break;
+                    case 40: smpl = _40_wav; break;
+                    case 41: smpl = _41_wav; break;
+                    case 42: smpl = _42_wav; break;
+                    case 43: smpl = _43_wav; break;
+                    case 44: smpl = _44_wav; break;
+                    case 45: smpl = _45_wav; break;
+                    case 46: smpl = _46_wav; break;
+                    case 47: smpl = _47_wav; break;
+                    case 48: smpl = _48_wav; break;
+                    case 49: smpl = _49_wav; break;
+                    //case 50: smpl = _50_wav; break;
+                    case 51: smpl = _51_wav; break;
+                    case 52: smpl = _52_wav; break;
+                    case 53: smpl = _53_wav; break;
+                    case 54: smpl = _54_wav; break;
+                    case 55: smpl = _55_wav; break;
+                    case 56: smpl = _56_wav; break;
+                    case 57: smpl = _57_wav; break;
+                    case 58: smpl = _58_wav; break;
+                    case 59: smpl = _59_wav; break;
+                    case 60: smpl = _60_wav; break;
+                    case 61: smpl = _61_wav; break;
+                    case 62: smpl = _62_wav; break;
+                    case 63: smpl = _63_wav; break;
+                    case 64: smpl = _64_wav; break;
+                    case 65: smpl = _65_wav; break;
+                    case 66: smpl = _66_wav; break;
+                    case 67: smpl = _67_wav; break;
+                    case 68: smpl = _68_wav; break;
+                    case 69: smpl = _69_wav; break;
+                    case 70: smpl = _70_wav; break;
+                    case 71: smpl = _71_wav; break;
+                    case 72: smpl = _72_wav; break;
+                    case 73: smpl = _73_wav; break;
+                    case 74: smpl = _74_wav; break;
+                    case 75: smpl = _75_wav; break;
+                    case 76: smpl = _76_wav; break;
+                    case 77: smpl = _77_wav; break;
+                    case 78: smpl = _78_wav; break;
+                    case 79: smpl = _79_wav; break;
+                    case 80: smpl = _80_wav; break;
+                    case 81: smpl = _81_wav; break;
+                    default: smpl = _ZZ_Default_wav; break;
+                }
+                sample += __fast_mul(voice->velocity, smpl[voice->sample_position++]) << 8; // TODO: sz
+            } else
+#endif
+            {
+                sample += __fast_mul(voice->velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, voice->sample_position++))) << 8;
+            }
         }
         voice++;
     }
-    sample_position++;
-    return sample >> 3; // / 128 * 32
+    return sample >> 11; // / 128 * 32 + >> 8
 }
 
 // Sample usage
 static INLINE int32_t apply_pitch_bend(const int32_t original_freq_m_100, int deviation_percent) {
-    int pitch_bend_factor;
+    // Select multiplier based on deviation direction using a conditional expression
+    const int bend_factor = deviation_percent > 0 ? 123 : 109;
 
-    if (deviation_percent > 0) {
-        // Upward bend
-        pitch_bend_factor = 1000 + deviation_percent * 123 / 100; // 1123 for +2 semitones
-    } else {
-        // Downward bend
-        pitch_bend_factor = 1000 + deviation_percent * 109 / 100; // 891 for -2 semitones
-    }
+    // Calculate pitch bend factor and scale by 1000
+    const int32_t pitch_bend_factor = 1000 + __fast_mul(deviation_percent, bend_factor) / 100;
 
-    return original_freq_m_100 * pitch_bend_factor / 1000;
+    // Return frequency adjusted with pitch bend
+    return __fast_mul(original_freq_m_100, pitch_bend_factor) / 1000;
 }
 
 typedef struct __attribute__((packed)) {
@@ -206,10 +276,12 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                 if (!is_active_voice(voice_number)) {
                     voice->playing = 1;
                     voice->channel = channel;
+                    voice->sample_position = 0;
                     voice->note = message->note;
 
-                    voice->frequency_m100 = apply_pitch_bend(note_frequencies_m_100[message->note],
-                                                             midi_channels[channel].pitch);
+                    voice->frequency_m100 = apply_pitch_bend(
+                        note_frequencies_m_100[message->note], midi_channels[channel].pitch
+                    );
 
                     if (midi_channels[voice->channel].volume) {
                         voice->velocity = midi_channels[channel].volume * message->velocity >> 7;
@@ -244,14 +316,14 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                     }
                     break;
                 case 0x40:
-                    midi_channels[channel].sustain = message->velocity > 63;
-                // printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
+                    midi_channels[channel].sustain = message->velocity & 64;
+                    // printf("channel %i sustain %i\n", channel, midi_channels[channel].sustain);
                     break;
                 case 0x78:
                 case 0x7b:
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                         // if (midi_voices[voice_number].channel == channel)
-                        midi_voices[voice_number].playing = 0;
+                            midi_voices[voice_number].playing = 0;
 
                     active_voice_bitmask = 0;
                     break;
@@ -260,21 +332,21 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                     break;
                 default:
                     // printf("unknown controller %x\n", message->note);
-
             }
             break;
         }
         case 0xE:
             // should it take base freq or current?
-            midi_channels[channel].pitch = (message->note * 128 + message->velocity - 8192) * 100 / 8192;
-        // printf("channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
+            midi_channels[channel].pitch = __fast_mul(message->note * 128 + message->velocity - 8192, 100) / 8192;
+                // printf("channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
+
             for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                 if (midi_voices[voice_number].channel == channel) {
                     // printf("123 channel %i pitch %i\n", message->command & 0xf, midi_channels[message->command & 0xf].pitch);
                     midi_voices[voice_number].frequency_m100 = apply_pitch_bend(
                         midi_voices[voice_number].frequency_m100, midi_channels[channel].pitch);
                 }
-            break;
+                break;
 
         default:
 #ifdef DEBUG_MPU401
