@@ -535,7 +535,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
         // Disney Sound Source frequency ~7KHz
         if (elapsedTime - last_midi_tick >= hostfreq / 22050) {
-             // last_midi_sample = midi_sample();
+            last_midi_sample = midi_sample();
             //pcm_write(last_dss_sample);
             last_midi_tick = elapsedTime;
         }
@@ -568,6 +568,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
 
             samples[0] += midi_sample();
+            // samples[0] += last_midi_sample;
 
             samples[1] = samples[0];
 
