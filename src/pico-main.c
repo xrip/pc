@@ -432,7 +432,7 @@ int main() {
     *qmi_m0_timing = 0x60007303;
 //    psram_init(19);
 #else
-    // memcpy_wrapper_replace(NULL);
+    memcpy_wrapper_replace(NULL);
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
