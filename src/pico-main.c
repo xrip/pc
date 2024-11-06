@@ -258,7 +258,7 @@ void __time_critical_func() second_core() {
             }
 
             if (old_video_mode != videomode) {
-                if (0) {
+                if (1) {
                     switch (videomode) {
                         case TGA_160x200x16:
                         case TGA_320x200x16:
@@ -425,10 +425,10 @@ int main() {
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
-    vreg_set_voltage(VREG_VOLTAGE_1_60);
+    vreg_set_voltage(VREG_VOLTAGE_1_30);
     sleep_ms(33);
     *qmi_m0_timing = 0x60007204;
-    set_sys_clock_hz(460000000, 0);
+    set_sys_clock_hz(378*1000000, 0);
     *qmi_m0_timing = 0x60007303;
 //    psram_init(19);
 #else

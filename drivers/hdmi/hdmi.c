@@ -64,7 +64,7 @@ static uint32_t irq_inx = 0;
 
 //функции и константы HDMI
 
-#define BASE_HDMI_CTRL_INX (240)
+#define BASE_HDMI_CTRL_INX (250)
 //программа конвертации адреса
 
 uint16_t pio_program_instructions_conv_HDMI[] = {
@@ -196,43 +196,7 @@ static void __time_critical_func() dma_handler_HDMI() {
         uint8_t* output_buffer = activ_buf + 72; //для выравнивания синхры;
         int y = line / 2;
         switch (graphics_mode) {
-            case COMPOSITE_160x200x16_force:
-                //заполняем пространство сверху и снизу графического буфера
-                if (false || (graphics_buffer_shift_y > y) || (y >= (graphics_buffer_shift_y + graphics_buffer_height))
-                    || (graphics_buffer_shift_x >= SCREEN_WIDTH) || (
-                        (graphics_buffer_shift_x + graphics_buffer_width) < 0)) {
-                    memset(output_buffer, 255,SCREEN_WIDTH);
-                    break;
-                }
-
-                uint8_t* activ_buf_end = output_buffer + SCREEN_WIDTH;
-            //рисуем пространство слева от буфера
-                for (int i = graphics_buffer_shift_x; i-- > 0;) {
-                    *output_buffer++ = 255;
-                }
-
-            //рисуем сам видеобуфер+пространство справа
-                input_buffer = &graphics_buffer[(y - graphics_buffer_shift_y) * graphics_buffer_width];
-
-                const uint8_t* input_buffer_end = input_buffer + graphics_buffer_width;
-
-                if (graphics_buffer_shift_x < 0) input_buffer -= graphics_buffer_shift_x;
-
-                while (activ_buf_end > output_buffer) {
-                    if (input_buffer < input_buffer_end) {
-                        uint8_t i_color = *input_buffer++;
-                        i_color = ((i_color & 0xf0) == 0xf0) ? 255 : i_color;
-                        *output_buffer++ = i_color;
-                    }
-                    else
-                        *output_buffer++ = 255;
-                }
-
-                break;
-
-            default:
-            // case TEXTMODE_80x25_COLOR:
-            {
+            case TEXTMODE_80x25_COLOR: {
                 for (int x = 0; x < TEXTMODE_COLS; x++) {
                     const uint16_t offset = (y / 6) * (80 * 2) + x * 2;
                     const uint8_t c = text_buffer[offset];
@@ -249,13 +213,40 @@ static void __time_critical_func() dma_handler_HDMI() {
                 }
                 break;
             }
-            /*default:
-                for (int i = SCREEN_WIDTH; i--;) {
+            default:
+            case VGA_320x200x256:
+                    //заполняем пространство сверху и снизу графического буфера
+                    if (false || (graphics_buffer_shift_y > y) || (y >= (graphics_buffer_shift_y + graphics_buffer_height))
+                        || (graphics_buffer_shift_x >= SCREEN_WIDTH) || (
+                            (graphics_buffer_shift_x + graphics_buffer_width) < 0)) {
+                        memset(output_buffer, 0,SCREEN_WIDTH);
+                        break;
+                            }
+
+            uint8_t* activ_buf_end = output_buffer + SCREEN_WIDTH;
+            //рисуем пространство слева от буфера
+            for (int i = graphics_buffer_shift_x; i-- > 0;) {
+                *output_buffer++ = 0;
+            }
+
+            //рисуем сам видеобуфер+пространство справа
+            input_buffer = &graphics_buffer[(y - graphics_buffer_shift_y) * graphics_buffer_width];
+
+            const uint8_t* input_buffer_end = input_buffer + graphics_buffer_width;
+
+            if (graphics_buffer_shift_x < 0) input_buffer -= graphics_buffer_shift_x;
+
+            while (activ_buf_end > output_buffer) {
+                if (input_buffer < input_buffer_end) {
                     uint8_t i_color = *input_buffer++;
-                    i_color = (i_color & 0xf0) == 0xf0 ? 255 : i_color;
+                    i_color = ((i_color & BASE_HDMI_CTRL_INX) == BASE_HDMI_CTRL_INX) ? 0 : i_color;
                     *output_buffer++ = i_color;
                 }
-                break;*/
+                else
+                    *output_buffer++ = 0;
+            }
+
+            break;
         }
 
 
@@ -358,13 +349,6 @@ static inline bool hdmi_init() {
     offs_prg1 = pio_add_program(PIO_VIDEO_ADDR, &pio_program_conv_addr_HDMI);
     offs_prg0 = pio_add_program(PIO_VIDEO, &program_PIO_HDMI);
     pio_set_x(PIO_VIDEO_ADDR, SM_conv, ((uint32_t)conv_color >> 12));
-
-    //заполнение палитры
-    for (int ci = 0; ci < 240; ci++) graphics_set_palette(ci, palette[ci]); //
-
-    //255 - цвет фона
-    graphics_set_palette(255, palette[255]);
-
 
     //240-243 служебные данные(синхра) напрямую вносим в массив -конвертер
     uint64_t* conv_color64 = (uint64_t *)conv_color;
@@ -541,7 +525,7 @@ static inline bool hdmi_init() {
 };
 //выбор видеорежима
 void graphics_set_mode(enum graphics_mode_t mode) {
-    // graphics_mode = mode;
+    graphics_mode = mode;
 };
 
 void graphics_set_palette(uint8_t i, uint32_t color888) {
@@ -575,25 +559,6 @@ void graphics_init() {
     dma_chan = dma_claim_unused_channel(true);
     dma_chan_pal_conv_ctrl = dma_claim_unused_channel(true);
     dma_chan_pal_conv = dma_claim_unused_channel(true);
-
-
-    // FIXME сделать конфигурацию пользователем
-    graphics_set_palette(200, RGB888(0x00, 0x00, 0x00)); //black
-    graphics_set_palette(201, RGB888(0x00, 0x00, 0xC4)); //blue
-    graphics_set_palette(202, RGB888(0x00, 0xC4, 0x00)); //green
-    graphics_set_palette(203, RGB888(0x00, 0xC4, 0xC4)); //cyan
-    graphics_set_palette(204, RGB888(0xC4, 0x00, 0x00)); //red
-    graphics_set_palette(205, RGB888(0xC4, 0x00, 0xC4)); //magenta
-    graphics_set_palette(206, RGB888(0xC4, 0x7E, 0x00)); //brown
-    graphics_set_palette(207, RGB888(0xC4, 0xC4, 0xC4)); //light gray
-    graphics_set_palette(208, RGB888(0x4E, 0x4E, 0x4E)); //dark gray
-    graphics_set_palette(209, RGB888(0x4E, 0x4E, 0xDC)); //light blue
-    graphics_set_palette(210, RGB888(0x4E, 0xDC, 0x4E)); //light green
-    graphics_set_palette(211, RGB888(0x4E, 0xF3, 0xF3)); //light cyan
-    graphics_set_palette(212, RGB888(0xDC, 0x4E, 0x4E)); //light red
-    graphics_set_palette(213, RGB888(0xF3, 0x4E, 0xF3)); //light magenta
-    graphics_set_palette(214, RGB888(0xF3, 0xF3, 0x4E)); //yellow
-    graphics_set_palette(215, RGB888(0xFF, 0xFF, 0xFF)); //white
 
     hdmi_init();
 }
