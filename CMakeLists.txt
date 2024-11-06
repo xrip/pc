@@ -101,6 +101,9 @@ else ()
             #            USE_ZONE_FOR_MALLOC=1
             PICO_FLASH_SIZE_BYTES=16777216
 
+            RP2350_SPEED=460
+            RP2040_SPEED=396
+
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6
 

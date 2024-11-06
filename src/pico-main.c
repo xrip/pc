@@ -157,7 +157,7 @@ void __time_critical_func() second_core() {
 
     graphics_init();
     graphics_set_buffer(VIDEORAM, 320, 200);
-    graphics_set_textbuffer(VIDEORAM + 0x8000);
+    graphics_set_textbuffer(VIDEORAM + 32768);
     graphics_set_bgcolor(0);
     graphics_set_offset(0, 0);
     graphics_set_flashmode(true, true);
@@ -194,19 +194,19 @@ void __time_critical_func() second_core() {
         }
 
         // Sound Blaster
-        if (0 && absolute_time_diff_us(last_sb_tick, now) >= timeconst) {
+        if (absolute_time_diff_us(last_sb_tick, now) >= timeconst) {
             last_sb_sample = blaster_sample();
             last_sb_tick = now;
         }
 
         // Dinsey Sound Source frequency 7100
-        if (0 && absolute_time_diff_us(last_dss_tick, now) >= (1000000 / 7000)) {
+        if (absolute_time_diff_us(last_dss_tick, now) >= (1000000 / 7000)) {
             last_dss_sample = dss_sample();
             last_dss_tick = now;
         }
 
         // Sound frequency 44100
-        if (0 && absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
+        if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
 #if I2S_SOUND || PWM_SOUND
             int16_t samples[2] = { 0, 0 };
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
@@ -425,10 +425,10 @@ int main() {
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
-    vreg_set_voltage(VREG_VOLTAGE_1_30);
+    vreg_set_voltage(VREG_VOLTAGE_1_60);
     sleep_ms(33);
     *qmi_m0_timing = 0x60007204;
-    set_sys_clock_hz(378*1000000, 0);
+    set_sys_clock_hz(RP2350_SPEED*1000000, 0);
     *qmi_m0_timing = 0x60007303;
 //    psram_init(19);
 #else
@@ -436,7 +436,7 @@ int main() {
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(378 * 1000, true);
+    set_sys_clock_khz(RP2040_SPEED * 1000, true);
 #endif
     int psram = init_psram();
 
@@ -453,8 +453,6 @@ int main() {
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
-
-
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
@@ -477,7 +475,6 @@ int main() {
     }
     if (!psram) {
         printf("No PSRAM detected.");
-        while (1);
     }
 
     //    init_swap();
@@ -485,7 +482,6 @@ int main() {
     sn76489_reset();
     reset86();
 
-    int i = 0;
     while (true) {
         exec86(32768);
         tight_loop_contents();
