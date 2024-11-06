@@ -107,7 +107,7 @@ int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = {0};
+static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {0};
 int active_buffer = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
@@ -225,13 +225,12 @@ void __time_critical_func() second_core() {
             cms_samples(samples);
 
 #if I2S_SOUND
-            audio_buffer[active_buffer][sample_index++] = samples[1];
-            audio_buffer[active_buffer][sample_index++] = samples[0];
+            audio_buffer[sample_index++] = samples[1];
+            audio_buffer[sample_index++] = samples[0];
 
             if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
                 sample_index = 0;
-                i2s_dma_write(&i2s_config, audio_buffer[active_buffer]);
-                active_buffer ^= 1;
+                i2s_dma_write(&i2s_config, audio_buffer);
 
             }
 #else

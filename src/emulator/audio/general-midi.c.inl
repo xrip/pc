@@ -119,6 +119,7 @@ static const   int8_t sin_m128[1024] = {
 #define CLEAR_ACTIVE_VOICE(idx) (active_voice_bitmask &= ~(1U << (idx)))
 #define IS_ACTIVE_VOICE(idx) ((active_voice_bitmask & (1U << (idx))) != 0)
 
+// todo if multiple sustained channels available or only one?
 #define SET_CHANNEL_SUSTAIN(idx) (channels_sustain_bitmask |= (1U << (idx)))
 #define CLEAR_CHANNEL_SUSTAIN(idx) (channels_sustain_bitmask &= ~(1U << (idx)))
 #define IS_CHANNEL_SUSTAIN(idx) ((channels_sustain_bitmask & (1U << (idx))) != 0)
