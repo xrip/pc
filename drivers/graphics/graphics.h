@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 
+#include "font4x6.h"
 #include "font6x8.h"
 #include "font8x8.h"
 #include "font8x16.h"

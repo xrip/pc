@@ -310,7 +310,7 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                     memset(midi_channels, 0, sizeof(midi_channels));
                     break;
                 default:
-                    // printf("unknown controller %x\n", message->note);
+                    printf("unknown controller %x\n", message->note);
 
             }
             break;

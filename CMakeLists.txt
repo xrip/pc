@@ -30,7 +30,7 @@ if (PICO_PLATFORM STREQUAL "host")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
-    add_compile_options(-flto -fwhole-program)
+#    add_compile_options(-flto -fwhole-program)
     pico_sdk_init()
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
@@ -69,13 +69,13 @@ else ()
 
     #    add_subdirectory(sparkfun_pico)
 
-    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
-    target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
-    SET(BUILD_NAME "${BUILD_NAME}-VGA")
+#    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+#    target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
+#    SET(BUILD_NAME "${BUILD_NAME}-VGA")
 
-    #    target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
-    #    target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
-    #    SET(BUILD_NAME "${BUILD_NAME}-HDMI")
+        target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
+        SET(BUILD_NAME "${BUILD_NAME}-HDMI")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
@@ -127,13 +127,13 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-#            HARDWARE_SOUND
+            HARDWARE_SOUND
             CLOCK_PIN=17
             PCM_PIN=22
 
-            I2S_SOUND
+#        I2S_SOUND
 
-#            PWM_SOUND
+           #PWM_SOUND
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
             PWM_BEEPER=28
