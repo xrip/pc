@@ -162,7 +162,7 @@ static INLINE void mpu401_write(uint16_t portnum, uint8_t value) {
         midi_command |= value << midi_pos * 8;
         if (++midi_pos == midi_len) {
 #if defined(EMULATED_MIDI)
-            parse_midi(midi_command);
+            parse_midi((void *)&midi_command);
 #else
             midiOutShortMsg(midi_out_device, midi_command);
 #endif

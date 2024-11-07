@@ -54,7 +54,7 @@ else ()
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 
 
-    pico_set_program_name(${PROJECT_NAME} "PC 8086/8088/80186/80286 emulator")
+    pico_set_program_name(${PROJECT_NAME} "80286 PC emulator by xrip & DnCraptor")
     pico_set_program_version(${PROJECT_NAME} "wip")
 
     add_subdirectory(drivers/ps2)
