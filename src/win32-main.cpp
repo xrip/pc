@@ -1223,7 +1223,7 @@ int main(int argc, char **argv) {
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
 
     while (true) {
-        exec86(32760);
+        exec86(32768);
         if (mfb_update(SCREEN, 0) == -1)
             exit(1);
 

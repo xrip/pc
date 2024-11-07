@@ -4,8 +4,9 @@
 #include <hardware/vreg.h>
 #include <pico/stdio.h>
 #include <pico/multicore.h>
+#ifndef ONBOARD_PSRAM
 #include "psram_spi.h"
-
+#endif
 #if !PICO_RP2350
 #include "../../memops_opt/memops_opt.h"
 #else
@@ -438,8 +439,12 @@ int main() {
     sleep_ms(33);
     set_sys_clock_khz(RP2040_SPEED * 1000, true);
 #endif
+#ifdef ONBOARD_PSRAM
+    psram_init(19);
+    int psram = 1;
+#else
     int psram = init_psram();
-
+#endif
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -449,7 +454,7 @@ int main() {
         sleep_ms(23);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
-
+    keyboard_init();
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
@@ -459,7 +464,7 @@ int main() {
 
 
 
-    keyboard_init();
+
     nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
     sleep_ms(5);
     nespad_read();

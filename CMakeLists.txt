@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(pc C CXX ASM)
+project(286 C CXX ASM)
 enable_language(CXX)
 SET(BUILD_NAME "${PROJECT_NAME}")
 
@@ -30,7 +30,7 @@ if (PICO_PLATFORM STREQUAL "host")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
-#    add_compile_options(-flto -fwhole-program)
+    add_compile_options(-flto -fwhole-program)
     pico_sdk_init()
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
@@ -69,13 +69,13 @@ else ()
 
     #    add_subdirectory(sparkfun_pico)
 
-#    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
-#    target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
-#    SET(BUILD_NAME "${BUILD_NAME}-VGA")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+    target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
+    SET(BUILD_NAME "${BUILD_NAME}-VGA")
 
-        target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
-        target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
-        SET(BUILD_NAME "${BUILD_NAME}-HDMI")
+#        target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
+#        target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
+#        SET(BUILD_NAME "${BUILD_NAME}-HDMI")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
@@ -101,8 +101,10 @@ else ()
             #            USE_ZONE_FOR_MALLOC=1
             PICO_FLASH_SIZE_BYTES=16777216
 
-            RP2350_SPEED=460
+            RP2350_SPEED=444
             RP2040_SPEED=396
+
+            ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6
@@ -134,9 +136,9 @@ else ()
             CLOCK_PIN=17
             PCM_PIN=22
 
-#           I2S_SOUND
+           I2S_SOUND
 
-            PWM_SOUND
+            #PWM_SOUND
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
             PWM_BEEPER=28

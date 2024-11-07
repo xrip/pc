@@ -1,7 +1,9 @@
 #pragma once
 #pragma GCC optimize("Ofast")
 #include "general-midi.h"
+#if !PICO_ON_DEVICE
 #define DEBUG_MIDI
+#endif
 // #define USE_SAMPLES
 #if defined(USE_SAMPLES)
 #include "emulator/drum/drum.h"
@@ -139,12 +141,12 @@ int16_t midi_sample() {
             }
         }
     }
-    return sample >> 11; // / 128 * 32 + >> 8
+    return sample >> 10; // / 128 * 32 + >> 8
 }
 
 // todo: validate is it correct??
 static INLINE int32_t apply_pitch(const int32_t base_frequency, int cents) {
-    return 10000 != cents ? (base_frequency * cents + 5000) / 10000 : base_frequency;
+    return cents ? (base_frequency * cents + 5000) / 10000 : base_frequency;
 }
 
 static INLINE void parse_midi(const midi_command_t *message ) {

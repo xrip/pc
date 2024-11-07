@@ -23,7 +23,7 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
-#define SOUND_FREQUENCY (49716)
+#define SOUND_FREQUENCY (22050)
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 #define VIDEORAM_START (0xA0000)
@@ -257,7 +257,7 @@ extern int16_t midi_sample();
 #endif
 
 #ifndef TOTAL_VIRTUAL_MEMORY_KBS
-#if PICO_ON_DEVICE
+#if PICO_ON_DEVICE && !ONBOARD_PSRAM
 #include "psram_spi.h"
 
 #else
