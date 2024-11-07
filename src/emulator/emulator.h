@@ -28,7 +28,7 @@ extern "C" {
 #else
 #define SOUND_FREQUENCY (49716)
 #endif
-    #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
+#define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 #define VIDEORAM_START (0xA0000)
 #define VIDEORAM_END (0xC0000)
