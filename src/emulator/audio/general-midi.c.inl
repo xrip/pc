@@ -141,15 +141,16 @@ int16_t midi_sample() {
             }
         }
     }
-    return sample >> 10; // / 128 * 32 + >> 8
+    return sample >> 11; // / 128 * 32 + >> 8
 }
 
 // todo: validate is it correct??
-static INLINE int32_t apply_pitch(const int32_t base_frequency, int cents) {
+static INLINE int32_t apply_pitch(const int32_t base_frequency, const int cents) {
     return cents ? (base_frequency * cents + 5000) / 10000 : base_frequency;
 }
 
 static INLINE void parse_midi(const midi_command_t *message ) {
+    // todo last free/last used -- instead of for loop lookup
     // const midi_command_t *message = (midi_command_t *) &midi_command;
     const uint8_t channel = message->command & 0xf;
 
