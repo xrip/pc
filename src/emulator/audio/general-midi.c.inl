@@ -144,7 +144,7 @@ int16_t midi_sample() {
 
 // todo: validate is it correct??
 static INLINE int32_t apply_pitch(const int32_t base_frequency, int cents) {
-    return cents ? (base_frequency * cents + 5000) / 10000 : base_frequency;
+    return 10000 != cents ? (base_frequency * cents + 5000) / 10000 : base_frequency;
 }
 
 static INLINE void parse_midi(const midi_command_t *message ) {
