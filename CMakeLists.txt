@@ -104,7 +104,7 @@ else ()
             RP2350_SPEED=444
             RP2040_SPEED=396
 
-            #ONBOARD_PSRAM
+            ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6
@@ -132,13 +132,13 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-#            HARDWARE_SOUND
+            #HARDWARE_SOUND
             CLOCK_PIN=17
             PCM_PIN=22
 
-           I2S_SOUND
+           #I2S_SOUND
 
-            #PWM_SOUND
+            PWM_SOUND
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
             PWM_BEEPER=28
