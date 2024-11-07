@@ -9,6 +9,7 @@
 #include "emulator/drum/drum.h"
 #include "emulator/acoustic/acoustic.h"
 #endif
+
 #define MAX_MIDI_VOICES 24
 #define MIDI_CHANNELS 16
 
@@ -149,7 +150,7 @@ static INLINE int32_t apply_pitch(const int32_t base_frequency, const int cents)
     return cents ? (base_frequency * cents + 5000) / 10000 : base_frequency;
 }
 
-static INLINE void parse_midi(const midi_command_t *message ) {
+static INLINE void parse_midi(const midi_command_t *message) {
     // todo last free/last used -- instead of for loop lookup
     // const midi_command_t *message = (midi_command_t *) &midi_command;
     const uint8_t channel = message->command & 0xf;
@@ -173,7 +174,7 @@ static INLINE void parse_midi(const midi_command_t *message ) {
                                               ? midi_channels[channel].volume * message->velocity >> 7
                                               : message->velocity;
 
-                                              SET_ACTIVE_VOICE(voice_number);
+                        SET_ACTIVE_VOICE(voice_number);
                         return;
                     }
                 }
@@ -214,9 +215,18 @@ static INLINE void parse_midi(const midi_command_t *message ) {
                     break;
                 */
                 case 0x40: // Sustain
-                    message->velocity & 64 ? SET_CHANNEL_SUSTAIN(channel) : CLEAR_CHANNEL_SUSTAIN(channel);
+                    if (message->velocity & 64) {
+                        SET_CHANNEL_SUSTAIN(channel);
+                    } else {
+                        CLEAR_CHANNEL_SUSTAIN(channel);
+                        for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
+                            if (midi_voices[voice_number].channel == channel) {
+                                midi_voices[voice_number].playing = 0;
+                                CLEAR_ACTIVE_VOICE(voice_number);
+                            }
+                    }
 #ifdef DEBUG_MIDI
-                printf("[MIDI] Channel %i sustain %i\n", channel, message->velocity);
+                    printf("[MIDI] Channel %i sustain %i\n", channel, message->velocity);
 #endif
                     break;
                 case 0x78: // All Sound Off
@@ -234,7 +244,8 @@ static INLINE void parse_midi(const midi_command_t *message ) {
                     break;
 #ifdef DEBUG_MIDI
                 default:
-                    printf("[MIDI] Unknown channel %i controller %02x %02x\n", channel, message->note, message->velocity);
+                    printf("[MIDI] Unknown channel %i controller %02x %02x\n", channel, message->note,
+                           message->velocity);
 #endif
             }
             break;
@@ -249,7 +260,7 @@ static INLINE void parse_midi(const midi_command_t *message ) {
                 }
 
 #ifdef DEBUG_MIDI
-        printf("[MIDI] Channel %i program %i\n", message->command & 0xf, message->note);
+            printf("[MIDI] Channel %i program %i\n", message->command & 0xf, message->note);
 #endif
             break;
         case 0xE:
@@ -257,7 +268,8 @@ static INLINE void parse_midi(const midi_command_t *message ) {
             const int cents = pitch_pows[pitch_bend];
             midi_channels[channel].pitch = cents;
 #ifdef DEBUG_MIDI
-            printf("[MIDI] Channel %i pitch_bend %i cents %i 44000->%i\n", channel, pitch_bend-8192, cents, apply_pitch(44000, cents));
+            printf("[MIDI] Channel %i pitch_bend %i cents %i 44000->%i\n", channel, pitch_bend - 8192, cents,
+                   apply_pitch(44000, cents));
 #endif
             for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                 if (midi_voices[voice_number].channel == channel) {
@@ -267,7 +279,8 @@ static INLINE void parse_midi(const midi_command_t *message ) {
             break;
 #ifdef DEBUG_MIDI
         default:
-            printf("[MIDI] Unknown channel %i command %x message %04x \n", channel, message->command >> 4, midi_command);
+            printf("[MIDI] Unknown channel %i command %x message %04x \n", channel, message->command >> 4,
+                   midi_command);
             break;
 #endif
     }
