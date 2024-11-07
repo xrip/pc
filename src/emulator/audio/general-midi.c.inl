@@ -180,9 +180,12 @@ static INLINE void parse_midi(const midi_command_t *message ) {
                 break;
             } // else do note off
         case 0x8: // Note OFF
+            /* Probably we should
+             * Find the first and last entry in the voices list with matching channel, key and look up the smallest play position
+             */
             for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                 struct midi_voice_s *voice = &midi_voices[voice_number];
-                if (IS_ACTIVE_VOICE(voice_number) && voice->note == message->note) {
+                if (IS_ACTIVE_VOICE(voice_number) && voice->channel == channel && voice->note == message->note) {
                     voice->playing = 0;
                     CLEAR_ACTIVE_VOICE(voice_number);
                     return;
