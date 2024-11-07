@@ -210,7 +210,7 @@ static INLINE void parse_midi(const uint32_t midi_command) {
                     }
                     break;
                 case 0x40:
-                    message->velocity & 64 ? SET_CHANNEL_SUSTAIN(channel) : SET_CHANNEL_SUSTAIN(channel);
+                    message->velocity & 64 ? SET_CHANNEL_SUSTAIN(channel) : CLEAR_CHANNEL_SUSTAIN(channel);
                     // printf("channel %i sustain %i\n", channel, message->velocity);
                     break;
                 case 0x78:
