@@ -23,14 +23,13 @@ endforeach ()
 message(STATUS "")
 
 #add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
-add_compile_options(-ffast-math -fms-extensions -O2)
+add_compile_options(-fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
     add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE winmm)
 else ()
-    add_compile_options(-flto -fwhole-program)
     pico_sdk_init()
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
@@ -48,6 +47,7 @@ else ()
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
         target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
     else ()
+        add_compile_options(-flto -fwhole-program)
         SET(BUILD_NAME "${BUILD_NAME}-RP2350")
         target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=3)
     endif ()
@@ -136,9 +136,9 @@ else ()
             CLOCK_PIN=17
             PCM_PIN=22
 
-           #I2S_SOUND
+           I2S_SOUND
 
-            PWM_SOUND
+            #PWM_SOUND
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
             PWM_BEEPER=28

@@ -1,5 +1,4 @@
 #pragma once
-#pragma GCC optimize("Ofast")
 #include "general-midi.h"
 #if !PICO_ON_DEVICE
 #define DEBUG_MIDI
@@ -10,10 +9,10 @@
 #include "emulator/acoustic/acoustic.h"
 #endif
 
-#define MAX_MIDI_VOICES 32
+#define MAX_MIDI_VOICES 24
 #define MIDI_CHANNELS 16
 
-struct midi_voice_s {
+struct  midi_voice_s {
     uint8_t playing;
     uint8_t channel;
     uint8_t note;
@@ -24,10 +23,11 @@ struct midi_voice_s {
 #endif
     int32_t frequency_m100;
     uint32_t sample_position;
-} midi_voices[MAX_MIDI_VOICES] = {0};
+};
+static struct midi_voice_s __not_in_flash("midi") midi_voices[MAX_MIDI_VOICES] = {0};
 
 // Bitmask for active voices
-uint32_t active_voice_bitmask = 0;
+uint32_t __not_in_flash("midi") active_voice_bitmask = 0;
 
 typedef struct midi_channel_s {
     uint8_t program;
@@ -36,7 +36,7 @@ typedef struct midi_channel_s {
 } midi_channel_t;
 
 // Bitmask for sustained channels
-uint32_t channels_sustain_bitmask = 0;
+uint32_t __not_in_flash("midi") channels_sustain_bitmask = 0;
 
 typedef struct __attribute__((packed)) {
     uint8_t command;
@@ -45,7 +45,7 @@ typedef struct __attribute__((packed)) {
     uint8_t other;
 } midi_command_t;
 
-midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
+static midi_channel_t __not_in_flash("midi") midi_channels[MIDI_CHANNELS] = {0};
 
 
 #define SET_ACTIVE_VOICE(idx) (active_voice_bitmask |= (1U << (idx)))
@@ -70,7 +70,7 @@ static INLINE int32_t sin100sf_m_128_t(int32_t a) {
     return sin_m_128((a / SIN_STEP) & 4095);
 }
 
-int16_t midi_sample() {
+int16_t __time_critical_func() midi_sample() {
     if (!active_voice_bitmask) return 0;
 
     int32_t sample = 0;
@@ -144,6 +144,7 @@ int16_t midi_sample() {
 #endif
 
             uint32_t sample_position = voice->sample_position++;
+
 
             uint8_t * velocity = &voice->velocity;
             if (sample_position == SOUND_FREQUENCY / 2) {  // poor man ADSR with S only :)

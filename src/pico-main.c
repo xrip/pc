@@ -58,7 +58,15 @@ void tandy_write(uint16_t reg, uint8_t value) {
 
 void adlib_write_d(uint16_t reg, uint8_t value) {
 #if I2S_SOUND
-    OPL_writeReg(emu8950_opl, reg, value);
+#if !PICO_RP2040
+    static int latch = -1;
+    if (latch == -1) {
+        latch = value;
+    } else {
+        OPL_writeReg(emu8950_opl, latch, value);
+        latch = -1;
+    }
+#endif
 #else
     if (!sound_chips_clock) {
         clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
@@ -117,58 +125,7 @@ extern pwm_config config;
 
 int mouse_available = false;
 
-/* Renderer loop on Pico's second core */
-void __time_critical_func() second_core() {
-#if I2S_SOUND
-    i2s_config = i2s_get_default_config();
-    i2s_config.sample_freq = SOUND_FREQUENCY;
-    i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
-    i2s_volume(&i2s_config, 0);
-    i2s_init(&i2s_config);
-#elif PWM_SOUND
-    config = pwm_get_default_config();
-
-    gpio_set_function(PWM_LEFT_CHANNEL, GPIO_FUNC_PWM);
-    gpio_set_function(PWM_RIGHT_CHANNEL, GPIO_FUNC_PWM);
-
-    pwm_config_set_clkdiv(&config, 1.0f);
-    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
-
-    pwm_init(pwm_gpio_to_slice_num(PWM_LEFT_CHANNEL), &config, true);
-    pwm_init(pwm_gpio_to_slice_num(PWM_RIGHT_CHANNEL), &config, true);
-
-    gpio_set_function(PWM_BEEPER, GPIO_FUNC_PWM);
-//    pwm_config_set_clkdiv(&config, clock_get_hz(clk_sys) / (1.19318f * MHZ));
-    pwm_config_set_clkdiv(&config, 127);
-    pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &config, true);
-#elif HARDWARE_SOUND
-    init_74hc595();
-    config = pwm_get_default_config();
-    gpio_set_function(PCM_PIN, GPIO_FUNC_PWM);
-    pwm_config_set_clkdiv(&config, 1.0f);
-    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
-    pwm_init(pwm_gpio_to_slice_num(PCM_PIN), &config, true);
-#endif
-
-
-#if !HARDWARE_SOUND
-    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
-#endif
-    blaster_reset();
-
-    graphics_init();
-    graphics_set_buffer(VIDEORAM, 320, 200);
-    graphics_set_textbuffer(VIDEORAM + 32768);
-    graphics_set_bgcolor(0);
-    graphics_set_offset(0, 0);
-    graphics_set_flashmode(true, true);
-
-    for (uint8_t i = 0; i < 255; i++) {
-        graphics_set_palette(i, vga_palette[i]);
-    }
-
-    sem_acquire_blocking(&vga_start_semaphore);
-
+void __time_critical_func() render_loop() {
     absolute_time_t now = get_absolute_time();
     absolute_time_t last_timer_tick = now,
             last_cursor_blink = now,
@@ -210,8 +167,9 @@ void __time_critical_func() second_core() {
         if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
 #if I2S_SOUND || PWM_SOUND
             int16_t samples[2] = { 0, 0 };
+#if !PICO_RP2040
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
-
+#endif
             samples[0] += last_dss_sample;
             samples[0] += sn76489_sample();
             samples[0] += covox_sample;
@@ -306,6 +264,60 @@ void __time_critical_func() second_core() {
         tight_loop_contents();
     }
     __unreachable();
+}
+/* Renderer loop on Pico's second core */
+void second_core() {
+#if I2S_SOUND
+    i2s_config = i2s_get_default_config();
+    i2s_config.sample_freq = SOUND_FREQUENCY;
+    i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
+    i2s_volume(&i2s_config, 0);
+    i2s_init(&i2s_config);
+#elif PWM_SOUND
+    config = pwm_get_default_config();
+
+    gpio_set_function(PWM_LEFT_CHANNEL, GPIO_FUNC_PWM);
+    gpio_set_function(PWM_RIGHT_CHANNEL, GPIO_FUNC_PWM);
+
+    pwm_config_set_clkdiv(&config, 1.0f);
+    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
+
+    pwm_init(pwm_gpio_to_slice_num(PWM_LEFT_CHANNEL), &config, true);
+    pwm_init(pwm_gpio_to_slice_num(PWM_RIGHT_CHANNEL), &config, true);
+
+    gpio_set_function(PWM_BEEPER, GPIO_FUNC_PWM);
+//    pwm_config_set_clkdiv(&config, clock_get_hz(clk_sys) / (1.19318f * MHZ));
+    pwm_config_set_clkdiv(&config, 127);
+    pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &config, true);
+#elif HARDWARE_SOUND
+    init_74hc595();
+    config = pwm_get_default_config();
+    gpio_set_function(PCM_PIN, GPIO_FUNC_PWM);
+    pwm_config_set_clkdiv(&config, 1.0f);
+    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
+    pwm_init(pwm_gpio_to_slice_num(PCM_PIN), &config, true);
+#endif
+
+
+#if !HARDWARE_SOUND
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+#endif
+    blaster_reset();
+
+    graphics_init();
+    graphics_set_buffer(VIDEORAM, 320, 200);
+    graphics_set_textbuffer(VIDEORAM + 32768);
+    graphics_set_bgcolor(0);
+    graphics_set_offset(0, 0);
+    graphics_set_flashmode(true, true);
+
+    for (uint8_t i = 0; i < 255; i++) {
+        graphics_set_palette(i, vga_palette[i]);
+    }
+
+    sem_acquire_blocking(&vga_start_semaphore);
+
+    render_loop();
 }
 
 extern bool PSRAM_AVAILABLE;

@@ -23,7 +23,7 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
-#if RP2040
+#if PICO_RP2040
 #define SOUND_FREQUENCY (22050)
 #else
 #define SOUND_FREQUENCY (44100)
