@@ -234,6 +234,9 @@ extern int16_t midi_sample();
 
 #if !PICO_ON_DEVICE
 #define __fast_mul(x,y) (x*y)
+#define __not_in_flash(x)
+#define __time_critical_func(x)
+
 #endif
 
 #ifndef INLINE
