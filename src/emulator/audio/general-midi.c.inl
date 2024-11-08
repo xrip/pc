@@ -21,6 +21,7 @@ struct midi_voice_s {
     uint8_t velocity;
     uint8_t current_velocity;
     int32_t frequency_m100;
+    int32_t release;
     uint32_t sample_position;
 } midi_voices[MAX_MIDI_VOICES] = {0};
 
@@ -72,6 +73,7 @@ int16_t midi_sample() {
     if (!active_voice_bitmask) return 0;
 
     int32_t sample = 0;
+    uint8_t tmp = 0;;
     uint32_t active_voices = active_voice_bitmask;
     struct midi_voice_s *voice = midi_voices;
 
@@ -142,7 +144,7 @@ int16_t midi_sample() {
 #endif
 
             uint32_t sample_position = voice->sample_position++;
-#if 0
+#if 1
             uint8_t * velocity = &voice->current_velocity;
 
             if (sample_position <= SOUND_FREQUENCY / 2)
@@ -180,8 +182,15 @@ int16_t midi_sample() {
             }
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position))) << 8;
 #endif
+        if (voice->release != -1) {
+            if (--voice->release == 0) {
+                voice->playing = 0;
+                CLEAR_ACTIVE_VOICE(tmp);
+            }
+        }
         }
         voice++;
+        tmp++;
         active_voices >>= 1;
     }
 #if 0
@@ -279,6 +288,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         voice->playing = 1;
                         voice->sample_position = 0;
                         voice->channel = channel;
+                        voice->release = -1;
                         voice->note = message->note;
 
                         voice->frequency_m100 = apply_pitch(
@@ -328,9 +338,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                 for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                     struct midi_voice_s *voice = &midi_voices[voice_number];
                     if (IS_ACTIVE_VOICE(voice_number) && voice->channel == channel && voice->note == message->note) {
-                            voice->playing = 0;
-
-                            CLEAR_ACTIVE_VOICE(voice_number);
+                        voice->release = SOUND_FREQUENCY / 4;
                         return;
                     }
                 }
@@ -388,8 +396,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
 
                         for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                             if (midi_voices[voice_number].channel == channel) {
-                                midi_voices[voice_number].playing = 0;
-                                CLEAR_ACTIVE_VOICE(voice_number);
+                               midi_voices[voice_number].release = SOUND_FREQUENCY / 4;
                             }
                     }
 #ifdef DEBUG_MIDI
