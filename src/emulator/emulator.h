@@ -26,7 +26,7 @@ extern "C" {
 #if RP2040
 #define SOUND_FREQUENCY (22050)
 #else
-#define SOUND_FREQUENCY (49716)
+#define SOUND_FREQUENCY (44100)
 #endif
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 

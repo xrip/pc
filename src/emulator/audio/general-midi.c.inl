@@ -17,9 +17,11 @@ struct midi_voice_s {
     uint8_t playing;
     uint8_t channel;
     uint8_t note;
+    uint8_t adsr[4];
     uint8_t velocity;
+    uint8_t current_velocity;
     int32_t frequency_m100;
-    int32_t sample_position;
+    uint32_t sample_position;
 } midi_voices[MAX_MIDI_VOICES] = {0};
 
 // Bitmask for active voices
@@ -138,8 +140,38 @@ int16_t midi_sample() {
                 sample += __fast_mul(voice->velocity, smpl[voice->sample_position++]) << 8; // TODO: sz
             } else
 #endif
-            const uint32_t position = __fast_mul(voice->frequency_m100, voice->sample_position++);
-            sample += __fast_mul(voice->velocity, sin100sf_m_128_t(position)) << 8;
+
+            uint32_t sample_position = voice->sample_position++;
+            uint8_t * velocity = &voice->current_velocity;
+
+            if (sample_position <= SOUND_FREQUENCY / 2)
+                switch (sample_position) {
+                    case SOUND_FREQUENCY / 16: // 25% of attack
+                        *velocity = voice->adsr[0];
+                        break;
+                    case SOUND_FREQUENCY / 8: // 50% of attack
+                        *velocity = voice->adsr[1];
+                        break;
+                    case SOUND_FREQUENCY / 6: // 75% of attack
+                        *velocity = voice->adsr[2];
+                        break;
+                    case SOUND_FREQUENCY / 4: // 100% of attack
+                        *velocity = voice->velocity;
+                        break;
+                    // Decay phase
+                    case SOUND_FREQUENCY / 3:  // 33% of decay
+                        *velocity = voice->adsr[3]; // 87.5% volume
+                        break;
+                    case SOUND_FREQUENCY / 2: // SUSTAIN
+                        *velocity = voice->adsr[2]; // 75% volume
+                        break;
+                }
+/*
+            if (sample_position == SOUND_FREQUENCY / 2) {
+                voice->velocity -= voice->velocity >> 2; // poor man ADSR with S only :)
+            }
+*/
+            sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position))) << 8;
         }
         voice++;
         active_voices >>= 1;
@@ -249,6 +281,11 @@ static INLINE void parse_midi(const midi_command_t *message) {
                                               ? midi_channels[channel].volume * message->velocity >> 7
                                               : message->velocity;
 
+                        voice->adsr[0] = voice->velocity / 4; // 25%
+                        voice->adsr[1] = voice->velocity / 2; // 50%
+                        voice->adsr[2] = voice->velocity - voice->velocity / 4; // 75%
+                        voice->adsr[3] = voice->velocity - voice->velocity / 8; // 87.5%
+
                         SET_ACTIVE_VOICE(voice_number);
                         return;
                     }
@@ -281,8 +318,14 @@ static INLINE void parse_midi(const midi_command_t *message) {
                     midi_channels[channel].volume = message->velocity;
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                         if (midi_voices[voice_number].channel == channel) {
-                            midi_voices[voice_number].velocity =
-                                    message->velocity * midi_voices[voice_number].velocity >> 7;
+                            uint8_t velocity = message->velocity * midi_voices[voice_number].velocity >> 7;
+                            midi_voices[voice_number].velocity = velocity;
+                            midi_voices[voice_number].current_velocity = midi_voices[voice_number].current_velocity * midi_voices[voice_number].velocity >> 7;
+
+                            midi_voices[voice_number].adsr[0] = velocity / 4; // 25%
+                            midi_voices[voice_number].adsr[1] = velocity / 2; // 50%
+                            midi_voices[voice_number].adsr[2] = velocity - velocity / 4; // 75%
+                            midi_voices[voice_number].adsr[3] = velocity - velocity / 8; // 87.5%
                         }
                     }
                     break;
