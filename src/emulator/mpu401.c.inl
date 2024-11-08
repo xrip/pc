@@ -6,7 +6,7 @@
 #include <math.h>
 #include <emulator/emulator.h>
 
-#define EMULATED_MIDI
+ #define EMULATED_MIDI
 
 // #define DEBUG_MPU401 1
 
