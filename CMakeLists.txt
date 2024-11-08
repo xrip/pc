@@ -104,7 +104,7 @@ else ()
             RP2350_SPEED=444
             RP2040_SPEED=396
 
-            ONBOARD_PSRAM
+            #ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6

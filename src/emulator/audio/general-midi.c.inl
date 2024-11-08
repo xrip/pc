@@ -17,7 +17,7 @@ struct midi_voice_s {
     uint8_t playing;
     uint8_t channel;
     uint8_t note;
-    uint8_t adsr[4];
+    uint8_t adsr[6];
     uint8_t velocity;
     uint8_t current_velocity;
     int32_t frequency_m100;
@@ -142,36 +142,44 @@ int16_t midi_sample() {
 #endif
 
             uint32_t sample_position = voice->sample_position++;
+#if 0
             uint8_t * velocity = &voice->current_velocity;
 
             if (sample_position <= SOUND_FREQUENCY / 2)
                 switch (sample_position) {
-                    case SOUND_FREQUENCY / 16: // 25% of attack
+                    case 0: // 0%
                         *velocity = voice->adsr[0];
-                        break;
-                    case SOUND_FREQUENCY / 8: // 50% of attack
+                    break;
+                    case SOUND_FREQUENCY / 16: // 25% of attack
                         *velocity = voice->adsr[1];
                         break;
-                    case SOUND_FREQUENCY / 6: // 75% of attack
+                    case SOUND_FREQUENCY / 8: // 50% of attack
                         *velocity = voice->adsr[2];
                         break;
+                    case SOUND_FREQUENCY / 6: // 75% of attack
+                        *velocity = voice->adsr[3];
+                        break;
                     case SOUND_FREQUENCY / 4: // 100% of attack
-                        *velocity = voice->velocity;
+                        velocity = &voice->velocity;
                         break;
                     // Decay phase
                     case SOUND_FREQUENCY / 3:  // 33% of decay
-                        *velocity = voice->adsr[3]; // 87.5% volume
+                        *velocity = voice->adsr[4]; // 87.5% volume
                         break;
                     case SOUND_FREQUENCY / 2: // SUSTAIN
-                        *velocity = voice->adsr[2]; // 75% volume
+                        *velocity = voice->adsr[5]; // 75% volume
                         break;
                 }
-/*
-            if (sample_position == SOUND_FREQUENCY / 2) {
-                voice->velocity -= voice->velocity >> 2; // poor man ADSR with S only :)
-            }
-*/
+
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position))) << 8;
+
+#else
+            uint8_t * velocity = &voice->velocity;
+            if (sample_position == SOUND_FREQUENCY / 2) {
+                *velocity -= *velocity >> 2; // poor man ADSR with S only :)
+            }
+            sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position))) << 8;
+#endif
         }
         voice++;
         active_voices >>= 1;
@@ -281,10 +289,29 @@ static INLINE void parse_midi(const midi_command_t *message) {
                                               ? midi_channels[channel].volume * message->velocity >> 7
                                               : message->velocity;
 
-                        voice->adsr[0] = voice->velocity / 4; // 25%
-                        voice->adsr[1] = voice->velocity / 2; // 50%
-                        voice->adsr[2] = voice->velocity - voice->velocity / 4; // 75%
-                        voice->adsr[3] = voice->velocity - voice->velocity / 8; // 87.5%
+                        if (channel != 9) {
+                            // Attack
+                            voice->adsr[0] = 0; // 0%
+                            voice->adsr[1] = voice->velocity / 4; // 25%
+                            voice->adsr[2] = voice->velocity / 2; // 50%
+                            voice->adsr[3] = voice->velocity - voice->velocity / 4; // 75%
+                            // 100% maximum velocity
+                            // Decay
+                            voice->adsr[4] = voice->velocity - voice->velocity / 8; // 87.5%
+                            // Sustain
+                            voice->adsr[5] = voice->velocity - voice->velocity / 4; // 75% Sustain
+                        } else {
+                            // Attack
+                            voice->adsr[0] = voice->velocity - voice->velocity / 4; // 75%
+                            voice->adsr[1] = voice->velocity - voice->velocity / 8; // 87.5%
+                            voice->adsr[2] = voice->velocity; // 100%
+                            voice->adsr[3] = voice->velocity; // 100%
+                            // 100% maximum velocity
+                            // Decay
+                            voice->adsr[4] = voice->velocity - voice->velocity / 4; // 87.5%
+                            // Sustain
+                            voice->adsr[5] = voice->velocity / 2; // 50%
+                        }
 
                         SET_ACTIVE_VOICE(voice_number);
                         return;
@@ -301,8 +328,9 @@ static INLINE void parse_midi(const midi_command_t *message) {
                 for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                     struct midi_voice_s *voice = &midi_voices[voice_number];
                     if (IS_ACTIVE_VOICE(voice_number) && voice->channel == channel && voice->note == message->note) {
-                        voice->playing = 0;
-                        CLEAR_ACTIVE_VOICE(voice_number);
+                            voice->playing = 0;
+
+                            CLEAR_ACTIVE_VOICE(voice_number);
                         return;
                     }
                 }
@@ -322,10 +350,29 @@ static INLINE void parse_midi(const midi_command_t *message) {
                             midi_voices[voice_number].velocity = velocity;
                             midi_voices[voice_number].current_velocity = midi_voices[voice_number].current_velocity * midi_voices[voice_number].velocity >> 7;
 
-                            midi_voices[voice_number].adsr[0] = velocity / 4; // 25%
-                            midi_voices[voice_number].adsr[1] = velocity / 2; // 50%
-                            midi_voices[voice_number].adsr[2] = velocity - velocity / 4; // 75%
-                            midi_voices[voice_number].adsr[3] = velocity - velocity / 8; // 87.5%
+                            if (channel != 9) {
+                                // Attack
+                                midi_voices[voice_number].adsr[0] = 0; // 0%
+                                midi_voices[voice_number].adsr[1] = midi_voices[voice_number].velocity / 4; // 25%
+                                midi_voices[voice_number].adsr[2] = midi_voices[voice_number].velocity / 2; // 50%
+                                midi_voices[voice_number].adsr[3] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 4; // 75%
+                                // 100% maximum velocity
+                                // Decay
+                                midi_voices[voice_number].adsr[4] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 8; // 87.5%
+                                // Sustain
+                                midi_voices[voice_number].adsr[5] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 4; // 75% Sustain
+                            } else {
+                                // Attack
+                                midi_voices[voice_number].adsr[0] = midi_voices[voice_number].velocity; // 100%
+                                midi_voices[voice_number].adsr[1] = midi_voices[voice_number].velocity; // 100%
+                                midi_voices[voice_number].adsr[2] = midi_voices[voice_number].velocity; // 100%
+                                midi_voices[voice_number].adsr[3] = midi_voices[voice_number].velocity; // 100%
+                                // 100% maximum velocity
+                                // Decay
+                                midi_voices[voice_number].adsr[4] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 4; // 87.5%
+                                // Sustain
+                                midi_voices[voice_number].adsr[5] = midi_voices[voice_number].velocity / 2; // 50%
+                            }
                         }
                     }
                     break;
