@@ -161,11 +161,12 @@ int16_t __time_critical_func() midi_sample() {
 
 
             uint8_t * velocity = &voice->velocity;
-            /*
+
+#ifndef ADSR
             if (sample_position == SOUND_FREQUENCY / 2) {  // poor man ADSR with S only :)
                 *velocity -= *velocity >> 2;
             }
-            */
+#else
             if (sample_position <= SOUND_FREQUENCY / 2)
                 switch (sample_position) {
                     case 0: // 0%
@@ -191,7 +192,7 @@ int16_t __time_critical_func() midi_sample() {
                         *velocity = voice->adsr[5]; // 75% volume
                     break;
                 }
-
+#endif
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
             // printf("sample1 %i %x\n", sample1, sample1);
             // sample += sample1;
