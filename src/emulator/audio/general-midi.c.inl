@@ -16,7 +16,7 @@
 
 struct midi_voice_s {
     uint8_t position;
-    uint8_t playing;
+    // uint8_t playing;
     uint8_t channel;
     uint8_t note;
     uint8_t velocity;
@@ -172,7 +172,7 @@ int16_t __time_critical_func() midi_sample() {
             if (sample_position == SOUND_FREQUENCY / 2) { // Sustain state
                 *velocity -= *velocity >> 2;
             } else if (sample_position && sample_position == voice->release) {
-                voice->playing = 0;
+                // voice->playing = 0;
                 CLEAR_ACTIVE_VOICE(voice->position);
             }
 
@@ -202,7 +202,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                 for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                     struct midi_voice_s *voice = &midi_voices[voice_number];
                     if (!IS_ACTIVE_VOICE(voice_number)) {
-                        voice->playing = 1;
+                        // voice->playing = 1;
                         voice->position = voice_number;
                         voice->sample_position = 0;
                         voice->release = 0;
@@ -233,7 +233,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                     struct midi_voice_s *voice = &midi_voices[voice_number];
                     if (IS_ACTIVE_VOICE(voice_number) && voice->channel == channel && voice->note == message->note) {
                         if (channel == 9) {
-                            voice->playing = 0;
+                            // voice->playing = 0;
                             CLEAR_ACTIVE_VOICE(voice_number);
                         } else {
                             midi_voices[voice_number].velocity /= 2;
@@ -273,7 +273,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                             if (midi_voices[voice_number].channel == channel) {
                                 if (channel == 9) {
-                                    midi_voices[voice_number].playing = 0;
+                                    // midi_voices[voice_number].playing = 0;
                                     CLEAR_ACTIVE_VOICE(voice_number);
                                 } else {
                                     midi_voices[voice_number].velocity /= 2;
@@ -315,7 +315,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
 
             for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number)
                 if (midi_voices[voice_number].channel == channel) {
-                    midi_voices[voice_number].playing = 0;
+                    // midi_voices[voice_number].playing = 0;
                     CLEAR_ACTIVE_VOICE(voice_number);
                 }
 
