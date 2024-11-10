@@ -12,6 +12,8 @@
 #define MAX_MIDI_VOICES 32
 #define MIDI_CHANNELS 16
 
+#define RELEASE_DURATION (SOUND_FREQUENCY / 8) // Duration for note release
+
 struct midi_voice_s {
     uint8_t position;
     uint8_t playing;
@@ -57,12 +59,18 @@ static midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
 #define IS_CHANNEL_SUSTAIN(idx) ((channels_sustain_bitmask & (1U << (idx))) != 0)
 
 
-static INLINE int8_t sin_m_128(size_t idx) {
+/*static INLINE int8_t sin_m_128(size_t idx) {
     if (idx < 1024) return sin_m128[idx];
     if (idx < 2048) return sin_m128[2047 - idx];
     if (idx < (2048 + 1024)) return -sin_m128[idx - 2048];
     return -sin_m128[4095 - idx];
+}*/
+static INLINE int8_t sin_m_128(size_t idx) {
+    size_t mod_idx = idx & 4095;
+    return (mod_idx < 2048) ? sin_m128[mod_idx < 1024 ? mod_idx : 2047 - mod_idx]
+                            : -sin_m128[mod_idx < 3072 ? mod_idx - 2048 : 4095 - mod_idx];
 }
+
 
 #define SIN_STEP (SOUND_FREQUENCY * 100 / 4096)
 
@@ -161,15 +169,13 @@ int16_t __time_critical_func() midi_sample() {
 
             uint8_t *velocity = &voice->velocity;
 
-            if (sample_position == SOUND_FREQUENCY / 2) {
-                // poor man ADSR with S only :)
+            if (sample_position == SOUND_FREQUENCY / 2) { // Sustain state
                 *velocity -= *velocity >> 2;
-            }
-
-            if (sample_position && sample_position == voice->release) {
+            } else if (sample_position && sample_position == voice->release) {
                 voice->playing = 0;
                 CLEAR_ACTIVE_VOICE(voice->position);
             }
+
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
             // sample += (*velocity / 127.0) * sin(2 * 3.14 * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
         }
@@ -232,7 +238,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         } else {
                             midi_voices[voice_number].velocity /= 2;
                             midi_voices[voice_number].release =
-                                    midi_voices[voice_number].sample_position + SOUND_FREQUENCY / 8; // 1/6 seconds
+                                    midi_voices[voice_number].sample_position + RELEASE_DURATION;
                         }
                         return;
                     }
@@ -272,8 +278,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                                 } else {
                                     midi_voices[voice_number].velocity /= 2;
                                     midi_voices[voice_number].release =
-                                            midi_voices[voice_number].sample_position + SOUND_FREQUENCY / 8;
-                                    // 1/6 seconds
+                                            midi_voices[voice_number].sample_position + RELEASE_DURATION;
                                 }
                                 // midi_voices[voice_number].playing = 0;
                                 // CLEAR_ACTIVE_VOICE(voice_number);
