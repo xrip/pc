@@ -14,31 +14,24 @@
 
 #define RELEASE_DURATION (SOUND_FREQUENCY / 8) // Duration for note release
 
-struct midi_voice_s {
-    uint8_t position;
+typedef struct midi_voice_s {
+    uint8_t voice_position;
     // uint8_t playing;
     uint8_t channel;
     uint8_t note;
     uint8_t velocity;
     uint8_t velocity_base;
+
     int32_t frequency_m100;
     uint16_t sample_position;
     uint16_t release;
-};
-
-static struct midi_voice_s midi_voices[MAX_MIDI_VOICES] = {0};
-
-// Bitmask for active voices
-static uint32_t volatile active_voice_bitmask = 0;
+} midi_voice_t;
 
 typedef struct midi_channel_s {
     uint8_t program;
     uint8_t volume;
     int pitch;
 } midi_channel_t;
-
-// Bitmask for sustained channels
-static uint32_t volatile channels_sustain_bitmask = 0;
 
 typedef struct __attribute__((packed)) {
     uint8_t command;
@@ -47,7 +40,13 @@ typedef struct __attribute__((packed)) {
     uint8_t other;
 } midi_command_t;
 
+static midi_voice_t midi_voices[MAX_MIDI_VOICES] = {0};
 static midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
+
+// Bitmask for active voices
+static uint32_t volatile active_voice_bitmask = 0;
+// Bitmask for sustained channels
+static uint32_t volatile channels_sustain_bitmask = 0;
 
 
 #define SET_ACTIVE_VOICE(idx) (active_voice_bitmask |= (1U << (idx)))
@@ -73,7 +72,6 @@ static INLINE int8_t sin_m_128(size_t idx) {
 
 
 #define SIN_STEP (SOUND_FREQUENCY * 100 / 4096)
-
 static INLINE int32_t sin100sf_m_128_t(int32_t a) {
     return sin_m_128((a / SIN_STEP) & 4095);
 }
@@ -165,15 +163,13 @@ int16_t __time_critical_func() midi_sample() {
 #endif
 
             uint16_t sample_position = voice->sample_position++;
-
-
             uint8_t *velocity = &voice->velocity;
 
             if (sample_position == SOUND_FREQUENCY / 2) { // Sustain state
                 *velocity -= *velocity >> 2;
             } else if (sample_position && sample_position == voice->release) {
                 // voice->playing = 0;
-                CLEAR_ACTIVE_VOICE(voice->position);
+                CLEAR_ACTIVE_VOICE(voice->voice_position);
             }
 
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
@@ -203,7 +199,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                     struct midi_voice_s *voice = &midi_voices[voice_number];
                     if (!IS_ACTIVE_VOICE(voice_number)) {
                         // voice->playing = 1;
-                        voice->position = voice_number;
+                        voice->voice_position = voice_number;
                         voice->sample_position = 0;
                         voice->release = 0;
                         voice->channel = channel;
