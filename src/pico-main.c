@@ -116,7 +116,7 @@ int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {0};
+static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = {0};
 int active_buffer = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
@@ -184,24 +184,23 @@ void __time_critical_func() render_loop() {
             cms_samples(samples);
 
 #if I2S_SOUND
-            audio_buffer[sample_index++] = samples[1];
-            audio_buffer[sample_index++] = samples[0];
+            audio_buffer[active_buffer][sample_index++] = samples[1];
+            audio_buffer[active_buffer][sample_index++] = samples[0];
 
-            if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
-                sample_index = 0;
-                i2s_dma_write(&i2s_config, audio_buffer);
+            i2s_write(&i2s_config, &samples[0], 1);
+            // if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
+                // sample_index = 0;
+                // i2s_dma_write(&i2s_config, audio_buffer[active_buffer]);
+                // active_buffer ^= 1;
 
-            }
+            // }
 #else
             pwm_set_gpio_level(PWM_LEFT_CHANNEL, (uint16_t) ((int32_t) samples[0] + 0x8000L) >> 4);
             pwm_set_gpio_level(PWM_RIGHT_CHANNEL, (uint16_t) ((int32_t) samples[1] + 0x8000L) >> 4);
 #endif
 
 #else
-#if PICO_RP2350
-            last_midi_sample = midi_sample();
-#endif
-            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample() + last_midi_sample;
+            int32_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample() + midi_sample();
             pwm_set_gpio_level(PCM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
 #endif
             last_sound_tick = now;

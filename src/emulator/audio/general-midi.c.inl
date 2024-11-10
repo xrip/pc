@@ -9,28 +9,25 @@
 #include "emulator/acoustic/acoustic.h"
 #endif
 
-#define MAX_MIDI_VOICES 24
+#define MAX_MIDI_VOICES 32
 #define MIDI_CHANNELS 16
 
-struct  midi_voice_s {
+struct midi_voice_s {
     uint8_t position;
     uint8_t playing;
     uint8_t channel;
     uint8_t note;
     uint8_t velocity;
     uint8_t velocity_base;
-#if defined(ADSR)
-    uint8_t adsr[6];
-    uint8_t current_velocity;
-#endif
     int32_t frequency_m100;
     uint16_t sample_position;
     uint16_t release;
 };
-static struct midi_voice_s __not_in_flash("midi") midi_voices[MAX_MIDI_VOICES] = {0};
+
+static struct midi_voice_s midi_voices[MAX_MIDI_VOICES] = {0};
 
 // Bitmask for active voices
-uint32_t __not_in_flash("midi") active_voice_bitmask = 0;
+static uint32_t volatile active_voice_bitmask = 0;
 
 typedef struct midi_channel_s {
     uint8_t program;
@@ -39,7 +36,7 @@ typedef struct midi_channel_s {
 } midi_channel_t;
 
 // Bitmask for sustained channels
-uint32_t __not_in_flash("midi") channels_sustain_bitmask = 0;
+static uint32_t volatile channels_sustain_bitmask = 0;
 
 typedef struct __attribute__((packed)) {
     uint8_t command;
@@ -48,7 +45,7 @@ typedef struct __attribute__((packed)) {
     uint8_t other;
 } midi_command_t;
 
-static midi_channel_t __not_in_flash("midi") midi_channels[MIDI_CHANNELS] = {0};
+static midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
 
 
 #define SET_ACTIVE_VOICE(idx) (active_voice_bitmask |= (1U << (idx)))
@@ -89,8 +86,8 @@ int16_t __time_critical_func() midi_sample() {
     return (int32_t)(sample1 >> 2);*/
     if (!active_voice_bitmask) return 0;
 
-    int32_t sample = 0;
-    uint32_t active_voices = active_voice_bitmask;
+    volatile int32_t sample = 0;
+    volatile uint32_t active_voices = active_voice_bitmask;
     struct midi_voice_s *voice = midi_voices;
 
     while (active_voices) {
@@ -162,58 +159,25 @@ int16_t __time_critical_func() midi_sample() {
             uint16_t sample_position = voice->sample_position++;
 
 
-            uint8_t * velocity = &voice->velocity;
+            uint8_t *velocity = &voice->velocity;
 
-#if !defined(ADSR)
-            if (sample_position == SOUND_FREQUENCY / 2) {  // poor man ADSR with S only :)
+            if (sample_position == SOUND_FREQUENCY / 2) {
+                // poor man ADSR with S only :)
                 *velocity -= *velocity >> 2;
             }
 
-#else
-            if (sample_position <= SOUND_FREQUENCY / 2)
-                switch (sample_position) {
-                    case 0: // 0%
-                        *velocity = voice->adsr[0];
-                    break;
-                    case SOUND_FREQUENCY / 16: // 25% of attack
-                        *velocity = voice->adsr[1];
-                    break;
-                    case SOUND_FREQUENCY / 8: // 50% of attack
-                        *velocity = voice->adsr[2];
-                    break;
-                    case SOUND_FREQUENCY / 6: // 75% of attack
-                        *velocity = voice->adsr[3];
-                    break;
-                    case SOUND_FREQUENCY / 4: // 100% of attack
-                        velocity = &voice->velocity;
-                    break;
-                    // Decay phase
-                    case SOUND_FREQUENCY / 3:  // 33% of decay
-                        *velocity = voice->adsr[4]; // 87.5% volume
-                    break;
-                    case SOUND_FREQUENCY / 2: // SUSTAIN
-                        *velocity = voice->adsr[5]; // 75% volume
-                    break;
-                }
-#endif
-            if (voice->release) {
-                if (--voice->release == 0) {
-                    voice->playing = 0;
-                    voice->sample_position = 0;
-                    CLEAR_ACTIVE_VOICE(voice->position);
-                }
+            if (sample_position && sample_position == voice->release) {
+                voice->playing = 0;
+                CLEAR_ACTIVE_VOICE(voice->position);
             }
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
-            // printf("sample1 %i %x\n", sample1, sample1);
-            // sample += sample1;
-
-            // sample += (*velocity / 127.0) * sin(6.28 * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
+            // sample += (*velocity / 127.0) * sin(2 * 3.14 * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
         }
         voice++;
         active_voices >>= 1;
     }
 
-    return (int32_t)(sample >> 2) ; // todo add pass filter
+    return (int32_t) (sample >> 2); // todo add pass filter
 }
 
 // todo: validate is it correct??
@@ -246,31 +210,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         voice->velocity = midi_channels[voice->channel].volume
                                               ? midi_channels[channel].volume * message->velocity >> 7
                                               : message->velocity;
-#if defined(ADSR)
-                        if (channel != 9) {
-                            // Attack
-                            voice->adsr[0] = 0; // 0%
-                            voice->adsr[1] = voice->velocity / 4; // 25%
-                            voice->adsr[2] = voice->velocity / 2; // 50%
-                            voice->adsr[3] = voice->velocity - voice->velocity / 4; // 75%
-                            // 100% maximum velocity
-                            // Decay
-                            voice->adsr[4] = voice->velocity - voice->velocity / 8; // 87.5%
-                            // Sustain
-                            voice->adsr[5] = voice->velocity - voice->velocity / 4; // 75% Sustain
-                        } else {
-                            // Attack
-                            voice->adsr[0] = voice->velocity; // 75%
-                            voice->adsr[1] = voice->velocity; // 87.5%
-                            voice->adsr[2] = voice->velocity; // 100%
-                            voice->adsr[3] = voice->velocity; // 100%
-                            // 100% maximum velocity
-                            // Decay
-                            voice->adsr[4] = voice->velocity; // 87.5%
-                            // Sustain
-                            voice->adsr[5] = voice->velocity / 2; // 50%
-                        }
-#endif
+
                         SET_ACTIVE_VOICE(voice_number);
                         return;
                     }
@@ -290,7 +230,9 @@ static INLINE void parse_midi(const midi_command_t *message) {
                             voice->playing = 0;
                             CLEAR_ACTIVE_VOICE(voice_number);
                         } else {
-                            voice->release = SOUND_FREQUENCY / 8; // 1/4 seconds
+                            midi_voices[voice_number].velocity /= 2;
+                            midi_voices[voice_number].release =
+                                    midi_voices[voice_number].sample_position + SOUND_FREQUENCY / 8; // 1/6 seconds
                         }
                         return;
                     }
@@ -307,34 +249,8 @@ static INLINE void parse_midi(const midi_command_t *message) {
                     midi_channels[channel].volume = message->velocity;
                     for (int voice_number = 0; voice_number < MAX_MIDI_VOICES; ++voice_number) {
                         if (midi_voices[voice_number].channel == channel) {
-                            midi_voices[voice_number].velocity = message->velocity * midi_voices[voice_number].velocity_base >> 7;
-#if 0
-                            midi_voices[voice_number].current_velocity = midi_voices[voice_number].current_velocity * midi_voices[voice_number].velocity >> 7;
-
-                            if (channel != 9) {
-                                // Attack
-                                midi_voices[voice_number].adsr[0] = 0; // 0%
-                                midi_voices[voice_number].adsr[1] = midi_voices[voice_number].velocity / 4; // 25%
-                                midi_voices[voice_number].adsr[2] = midi_voices[voice_number].velocity / 2; // 50%
-                                midi_voices[voice_number].adsr[3] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 4; // 75%
-                                // 100% maximum velocity
-                                // Decay
-                                midi_voices[voice_number].adsr[4] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 8; // 87.5%
-                                // Sustain
-                                midi_voices[voice_number].adsr[5] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 4; // 75% Sustain
-                            } else {
-                                // Attack
-                                midi_voices[voice_number].adsr[0] = midi_voices[voice_number].velocity; // 100%
-                                midi_voices[voice_number].adsr[1] = midi_voices[voice_number].velocity; // 100%
-                                midi_voices[voice_number].adsr[2] = midi_voices[voice_number].velocity; // 100%
-                                midi_voices[voice_number].adsr[3] = midi_voices[voice_number].velocity; // 100%
-                                // 100% maximum velocity
-                                // Decay
-                                midi_voices[voice_number].adsr[4] = midi_voices[voice_number].velocity - midi_voices[voice_number].velocity / 4; // 87.5%
-                                // Sustain
-                                midi_voices[voice_number].adsr[5] = midi_voices[voice_number].velocity / 2; // 50%
-                            }
-#endif
+                            midi_voices[voice_number].velocity =
+                                    message->velocity * midi_voices[voice_number].velocity_base >> 7;
                         }
                     }
                     break;
@@ -354,7 +270,10 @@ static INLINE void parse_midi(const midi_command_t *message) {
                                     midi_voices[voice_number].playing = 0;
                                     CLEAR_ACTIVE_VOICE(voice_number);
                                 } else {
-                                    midi_voices[voice_number].release = SOUND_FREQUENCY / 8; // 1/4 seconds
+                                    midi_voices[voice_number].velocity /= 2;
+                                    midi_voices[voice_number].release =
+                                            midi_voices[voice_number].sample_position + SOUND_FREQUENCY / 8;
+                                    // 1/6 seconds
                                 }
                                 // midi_voices[voice_number].playing = 0;
                                 // CLEAR_ACTIVE_VOICE(voice_number);
