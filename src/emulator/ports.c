@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 #include <time.h>
 #include "emulator.h"
 #if PICO_ON_DEVICE

@@ -2,12 +2,15 @@
 
 #include "includes/bios.h"
 #include "emulator.h"
-#include "emulator/ems.c.inc"
+
+
+#include "emulator/ems.c.inl"
 
 #if PICO_ON_DEVICE
-#include "psram_spi.h"
-uint8_t __aligned(4) RAM[RAM_SIZE+4]  = { 0 };
-uint8_t __aligned(4) VIDEORAM[VIDEORAM_SIZE+4]  = { 0 };
+#include "pico.h"
+uint8_t * PSRAM_DATA = (uint8_t*)0x11000000;
+uint8_t ALIGN(4, RAM[RAM_SIZE + 4]) = {0};
+uint8_t ALIGN(4, VIDEORAM[VIDEORAM_SIZE + 4]) = {0};
 
 
 // Writes a byte to the virtual memory
@@ -20,7 +23,7 @@ void __time_critical_func() write86(uint32_t address, uint8_t value) {
         VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
     } else if (address >= EMS_START && address < EMS_END) {
         ems_write(address - EMS_START, value);
-    }  else if (address >= UMB_START && address < UMB_END) {
+    } else if (address >= UMB_START && address < UMB_END) {
         write8psram(address, value);
     } else if (address >= HMA_START && address < HMA_END) {
         write8psram(address, value);
@@ -37,11 +40,11 @@ void __time_critical_func() writew86(uint32_t address, uint16_t value) {
             *(uint16_t *) &RAM[address] = value;
         } else if (address < VIDEORAM_START) {
             write16psram(address, value);
-        }  else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
+        } else if (address >= VIDEORAM_START && address < VIDEORAM_END) {
             *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE] = value;
         } else if (address >= EMS_START && address < EMS_END) {
             ems_writew(address - EMS_START, value);
-        }  else if (address >= UMB_START && address < UMB_END) {
+        } else if (address >= UMB_START && address < UMB_END) {
             write16psram(address, value);
         } else if (address >= HMA_START && address < HMA_END) {
             write16psram(address, value);
@@ -57,7 +60,7 @@ uint8_t __time_critical_func() read86(uint32_t address) {
     if (address < VIDEORAM_START) {
         return read8psram(address);
     }
-    if (address >= VIDEORAM_START && address < VIDEORAM_END) {
+    if (unlikely(address >= VIDEORAM_START && address < VIDEORAM_END)) {
         return VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
     }
     if (address >= EMS_START && address < EMS_END) {
@@ -66,10 +69,10 @@ uint8_t __time_critical_func() read86(uint32_t address) {
     if (address >= UMB_START && address < UMB_END) {
         return read8psram(address);
     }
-    if (address == 0xFC000) {
+    if (unlikely(address == 0xFC000)) {
         return 0x21;
     }
-    if (address >= BIOS_START && address < HMA_START) {
+    if (unlikely(address >= BIOS_START && address < HMA_START)) {
         return BIOS[address - BIOS_START];
     }
     if (address >= HMA_START && address < HMA_END) {
@@ -89,7 +92,7 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     if (address < VIDEORAM_START) {
         return read16psram(address);
     }
-    if (address >= VIDEORAM_START && address < VIDEORAM_END) {
+    if (unlikely(address >= VIDEORAM_START && address < VIDEORAM_END)) {
         return *(uint16_t *) &VIDEORAM[(vga_plane_offset + address - VIDEORAM_START) % VIDEORAM_SIZE];
     }
     if (address >= EMS_START && address < EMS_END) {
@@ -98,7 +101,7 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     if (address >= UMB_START && address < UMB_END) {
         return read16psram(address);
     }
-    if (address >= BIOS_START && address < HMA_START) {
+    if (unlikely(address >= BIOS_START && address < HMA_START)) {
         return *(uint16_t *) &BIOS[address - BIOS_START];
     }
     if (address >= HMA_START && address < HMA_END) {
@@ -106,11 +109,12 @@ uint16_t __time_critical_func() readw86(uint32_t address) {
     }
     return 0xFFFF;
 }
+
 #else
-uint8_t ALING(4, VIDEORAM[VIDEORAM_SIZE + 4]) = { 0 };
-uint8_t ALING(4, RAM[RAM_SIZE + 4]) = { 0 };
-uint8_t ALING(4, UMB[(UMB_END - UMB_START) + 4]) = { 0 };
-uint8_t ALING(4, HMA[(HMA_END - HMA_START) + 4]) = { 0 };
+uint8_t ALIGN(4, VIDEORAM[VIDEORAM_SIZE + 4]) = {0 };
+uint8_t ALIGN(4, RAM[RAM_SIZE + 4]) = {0 };
+uint8_t ALIGN(4, UMB[(UMB_END - UMB_START) + 4]) = {0 };
+uint8_t ALIGN(4, HMA[(HMA_END - HMA_START) + 4]) = {0 };
 
 // Writes a byte to the virtual memory
 void write86(uint32_t address, uint8_t value) {

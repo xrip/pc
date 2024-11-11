@@ -1,8 +1,9 @@
 #pragma once
 #if PICO_ON_DEVICE
 #include "printf/printf.h"
+#include <pico.h>
 #else
-#include "stdio.h"
+#include "printf/printf.h"
 #endif
 #include <stdint.h>
 #include "cpu.h"
@@ -14,6 +15,7 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #if PICO_RP2350
 #define RAM_SIZE (400 << 10)
+//#include "swap.h"
 #else
 #define RAM_SIZE (146 << 10)
 #endif
@@ -21,7 +23,11 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
+#if PICO_RP2040
+#define SOUND_FREQUENCY (44100)
+#else
 #define SOUND_FREQUENCY (49716)
+#endif
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 #define VIDEORAM_START (0xA0000)
@@ -38,7 +44,8 @@ extern "C" {
 
 #define BIOS_START (0xFE000)
 
-#define EMS_MEMORY_SIZE 0x200000
+#define EMS_MEMORY_SIZE (2048 << 10)
+#define XMS_SIZE (4096 << 10)
 
 #define BIOS_MEMORY_SIZE                0x413
 #define BIOS_TRUE_MEMORY_SIZE           0x415
@@ -52,7 +59,7 @@ extern uint8_t RAM[RAM_SIZE + 4];
 extern uint8_t UMB[(UMB_END - UMB_START) + 4];
 extern uint8_t HMA[(HMA_END - HMA_START) + 4];
 extern uint8_t EMS[EMS_MEMORY_SIZE + 4];
-
+extern uint8_t XMS[XMS_SIZE + 4];
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];
@@ -196,7 +203,7 @@ extern void cms_out(uint16_t portnum, uint16_t value);
 
 extern uint8_t cms_in(uint16_t addr);
 
-extern void cms_samples(int32_t *output);
+extern void cms_samples(int32_t *output);;
 
 #define XMS_FN_CS 0x0000
 #define XMS_FN_IP 0x03FF
@@ -223,20 +230,30 @@ int16_t adlibgensample();
 
 extern void out_ems(uint16_t port, uint8_t data);
 extern int16_t covox_sample;
+extern int16_t midi_sample();
+
+#if !PICO_ON_DEVICE
+#define __fast_mul(x,y) (x*y)
+#define __not_in_flash(x)
+#define __time_critical_func(x)
+
+#endif
 
 #ifndef INLINE
 #if defined(_MSC_VER)
+#define likely(x)       (x)
+#define unlikely(x)     (x)
 #define INLINE __inline
-#define ALING(x, y) __declspec(align(x)) y
+#define ALIGN(x, y) __declspec(align(x)) y
 #elif defined(__GNUC__)
 #define INLINE __inline__
 #if PICO_ON_DEVICE
-#define ALING(x, y) __attribute__((__aligned__(x))) y
+#define ALIGN(x, y) y __attribute__((aligned(x)))
+#else
+#define ALIGN(x, y) y __attribute__((aligned(x)))
+#endif
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
-#else
-#define ALING(x, y) y __attribute__((aligned(x)))
-#endif
 #else
 #define INLINE inline
 #define ALING(x, y) y __attribute__((aligned(x)))
@@ -246,3 +263,37 @@ extern int16_t covox_sample;
 }
 #endif
 
+#ifndef TOTAL_VIRTUAL_MEMORY_KBS
+#if PICO_ON_DEVICE && !ONBOARD_PSRAM
+#include "psram_spi.h"
+
+#else
+extern uint8_t * PSRAM_DATA;
+
+static INLINE void write8psram(uint32_t address, uint8_t value) {
+    PSRAM_DATA[address] = value;
+}
+static INLINE void write16psram(uint32_t address, uint16_t value) {
+    *(uint16_t *)&PSRAM_DATA[address] = value;
+}
+static INLINE uint8_t read8psram(uint32_t address) {
+    return PSRAM_DATA[address];
+}
+static INLINE uint16_t read16psram(uint32_t address) {
+    return *(uint16_t *)&PSRAM_DATA[address];
+}
+#endif
+#else
+static INLINE void write8psram(uint32_t address, uint8_t value) {
+    swap_write(address, value);
+}
+static INLINE void write16psram(uint32_t address, uint16_t value) {
+    swap_write16(address, value);
+}
+static INLINE uint8_t read8psram(uint32_t address) {
+    return swap_read(address);
+}
+static INLINE uint16_t read16psram(uint32_t address) {
+    return swap_read16(address);
+}
+#endif
