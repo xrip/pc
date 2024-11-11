@@ -1,9 +1,11 @@
+#pragma GCC optimize("Ofast")
 #include <pico/time.h>
-#include <hardware/clocks.h>
+#include "hardware/clocks.h"
 #include <pico/stdlib.h>
 #include <hardware/vreg.h>
-#include <pico/stdio.h>
 #include <pico/multicore.h>
+
+
 #ifndef ONBOARD_PSRAM
 #include "psram_spi.h"
 #endif
@@ -20,90 +22,13 @@
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
+#include "psram_spi.h"
 #include "nespad.h"
 #include "emu8950.h"
 #include "ps2_mouse.h"
-#include "74hc595/74hc595.h"
-
+extern OPL *emu8950_opl;
 FATFS fs;
-
-#if I2S_SOUND
 i2s_config_t i2s_config;
-#endif
-
-#if !HARDWARE_SOUND
-OPL *emu8950_opl;
-#endif
-int sound_chips_clock = 0;
-
-
-extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
-
-extern void adlib_init(uint32_t samplerate);
-
-extern void adlib_write(uintptr_t idx, uint8_t val);
-
-void tandy_write(uint16_t reg, uint8_t value) {
-#if I2S_SOUND
-    sn76489_out(value);
-#else
-    if (!sound_chips_clock) {
-        clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
-        sound_chips_clock = 1;
-    }
-    SN76489_write(value);
-#endif
-}
-
-
-void adlib_write_d(uint16_t reg, uint8_t value) {
-#if I2S_SOUND
-#if !PICO_RP2040
-    static int latch = -1;
-    if (latch == -1) {
-        latch = value;
-    } else {
-        OPL_writeReg(emu8950_opl, latch, value);
-        latch = -1;
-    }
-#endif
-#else
-    if (!sound_chips_clock) {
-        clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
-        sound_chips_clock = 1;
-    }
-    if (reg & 1) {
-        OPL2_write_byte(1, 0, value & 0xff);
-    } else {
-        OPL2_write_byte(0, 0, value & 0xff);
-    }
-#endif
-}
-
-inline void cms_write(uint16_t reg, uint8_t val) {
-#if I2S_SOUND
-    cms_out(reg, val);
-#else
-    if (sound_chips_clock) {
-        clock_init(CLOCK_PIN, CLOCK_FREQUENCY * 2);
-        sound_chips_clock = 0;
-    }
-    switch (reg & 3) {
-        case 0:
-            SAA1099_write(0, 0, val);
-            break;
-        case 1:
-            SAA1099_write(1, 0, val);
-            break;
-        case 2:
-            SAA1099_write(0, 1, val);
-            break;
-        case 3:
-            SAA1099_write(1, 1, val);
-            break;
-    }
-#endif
-}
 
 bool handleScancode(uint32_t ps2scancode) {
     port60 = ps2scancode;
@@ -111,112 +36,95 @@ bool handleScancode(uint32_t ps2scancode) {
     doirq(1);
     return true;
 }
-
 int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {0};
-int active_buffer = 0;
+static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int sample_index = 0;
 extern uint64_t sb_samplerate;
-extern uint16_t timeconst;
-extern pwm_config config;
+extern uint8_t timeconst;
+/* Renderer loop on Pico's second core */
+void __time_critical_func() second_core() {
+    i2s_config.sample_freq = SOUND_FREQUENCY;
+    i2s_config.dma_trans_count = 1;
+    i2s_volume(&i2s_config, 0);
+    i2s_init(&i2s_config);
+    sleep_ms(100);
 
 
-int mouse_available = false;
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+    graphics_init();
+    graphics_set_buffer(VIDEORAM, 320, 200);
+    graphics_set_textbuffer(VIDEORAM + 32768);
+    graphics_set_bgcolor(0);
+    graphics_set_offset(0, 0);
+    graphics_set_flashmode(true, true);
 
-void __time_critical_func() render_loop() {
-    absolute_time_t now = get_absolute_time();
-    absolute_time_t last_timer_tick = now,
-            last_cursor_blink = now,
-            last_sound_tick = now,
-            last_frame_tick = now,
-            last_dss_tick = now,
-            last_sb_tick = now,
-            last_midi_tick = now;
+    for (uint8_t i = 0; i < 255; i++) {
+        graphics_set_palette(i, vga_palette[i]);
+    }
 
+    sem_acquire_blocking(&vga_start_semaphore);
+
+    uint64_t tick = time_us_64();
+    uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
+
+    uint64_t last_dss_tick = 0;
+    uint64_t last_cms_tick = 0;
+    uint64_t last_sb_tick = 0;
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-    int16_t last_midi_sample = 0;
+    int16_t last_cms_samples[2];
 
-    int sample_index = 0;
     while (true) {
-        if (absolute_time_diff_us(last_timer_tick, now) >= timer_period) {
+        if (tick >= last_timer_tick + (timer_period)) {
             doirq(0);
-            last_timer_tick = now;
+            last_timer_tick = tick;
         }
 
-        if (absolute_time_diff_us(last_cursor_blink, now) >= 333333) {
+        if (tick >= last_cursor_blink + 333333) {
             cursor_blink_state ^= 1;
-            last_cursor_blink = now;
+            last_cursor_blink = tick;
         }
 
-        // Sound Blaster
-        if (absolute_time_diff_us(last_sb_tick, now) >= timeconst) {
-            last_sb_sample = blaster_sample();
-            last_sb_tick = now;
-        }
-
-        // Dinsey Sound Source frequency 7100
-        if (absolute_time_diff_us(last_dss_tick, now) >= (1000000 / 7000)) {
+        // Dinse Sound Source frequency 7100
+        if (tick > last_dss_tick + (1000000 / 7000)) {
             last_dss_sample = dss_sample();
-            last_dss_tick = now;
+
+            last_dss_tick = tick;
         }
 
+#if !PICO_ON_DEVICE
+        // Sound Blaster
+        if (tick > last_sb_tick + timeconst) {
+            last_sb_sample = blaster_sample();
+
+            last_sb_tick = tick;
+        }
+#endif
         // Sound frequency 44100
-        if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
-#if I2S_SOUND || PWM_SOUND
-            int16_t samples[2] = { 0, 0 };
-#if !PICO_RP2040
-            OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
-#endif
-            samples[0] += last_dss_sample;
-            samples[0] += sn76489_sample();
-            samples[0] += covox_sample;
-            samples[0] += last_sb_sample;
-            samples[0] += midi_sample();
+        if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
+            int16_t samples[2];
+            get_sound_sample(last_dss_sample + last_sb_sample, samples);
+            i2s_dma_write(&i2s_config, samples);
+            // audio_buffer[sample_index++] = samples[1];
+            // audio_buffer[sample_index++] = samples[0];
 
-            if (speakerenabled)
-                samples[0] += speaker_sample();
 
-            samples[1] = samples[0];
+            // if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
+                // sample_index = 0;
+                // i2s_dma_write(&i2s_config, audio_buffer);
+                // active_buffer ^= 1;
+            // }
 
-            cms_samples(samples);
-
-#if I2S_SOUND
-            audio_buffer[sample_index++] = samples[1];
-            audio_buffer[sample_index++] = samples[0];
-
-            if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
-                sample_index = 0;
-                i2s_dma_write(&i2s_config, audio_buffer);
-
-            }
-#else
-            pwm_set_gpio_level(PWM_LEFT_CHANNEL, (uint16_t) ((int32_t) samples[0] + 0x8000L) >> 4);
-            pwm_set_gpio_level(PWM_RIGHT_CHANNEL, (uint16_t) ((int32_t) samples[1] + 0x8000L) >> 4);
-#endif
-
-#else
-#if PICO_RP2350
-            last_midi_sample = midi_sample();
-#endif
-            int16_t sample = last_dss_sample + last_sb_sample + covox_sample + speaker_sample() + last_midi_sample;
-            pwm_set_gpio_level(PCM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
-#endif
-            last_sound_tick = now;
+            last_sound_tick = tick;
         }
 
-        if (absolute_time_diff_us(last_frame_tick, now) >= 16667) {
+        if (tick >= last_frame_tick + 16667) {
             static uint8_t old_video_mode;
-
-            if (!mouse_available) {
-#define MOUSE_SPEED 4
-                nespad_read();
-                sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
-            }
-
             if (old_video_mode != videomode) {
+
                 if (1) {
                     switch (videomode) {
                         case TGA_160x200x16:
@@ -257,69 +165,17 @@ void __time_critical_func() render_loop() {
                     graphics_set_mode(videomode);
                     old_video_mode = videomode;
                 }
+
+
             }
-            last_frame_tick = now;
+            last_frame_tick = tick;
         }
-        now = time_us_64();
+        tick = time_us_64();
         tight_loop_contents();
+
     }
     __unreachable();
 }
-/* Renderer loop on Pico's second core */
-void second_core() {
-#if I2S_SOUND
-    i2s_config = i2s_get_default_config();
-    i2s_config.sample_freq = SOUND_FREQUENCY;
-    i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
-    i2s_volume(&i2s_config, 0);
-    i2s_init(&i2s_config);
-#elif PWM_SOUND
-    config = pwm_get_default_config();
-
-    gpio_set_function(PWM_LEFT_CHANNEL, GPIO_FUNC_PWM);
-    gpio_set_function(PWM_RIGHT_CHANNEL, GPIO_FUNC_PWM);
-
-    pwm_config_set_clkdiv(&config, 1.0f);
-    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
-
-    pwm_init(pwm_gpio_to_slice_num(PWM_LEFT_CHANNEL), &config, true);
-    pwm_init(pwm_gpio_to_slice_num(PWM_RIGHT_CHANNEL), &config, true);
-
-    gpio_set_function(PWM_BEEPER, GPIO_FUNC_PWM);
-//    pwm_config_set_clkdiv(&config, clock_get_hz(clk_sys) / (1.19318f * MHZ));
-    pwm_config_set_clkdiv(&config, 127);
-    pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &config, true);
-#elif HARDWARE_SOUND
-    init_74hc595();
-    config = pwm_get_default_config();
-    gpio_set_function(PCM_PIN, GPIO_FUNC_PWM);
-    pwm_config_set_clkdiv(&config, 1.0f);
-    pwm_config_set_wrap(&config, (1 << 12) - 1); // MAX PWM value
-    pwm_init(pwm_gpio_to_slice_num(PCM_PIN), &config, true);
-#endif
-
-
-#if !HARDWARE_SOUND
-    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
-#endif
-    blaster_reset();
-
-    graphics_init();
-    graphics_set_buffer(VIDEORAM, 320, 200);
-    graphics_set_textbuffer(VIDEORAM + 32768);
-    graphics_set_bgcolor(0);
-    graphics_set_offset(0, 0);
-    graphics_set_flashmode(true, true);
-
-    for (uint8_t i = 0; i < 255; i++) {
-        graphics_set_palette(i, vga_palette[i]);
-    }
-
-    sem_acquire_blocking(&vga_start_semaphore);
-
-    render_loop();
-}
-
 extern bool PSRAM_AVAILABLE;
 
 #if 1
@@ -336,7 +192,7 @@ INLINE void _putchar(char character) {
     }
     uint8_t *vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
 
-    if ((unsigned) character >= 32) {
+    if ((unsigned)character >= 32) {
         if (character >= 96) character -= 32; // uppercase
         *vidramptr = ((character - 32) & 63) | 0 << 6;
         if (x == 80) {
@@ -353,8 +209,7 @@ INLINE void _putchar(char character) {
         x--;
         *vidramptr = 0;
     }
-}
-
+    }
 #endif
 
 #if PICO_RP2350
@@ -433,30 +288,29 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     hw_set_bits(&xip_ctrl_hw->ctrl, XIP_CTRL_WRITABLE_M1_BITS);
 }
 #endif
-
 int main() {
+
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
     vreg_set_voltage(VREG_VOLTAGE_1_60);
-    sleep_ms(33);
+    sleep_ms(10);
     *qmi_m0_timing = 0x60007204;
-    set_sys_clock_hz(RP2350_SPEED*1000000, 0);
+    set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
-//    psram_init(19);
 #else
     memcpy_wrapper_replace(NULL);
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
-    vreg_disable_voltage_limit();
     sleep_ms(33);
-    set_sys_clock_khz(RP2040_SPEED * 1000, true);
+    set_sys_clock_khz(396 * 1000, true);
 #endif
 #ifdef ONBOARD_PSRAM
     psram_init(19);
     int psram = 1;
 #else
-    int psram = init_psram();
+    //int psram = init_psram();
 #endif
+
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -466,42 +320,54 @@ int main() {
         sleep_ms(23);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
+
     keyboard_init();
-    sem_init(&vga_start_semaphore, 0, 1);
-    multicore_launch_core1(second_core);
-    sem_release(&vga_start_semaphore);
-
-    graphics_set_mode(TEXTMODE_80x25_COLOR);
-
-
-
-
-
+//    mouse_init();
     nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
     sleep_ms(5);
     nespad_read();
 
+    int mouse_available = 0;
     if (nespad_state) {
         mouse_init();
         mouse_available = 1;
     }
 
-    if (FR_OK != f_mount(&fs, "0", 1)) {
-        printf("SD Card not inserted or SD Card error!");
-        while (1);
-    }
-    if (!psram) {
+    i2s_config = i2s_get_default_config();
+
+    sem_init(&vga_start_semaphore, 0, 1);
+    multicore_launch_core1(second_core);
+    sem_release(&vga_start_semaphore);
+
+    sleep_ms(50);
+
+    graphics_set_mode(TEXTMODE_80x25_COLOR);
+
+        if (!init_psram()) {
         printf("No PSRAM detected.");
+//        while (1);
     }
 
-    //    init_swap();
+    if (FR_OK != f_mount(&fs, "0", 1)) {
+        printf("SD Card not inserted or SD Card error!");
+        // while (1);
+    }
+   // adlib_init(SOUND_FREQUENCY);
 
     sn76489_reset();
     reset86();
 
     while (true) {
         exec86(32768);
+#if 1
+        if (!mouse_available) {
+#define MOUSE_SPEED 8
+            nespad_read();
+            sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
+        }
+#endif
         tight_loop_contents();
     }
     __unreachable();
+
 }

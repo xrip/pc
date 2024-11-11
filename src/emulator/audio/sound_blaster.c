@@ -24,8 +24,8 @@
 
 // #define DEBUG_BLASTER
 
-#include "emulator.h"
-volatile int16_t sample;
+#include "../emulator.h"
+static volatile int16_t sample;
 static struct sound_blaster_s {
     uint8_t dspenable;
 
