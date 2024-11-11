@@ -5,7 +5,8 @@
 #include "nespad.h"
 #endif
 
-#include "i8237.c.inc"
+#include "mpu401.c.inl"
+#include "i8237.c.inl"
 
 uint8_t crt_controller_idx, crt_controller[32];
 uint8_t port60, port61, port64;
@@ -45,8 +46,8 @@ static INLINE uint8_t rtc_read(uint16_t addr) {
     uint8_t ret = 0xFF;
     struct tm tdata;
 
-    time(&tdata);
-    struct tm *t = localtime(&tdata);
+    time((time_t*)&tdata);
+    struct tm *t = localtime((const time_t*)&tdata);
 
     t->tm_year = 24;
     addr &= 0x1F;
@@ -126,6 +127,9 @@ void portout(uint16_t portnum, uint16_t value) {
 
             break;
         case 0x64:
+#if PICO_ON_DEVICE
+            keyboard_send(value);
+#endif
             port64 = value;
             break;
 // i8237 DMA
@@ -185,9 +189,11 @@ void portout(uint16_t portnum, uint16_t value) {
             return out_ems(portnum, value);
 
         case 0x278:
-            covox_sample = (int16_t)((value - 128) << 7);
+            covox_sample = (int16_t) (value - 128 << 6);
             return;
-
+        case 0x330:
+        case 0x331:
+            return mpu401_write(portnum, value);
         case 0x378:
         case 0x37A:
             return dss_out(portnum, value);
@@ -405,6 +411,9 @@ uint16_t portin(uint16_t portnum) {
             return rtc_read(portnum);
         case 0x27A: // LPT2 status (covox is always ready)
             return 0;
+        case 0x330:
+        case 0x331:
+            return mpu401_read(portnum);
         case 0x378:
         case 0x379:
             return dss_in(portnum);
@@ -454,5 +463,5 @@ void portout16(uint16_t portnum, uint16_t value) {
 }
 
 uint16_t portin16(uint16_t portnum) {
-    return portin(portnum) | portin(portnum + 1) >> 8;
+    return portin(portnum) | portin(portnum + 1) << 8;
 }
