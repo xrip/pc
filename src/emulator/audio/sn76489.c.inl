@@ -22,11 +22,8 @@
 /*
  *The SN76489 is connected to a clock signal, which is commonly 3579545Hz for NTSC systems and 3546893Hz for PAL/SECAM systems (these are based on the associated TV colour subcarrier frequencies, and are common master clock speeds for many systems). It divides this clock by 16 to get its internal clock. The datasheets specify a maximum of 4MHz.
 */
-static uint32_t sn_clock = 3579545;
-static const uint16_t samplerate = SOUND_FREQUENCY;
-
-static uint32_t base_incr = 0;
-
+#define BASE_INCREMENT (uint32_t) ((double) 3579545 * (1 << GETA_BITS) / (16 * SOUND_FREQUENCY));
+static const uint8_t parity[10] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0 };
 static uint32_t sn_count[3];
 static uint32_t volume[3];
 static uint32_t sn_[3];
@@ -62,15 +59,6 @@ static const uint16_t volume_table[16] = {
 #define GETA_BITS 24
 
 void sn76489_reset() {
-#ifdef QUALITY
-        base_incr = 1 << GETA_BITS;
-        realstep = (uint32_t) ((1 << 31) / samplerate);
-        sngstep = (uint32_t) ((1 << 31) / (clock / 16));
-        sngtime = 0;
-#else
-        base_incr = (uint32_t) ((double) sn_clock * (1 << GETA_BITS) / (16 * samplerate));
-#endif
-
     for (int i = 0; i < 3; i++) {
         sn_count[i] = 0;
         sn_[i] = 0;
@@ -136,24 +124,16 @@ static INLINE void sn76489_out(const uint16_t value) {
     }
 }
 
-static INLINE int parity(int value) {
-    value ^= value >> 8;
-    value ^= value >> 4;
-    value ^= value >> 2;
-    value ^= value >> 1;
-    return value & 1;
-};
-
 static INLINE int16_t sn76489_sample() {
-    base_count += base_incr;
-    uint32_t incr = (base_count >> GETA_BITS);
+    base_count += BASE_INCREMENT;
+    const uint32_t incr = (base_count >> GETA_BITS);
     base_count &= (1 << GETA_BITS) - 1;
 
     /* Noise */
     noise_count += incr;
     if (noise_count & 0x400) {
         if (noise_mode) /* White */
-            noise_seed = (noise_seed >> 1) | (parity(noise_seed & 0x0009) << 15);
+            noise_seed = (noise_seed >> 1) | (parity[noise_seed & 0x0009] << 15);
         else /* Periodic */
             noise_seed = (noise_seed >> 1) | ((noise_seed & 1) << 15);
 
@@ -168,6 +148,7 @@ static INLINE int16_t sn76489_sample() {
     }
 
     channel_sample[3] >>= 1;
+
 
     /* Tone */
     for (int i = 0; i < 3; i++) {
