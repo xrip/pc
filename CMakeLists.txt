@@ -154,6 +154,7 @@ else ()
 #            PICO_HEAP_SIZE=0
 #            USE_ZONE_FOR_MALLOC=1
             PICO_FLASH_SIZE_BYTES=16777216
+            #ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6

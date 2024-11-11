@@ -144,23 +144,24 @@ int mfb_open(const char *title, int width, int height, int scale) {
     s_height = height;
     s_scale = scale;
 
-/**/
-    s_wnd = CreateWindowEx(0,
-                           title, title,
-                           WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
-                           -1920 + (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2,
-                           320 + (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2,
-                           rect.right, rect.bottom,
-                           0, 0, 0, 0);
-/**/
-/** /    s_wnd = CreateWindowEx(0,
+    if (GetSystemMetrics(SM_XVIRTUALSCREEN) < 0) {
+        //
+        s_wnd = CreateWindowEx(0,
+                               title, title,
+                               WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
+                               -1920 + (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2,
+                               320 + (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2,
+                               rect.right, rect.bottom,
+                               0, 0, 0, 0);
+    } else {
+        s_wnd = CreateWindowEx(0,
                            title, title,
                            WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
                            (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2,
                            (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2,
                            rect.right, rect.bottom,
                            0, 0, 0, 0);
-    /**/
+    }
 
     if (!s_wnd)
         return 0;

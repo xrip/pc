@@ -3,9 +3,19 @@
 #include "hardware/clocks.h"
 #include <pico/stdlib.h>
 #include <hardware/vreg.h>
-#include <pico/stdio.h>
 #include <pico/multicore.h>
+
+
+#ifndef ONBOARD_PSRAM
+#include "psram_spi.h"
+#endif
+#if !PICO_RP2350
 #include "../../memops_opt/memops_opt.h"
+#else
+#include <hardware/structs/qmi.h>
+#include <hardware/structs/xip.h>
+#endif
+
 #include "emulator/emulator.h"
 
 #include "audio.h"
@@ -52,7 +62,7 @@ extern uint8_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
     i2s_config.sample_freq = SOUND_FREQUENCY;
-    i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
+    i2s_config.dma_trans_count = 1;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
     sleep_ms(100);
@@ -112,35 +122,18 @@ void __time_critical_func() second_core() {
             int16_t samples[2] = { 0, 0 };
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
 
-            if (last_dss_sample)
-                samples[0] += last_dss_sample;
-            if (speakerenabled)
-                samples[0] += speaker_sample();
+            get_sound_sample(last_dss_sample, last_sb_sample, samples);
 
-            samples[0] += sn76489_sample();
-
-#if !PICO_ON_DEVICE
-            if (last_sb_sample)
-                samples[0] += last_sb_sample;
-#endif
-//            samples[0] += adlibgensample() * 32;
-            samples[0] += covox_sample;
-
-            samples[0] += midi_sample();
-            samples[1] = samples[0];
-
-            cms_samples(samples);
+            i2s_dma_write(&i2s_config, samples);
+            // audio_buffer[sample_index++] = samples[1];
+            // audio_buffer[sample_index++] = samples[0];
 
 
-            audio_buffer[sample_index++] = samples[1];
-            audio_buffer[sample_index++] = samples[0];
-
-
-            if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
-                sample_index = 0;
-                i2s_dma_write(&i2s_config, audio_buffer);
-                //active_buffer ^= 1;
-            }
+            // if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
+                // sample_index = 0;
+                // i2s_dma_write(&i2s_config, audio_buffer);
+                // active_buffer ^= 1;
+            // }
 
             last_sound_tick = tick;
         }
@@ -235,25 +228,105 @@ INLINE void _putchar(char character) {
     }
     }
 #endif
+
+#if PICO_RP2350
+void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
+    gpio_set_function(cs_pin, GPIO_FUNC_XIP_CS1);
+
+    // Enable direct mode, PSRAM CS, clkdiv of 10.
+    qmi_hw->direct_csr = 10 << QMI_DIRECT_CSR_CLKDIV_LSB | \
+                        QMI_DIRECT_CSR_EN_BITS | \
+                        QMI_DIRECT_CSR_AUTO_CS1N_BITS;
+    while (qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS)
+        ;
+
+    // Enable QPI mode on the PSRAM
+    const uint CMD_QPI_EN = 0x35;
+    qmi_hw->direct_tx = QMI_DIRECT_TX_NOPUSH_BITS | CMD_QPI_EN;
+
+    while (qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS)
+        ;
+
+    // Set PSRAM timing for APS6404
+    //
+    // Using an rxdelay equal to the divisor isn't enough when running the APS6404 close to 133MHz.
+    // So: don't allow running at divisor 1 above 100MHz (because delay of 2 would be too late),
+    // and add an extra 1 to the rxdelay if the divided clock is > 100MHz (i.e. sys clock > 200MHz).
+    const int max_psram_freq = 166000000;
+    const int clock_hz = clock_get_hz(clk_sys);
+    int divisor = (clock_hz + max_psram_freq - 1) / max_psram_freq;
+    if (divisor == 1 && clock_hz > 100000000) {
+        divisor = 2;
+    }
+    int rxdelay = divisor;
+    if (clock_hz / divisor > 100000000) {
+        rxdelay += 1;
+    }
+
+    // - Max select must be <= 8us.  The value is given in multiples of 64 system clocks.
+    // - Min deselect must be >= 18ns.  The value is given in system clock cycles - ceil(divisor / 2).
+    const int clock_period_fs = 1000000000000000ll / clock_hz;
+    const int max_select = (125 * 1000000) / clock_period_fs;  // 125 = 8000ns / 64
+    const int min_deselect = (18 * 1000000 + (clock_period_fs - 1)) / clock_period_fs - (divisor + 1) / 2;
+
+    qmi_hw->m[1].timing = 1 << QMI_M1_TIMING_COOLDOWN_LSB |
+                          QMI_M1_TIMING_PAGEBREAK_VALUE_1024 << QMI_M1_TIMING_PAGEBREAK_LSB |
+                          max_select << QMI_M1_TIMING_MAX_SELECT_LSB |
+                          min_deselect << QMI_M1_TIMING_MIN_DESELECT_LSB |
+                          rxdelay << QMI_M1_TIMING_RXDELAY_LSB |
+                          divisor << QMI_M1_TIMING_CLKDIV_LSB;
+
+    // Set PSRAM commands and formats
+    qmi_hw->m[1].rfmt =
+            QMI_M0_RFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_PREFIX_WIDTH_LSB |\
+        QMI_M0_RFMT_ADDR_WIDTH_VALUE_Q   << QMI_M0_RFMT_ADDR_WIDTH_LSB |\
+        QMI_M0_RFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_SUFFIX_WIDTH_LSB |\
+        QMI_M0_RFMT_DUMMY_WIDTH_VALUE_Q  << QMI_M0_RFMT_DUMMY_WIDTH_LSB |\
+        QMI_M0_RFMT_DATA_WIDTH_VALUE_Q   << QMI_M0_RFMT_DATA_WIDTH_LSB |\
+        QMI_M0_RFMT_PREFIX_LEN_VALUE_8   << QMI_M0_RFMT_PREFIX_LEN_LSB |\
+        6                                << QMI_M0_RFMT_DUMMY_LEN_LSB;
+
+    qmi_hw->m[1].rcmd = 0xEB;
+
+    qmi_hw->m[1].wfmt =
+            QMI_M0_WFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_WFMT_PREFIX_WIDTH_LSB |\
+        QMI_M0_WFMT_ADDR_WIDTH_VALUE_Q   << QMI_M0_WFMT_ADDR_WIDTH_LSB |\
+        QMI_M0_WFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_WFMT_SUFFIX_WIDTH_LSB |\
+        QMI_M0_WFMT_DUMMY_WIDTH_VALUE_Q  << QMI_M0_WFMT_DUMMY_WIDTH_LSB |\
+        QMI_M0_WFMT_DATA_WIDTH_VALUE_Q   << QMI_M0_WFMT_DATA_WIDTH_LSB |\
+        QMI_M0_WFMT_PREFIX_LEN_VALUE_8   << QMI_M0_WFMT_PREFIX_LEN_LSB;
+
+    qmi_hw->m[1].wcmd = 0x38;
+
+    // Disable direct mode
+    qmi_hw->direct_csr = 0;
+
+    // Enable writes to PSRAM
+    hw_set_bits(&xip_ctrl_hw->ctrl, XIP_CTRL_WRITABLE_M1_BITS);
+}
+#endif
 int main() {
 
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
-    vreg_set_voltage(VREG_VOLTAGE_1_50);
+    vreg_set_voltage(VREG_VOLTAGE_1_60);
     sleep_ms(10);
     *qmi_m0_timing = 0x60007204;
     set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
 #else
     memcpy_wrapper_replace(NULL);
-    //vreg_set_voltage(VREG_VOLTAGE_1_30);
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
-    vreg_disable_voltage_limit();
     sleep_ms(33);
     set_sys_clock_khz(396 * 1000, true);
 #endif
-
+#ifdef ONBOARD_PSRAM
+    psram_init(19);
+    int psram = 1;
+#else
+    //int psram = init_psram();
+#endif
 
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -279,15 +352,14 @@ int main() {
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
-    init_psram();
-        if (!1) {
-        draw_text("No PSRAM detected.", 0, 0, 12, 0);
+        if (!init_psram()) {
+        printf("No PSRAM detected.");
 //        while (1);
     }
 
     if (FR_OK != f_mount(&fs, "0", 1)) {
-        draw_text("SD Card not inserted or SD Card error!", 0, 0, 12, 0);
-        while (1);
+        printf("SD Card not inserted or SD Card error!");
+        // while (1);
     }
    // adlib_init(SOUND_FREQUENCY);
 

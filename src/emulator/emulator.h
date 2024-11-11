@@ -183,27 +183,13 @@ extern void tandy_write(uint16_t reg, uint8_t value);
 extern void adlib_write_d(uint16_t reg, uint8_t value);
 extern void cms_write(uint16_t reg, uint8_t value);
 
-extern void dss_out(uint16_t portnum, uint8_t value);
-
-extern uint8_t dss_in(uint16_t portnum);
-
-extern void covox_out(uint16_t portnum, uint8_t value);
-
-extern uint16_t dss_sample();
-
-extern int16_t speaker_sample();
+uint16_t dss_sample();
 
 extern void sn76489_reset();
 
-extern void sn76489_out(uint16_t value);
+static int16_t sn76489_sample();
 
-extern int16_t sn76489_sample();
-
-extern void cms_out(uint16_t portnum, uint16_t value);
-
-extern uint8_t cms_in(uint16_t addr);
-
-extern void cms_samples(int32_t *output);;
+static void cms_samples(int16_t *output);
 
 #define XMS_FN_CS 0x0000
 #define XMS_FN_IP 0x03FF
@@ -230,7 +216,6 @@ int16_t adlibgensample();
 
 extern void out_ems(uint16_t port, uint8_t data);
 extern int16_t covox_sample;
-extern int16_t midi_sample();
 
 #if !PICO_ON_DEVICE
 #define __fast_mul(x,y) (x*y)
@@ -297,3 +282,20 @@ static INLINE uint16_t read16psram(uint32_t address) {
     return swap_read16(address);
 }
 #endif
+static INLINE int16_t speaker_sample() {
+    if (!speakerenabled) return 0;
+    static uint32_t speakerfullstep, speakerhalfstep, speakercurstep = 0;
+    int16_t speakervalue;
+    speakerfullstep = SOUND_FREQUENCY / i8253.chanfreq[2];
+    if (speakerfullstep < 2)
+        speakerfullstep = 2;
+    speakerhalfstep = speakerfullstep >> 1;
+    if (speakercurstep < speakerhalfstep) {
+        speakervalue = 4096;
+    } else {
+        speakervalue = -4096;
+    }
+    speakercurstep = (speakercurstep + 1) % speakerfullstep;
+    return speakervalue;
+}
+void get_sound_sample(int16_t dss_sample, int16_t sb_sample, int16_t *samples);

@@ -1,12 +1,13 @@
-#include <cstdio>
 #include <windows.h>
+#include <cwchar>
 #include "MiniFB.h"
 #include "emulator/emulator.h"
 #include "emulator/includes/font8x16.h"
 #include "emulator/includes/font8x8.h"
 #include "emu8950.h"
 
-static uint32_t ALING(4, SCREEN[640 * 400]);
+static uint32_t ALIGN(4, SCREEN[640 * 480]);
+uint8_t ALIGN(4, DEBUG_VRAM[80 * 10]) = { 0 };
 
 int cursor_blink_state = 0;
 uint8_t log_debug = 0;
@@ -16,7 +17,7 @@ DWORD bytesWritten;
 DCB dcb;
 OPL *emu8950_opl;
 
-#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 50))
+#define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 10))
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {};
 static int sample_index = 0;
 
@@ -35,9 +36,9 @@ static INLINE void renderer() {
 
 
     //memcpy(localVRAM, VIDEORAM + 0x18000 + (vram_offset << 1), VIDEORAM_SIZE);
-    uint8_t *vidramptr = VIDEORAM + 0x8000 + (vram_offset << 1);
+    uint8_t *vidramptr = VIDEORAM + 0x8000 + ((vram_offset & 0xffff) << 1);
     uint8_t cols = 80;
-    for (int y = 0; y < 400; y++) {
+    for (int y = 0; y < 480; y++) {
         if (y >= 399)
             port3DA = 8;
         else
@@ -47,6 +48,7 @@ static INLINE void renderer() {
             port3DA |= 1;
 
         uint32_t *pixels = SCREEN + y * 640;
+        if (y < 400)
         switch (videomode) {
             case 0x00:
             case 0x01: {
@@ -209,7 +211,7 @@ static INLINE void renderer() {
                         break;
                 }
 
-                uint8_t *cga_row = vidramptr + (y / 2 >> 1) * 80 + (y / 2 & 1) * 8192; // Precompute row start
+                uint8_t *cga_row = tga_offset + VIDEORAM + (y / 2 >> 1) * 80 + (y / 2 & 1) * 8192; // Precompute row start
 
                 // Each byte containing 8 pixels
                 for (int x = 640 / 8; x--;) {
@@ -405,6 +407,25 @@ static INLINE void renderer() {
                 break;
 
         }
+        else {
+            uint8_t ydebug = y - 400;
+            uint8_t y_div_8 = ydebug / 8;
+            uint8_t glyph_line = ydebug % 8;
+
+            const uint8_t colors[4] = { 0x0f, 0xf0, 10, 12 };
+            //указатель откуда начать считывать символы
+            uint8_t* text_buffer_line = &DEBUG_VRAM[y_div_8 * 80];
+            for (uint8_t column = 80; column--;) {
+                const uint8_t character = *text_buffer_line++ ;
+                const uint8_t color = colors[character >> 6];
+                uint8_t glyph_pixels = font_8x8[(32 + (character & 63)) * 8 + glyph_line];
+                //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
+                // Unrolled bit loop: Write 8 pixels with scaling (2x horizontally)
+                for (int bit = 0; bit < 8; bit++) {
+                    *pixels++ = cga_palette[glyph_pixels >> bit & 1 ? color & 0x0f : color >> 4];
+                }
+            }
+        }
     }
 }
 
@@ -441,12 +462,12 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
 
     while (true) {
         if (WaitForSingleObject(waveEvent, INFINITE)) {
-            fprintf(stderr, "Failed to wait for event.\n");
+//            fprintf(stderr, "Failed to wait for event.\n");
             return 1;
         }
 
         if (!ResetEvent(waveEvent)) {
-            fprintf(stderr, "Failed to reset event.\n");
+//            fprintf(stderr, "Failed to reset event.\n");
             return 1;
         }
 
@@ -465,7 +486,10 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     return 0;
 }
 
+static INLINE void pcm_write(int mode, int16_t sample);
+extern uint16_t timeconst;
 
+extern "C" int16_t midi_sample();
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current, queryperf;
 
@@ -480,10 +504,15 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     uint32_t elapsed_frame_tics = 0;
     uint32_t last_dss_tick = 0;
     uint32_t last_sb_tick = 0;
+    uint32_t last_cms_tick = 0;
     uint32_t last_sound_tick = 0;
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
+    int32_t last_cms_samples[2];
+
+    uint16_t old_timeconst = timeconst;
+
 
     updateEvent = CreateEvent(NULL, 1, 1, NULL);
     while (true) {
@@ -500,26 +529,27 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Disney Sound Source frequency ~7KHz
         if (elapsedTime - last_dss_tick >= hostfreq / 7000) {
             last_dss_sample = dss_sample();
-
+            //pcm_write(last_dss_sample);
             last_dss_tick = elapsedTime;
         }
 
         // Sound Blaster
         if (elapsedTime - last_sb_tick >= hostfreq / sb_samplerate) {
             last_sb_sample = blaster_sample();
-
+            // if (last_sb_sample) pcm_write(1, last_sb_sample);
             last_sb_tick = elapsedTime;
         }
 
         if (elapsedTime - last_sound_tick >= hostfreq / SOUND_FREQUENCY) {
-            static int sound_counter = 0;
-            int16_t samples[2] = {0, 0};
-            OPL_calc_buffer_linear(emu8950_opl, (int32_t *) samples, 1);
+            int32_t samples[2] = {0, 0};
+            OPL_calc_buffer_linear(emu8950_opl, samples, 1);
 
             samples[0] += last_dss_sample;
 
-            if (speakerenabled)
+            if (speakerenabled) {
                 samples[0] += speaker_sample();
+                // pcm_write(samples[0]);
+            }
 
             samples[0] += sn76489_sample();
 
@@ -529,11 +559,12 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
             samples[0] += covox_sample;
 
+
+            samples[0] += midi_sample();
+
             samples[1] = samples[0];
 
-
             cms_samples(samples);
-
 
             audio_buffer[sample_index++] = (int16_t) samples[0];
             audio_buffer[sample_index++] = (int16_t) samples[1];
@@ -556,6 +587,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             renderer();
             elapsed_frame_tics = elapsedTime;
         }
+//        _sleep(1);
     }
 }
 
@@ -900,7 +932,7 @@ extern "C" void HandleInput(WPARAM wParam, BOOL isKeyDown) {
     //printf("scancode %c", scancode);
 }
 
-#define QUEUE_SIZE 100
+#define QUEUE_SIZE 1000
 
 typedef struct {
     uint16_t messages[QUEUE_SIZE];
@@ -994,7 +1026,17 @@ DWORD WINAPI MessageHandler(LPVOID lpParam) {
 }
 
 extern "C" void tandy_write(uint16_t reg, uint8_t value) {
+    if (reg != 0xff) sn76489_out(value);
     Enqueue(&queue, (value & 0xff) << 8 | 0);
+}
+
+static INLINE void pcm_write(int mode, int16_t value) {
+    if (mode) {
+        Enqueue(&queue, (value >> 8) << 8 | 0xe << 4 | 0b0000);
+        Enqueue(&queue, (value & 0xff) << 8 | 0xe << 4 | 0b0001);
+    } else {
+        Enqueue(&queue, (value & 0xff) << 8 | 0xe << 4 | 0b0011);
+    }
 }
 
 extern "C" void adlib_init(uint32_t samplerate);
@@ -1002,22 +1044,21 @@ extern "C" void adlib_init(uint32_t samplerate);
 extern "C" void adlib_write(uintptr_t idx, uint8_t val);
 
 extern "C" void adlib_write_d(uint16_t reg, uint8_t value) {
-    OPL_writeReg(emu8950_opl, reg, value);
-    //    printf("Adlib Write %x %x", reg, value);
-    uint16_t data = (reg & 0xff) << 8 | 2 << 4 | 0b0000 | (reg >> 8) & 1;
-    Enqueue(&queue, data);
-    //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
-    //        printf("!!!! Error in writing to serial port\n");
-    //    }
-
-    data = (value & 0xff) << 8 | 2 << 4 | 0b0010 | (reg >> 8) & 1;
-    Enqueue(&queue, data);
-    //    if(hComm != NULL && !WriteFile(hComm, &data, 2, &bytesWritten, NULL)) {
-    //        printf("!!!! Error in writing to serial port\n");
-    //    }
+    static int latch = -1;
+    if (latch == -1) {
+        latch = value;
+    } else {
+        uint16_t data = (latch & 0xff) << 8 | 2 << 4 | 0b0000 | (latch >> 8) & 1;
+        Enqueue(&queue, data);
+        data = (value & 0xff) << 8 | 2 << 4 | 0b0010 | (latch >> 8) & 1;
+        Enqueue(&queue, data);
+        OPL_writeReg(emu8950_opl, latch, value);
+        latch = -1;
+    }
 }
 
 extern "C" void cms_write(uint16_t reg, uint8_t val) {
+    cms_out(reg, val);
     switch (reg - 0x220) {
         case 0:
             Enqueue(&queue, (val & 0xff) << 8 | 3 << 4 | 0b0000);
@@ -1049,11 +1090,45 @@ extern "C" BOOL HanldeMenu(int menu_id, BOOL checked) {
     }
     return !checked;
 }
+#if 1
+
+extern "C" void _putchar(char character)
+{
+    putwchar(character);
+    static uint8_t color = 0xf;
+    static int x = 0, y = 0;
+
+    if (y == 10) {
+        y = 9;
+        memmove(DEBUG_VRAM, DEBUG_VRAM + 80, 80 * 9);
+        memset(DEBUG_VRAM + 80 * 9, 0, 80);
+    }
+    uint8_t * vidramptr = DEBUG_VRAM +  y * 80 + x;
+
+    if ((unsigned)character >= 32) {
+        if (character >= 96) character -= 32; // uppercase
+        *vidramptr = ((character - 32) & 63) | 0 << 6;
+        if (x == 80) {
+            x = 0;
+            y++;
+        } else
+            x++;
+    } else if (character == '\n') {
+        x = 0;
+        y++;
+    } else if (character == '\r') {
+        x = 0;
+    } else if (character == 8 && x > 0) {
+        x--;
+        *vidramptr = 0;
+    }
+}
+#endif
 
 int main(int argc, char **argv) {
     int scale = 2;
 
-    if (!mfb_open("PC", 640, 400, scale))
+    if (!mfb_open("PC", 640, 480, scale))
         return 1;
 
     // Initialize the message queue
@@ -1136,8 +1211,9 @@ int main(int argc, char **argv) {
 
     CreateThread(NULL, 0, SoundThread, NULL, 0, NULL);
     CreateThread(NULL, 0, TicksThread, NULL, 0, NULL);
+
     while (true) {
-        exec86(32760);
+        exec86(32768);
         if (mfb_update(SCREEN, 0) == -1)
             exit(1);
 

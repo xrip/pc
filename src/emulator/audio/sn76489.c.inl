@@ -22,40 +22,40 @@
 /*
  *The SN76489 is connected to a clock signal, which is commonly 3579545Hz for NTSC systems and 3546893Hz for PAL/SECAM systems (these are based on the associated TV colour subcarrier frequencies, and are common master clock speeds for many systems). It divides this clock by 16 to get its internal clock. The datasheets specify a maximum of 4MHz.
 */
-uint32_t clock = 3579545;
-const uint16_t samplerate = SOUND_FREQUENCY;
+static uint32_t sn_clock = 3579545;
+static const uint16_t samplerate = SOUND_FREQUENCY;
 
-uint32_t base_incr = 0;
+static uint32_t base_incr = 0;
 
-uint32_t count[3];
-uint32_t volume[3];
-uint32_t freq[3];
-uint32_t edge[3];
-uint32_t mute[3];
+static uint32_t sn_count[3];
+static uint32_t volume[3];
+static uint32_t sn_[3];
+static uint32_t edge[3];
+static uint32_t mute[3];
 
-uint32_t noise_seed;
-uint32_t noise_count;
-uint32_t noise_freq;
-uint32_t noise_volume;
-uint32_t noise_mode;
-uint32_t noise_fref;
+static uint32_t noise_seed;
+static uint32_t noise_count;
+static uint32_t noise_freq;
+static uint32_t noise_volume;
+static uint32_t noise_mode;
+static  uint32_t noise_fref;
 
-uint32_t base_count;
+static uint32_t base_count;
 
 /* rate converter */
-uint32_t realstep;
-uint32_t sngtime;
-uint32_t sngstep;
+static uint32_t realstep;
+static uint32_t sngtime;
+static uint32_t sngstep;
 
-uint32_t addr;
+static uint32_t addr;
 
-uint32_t stereo;
+static uint32_t stereo;
 
-int16_t channel_sample[4];
+static int16_t channel_sample[4];
 // } sng = { 0 };
 
 
-const uint16_t volume_table[16] = {
+static const uint16_t volume_table[16] = {
         0xff, 0xcb, 0xa1, 0x80, 0x65, 0x50, 0x40, 0x33, 0x28, 0x20, 0x19, 0x14, 0x10, 0x0c, 0x0a, 0x00
 };
 
@@ -68,12 +68,12 @@ void sn76489_reset() {
         sngstep = (uint32_t) ((1 << 31) / (clock / 16));
         sngtime = 0;
 #else
-        base_incr = (uint32_t) ((double) clock * (1 << GETA_BITS) / (16 * samplerate));
+        base_incr = (uint32_t) ((double) sn_clock * (1 << GETA_BITS) / (16 * samplerate));
 #endif
 
     for (int i = 0; i < 3; i++) {
-        count[i] = 0;
-        freq[i] = 0;
+        sn_count[i] = 0;
+        sn_[i] = 0;
         edge[i] = 0;
         volume[i] = 0x0f;
         mute[i] = 0;
@@ -93,7 +93,7 @@ void sn76489_reset() {
     channel_sample[0] = channel_sample[1] = channel_sample[2] = channel_sample[3] = 0;
 }
 
-void sn76489_out(const uint16_t value) {
+static INLINE void sn76489_out(const uint16_t value) {
     if (value & 0x80) {
         //printf("OK");
         addr = (value & 0x70) >> 4;
@@ -101,7 +101,7 @@ void sn76489_out(const uint16_t value) {
             case 0: // tone 0: frequency
             case 2: // tone 1: frequency
             case 4: // tone 2: frequency
-                freq[addr >> 1] = (freq[addr >> 1] & 0x3F0) | (value & 0x0F);
+                sn_[addr >> 1] = (sn_[addr >> 1] & 0x3F0) | (value & 0x0F);
                 break;
 
             case 1: // tone 0: volume
@@ -114,7 +114,7 @@ void sn76489_out(const uint16_t value) {
                 noise_mode = (value & 4) >> 2;
 
                 if ((value & 0x03) == 0x03) {
-                    noise_freq = freq[2];
+                    noise_freq = sn_[2];
                     noise_fref = 1;
                 } else {
                     noise_freq = 32 << (value & 0x03);
@@ -132,11 +132,11 @@ void sn76489_out(const uint16_t value) {
                 break;
         }
     } else {
-        freq[addr >> 1] = ((value & 0x3F) << 4) | (freq[addr >> 1] & 0x0F);
+        sn_[addr >> 1] = ((value & 0x3F) << 4) | (sn_[addr >> 1] & 0x0F);
     }
 }
 
-static inline int parity(int value) {
+static INLINE int parity(int value) {
     value ^= value >> 8;
     value ^= value >> 4;
     value ^= value >> 2;
@@ -144,7 +144,7 @@ static inline int parity(int value) {
     return value & 1;
 };
 
-static inline int16_t update_output() {
+static INLINE int16_t sn76489_sample() {
     base_count += base_incr;
     uint32_t incr = (base_count >> GETA_BITS);
     base_count &= (1 << GETA_BITS) - 1;
@@ -158,7 +158,7 @@ static inline int16_t update_output() {
             noise_seed = (noise_seed >> 1) | ((noise_seed & 1) << 15);
 
         if (noise_fref)
-            noise_count -= freq[2];
+            noise_count -= sn_[2];
         else
             noise_count -= noise_freq;
     }
@@ -171,11 +171,11 @@ static inline int16_t update_output() {
 
     /* Tone */
     for (int i = 0; i < 3; i++) {
-        count[i] += incr;
-        if (count[i] & 0x400) {
-            if (freq[i] > 1) {
+        sn_count[i] += incr;
+        if (sn_count[i] & 0x400) {
+            if (sn_[i] > 1) {
                 edge[i] = !edge[i];
-                count[i] -= freq[i];
+                sn_count[i] -= sn_[i];
             } else {
                 edge[i] = 1;
             }
@@ -189,56 +189,3 @@ static inline int16_t update_output() {
     }
     return (int16_t) (channel_sample[0] + channel_sample[1] + channel_sample[2] + channel_sample[3]);
 }
-
-int16_t sn76489_sample() {
-#ifndef QUALITY
-        return update_output();
-#else
-    /* Simple rate converter */
-    while (realstep > sngtime) {
-        sngtime += sngstep;
-        update_output();
-    }
-
-    sngtime = sngtime - realstep;
-
-    return mix_output();
-#endif
-}
-#if 0
-static inline void mix_output_stereo(int32_t out[2]) {
-    out[0] = out[1] = 0;
-    if ((stereo >> 4) & 0x08) {
-        out[0] += channel_sample[3];
-    }
-    if (stereo & 0x08) {
-        out[1] += channel_sample[3];
-    }
-
-    for (int i = 0; i < 3; i++) {
-        if ((stereo >> (i + 4)) & 0x01) {
-            out[0] += channel_sample[i];
-        }
-        if ((stereo >> i) & 0x01) {
-            out[1] += channel_sample[i];
-        }
-    }
-}
-
-void sn76489_sample_stereo(int32_t out[2]) {
-#ifdef QUALITY
-        update_output();
-        mix_output_stereo(out);
-        return;
-#else
-
-    while (realstep > sngtime) {
-        sngtime += sngstep;
-        update_output();
-    }
-
-    sngtime = sngtime - realstep;
-    mix_output_stereo(out);
-#endif
-}
-#endif

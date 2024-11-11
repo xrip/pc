@@ -5,7 +5,10 @@
 #include "nespad.h"
 #endif
 
-#include "mpu401.c.inl"
+#include "audio/sn76489.c.inl"
+#include "audio/cms.c.inl"
+#include "audio/dss.c.inl"
+#include "audio/mpu401.c.inl"
 #include "i8237.c.inl"
 
 uint8_t crt_controller_idx, crt_controller[32];
@@ -464,4 +467,11 @@ void portout16(uint16_t portnum, uint16_t value) {
 
 uint16_t portin16(uint16_t portnum) {
     return portin(portnum) | portin(portnum + 1) << 8;
+}
+
+
+void get_sound_sample(int16_t dss_sample, int16_t sb_sample, int16_t *samples) {
+    int32_t mono = speaker_sample() + dss_sample + sb_sample + covox_sample + sn76489_sample() + midi_sample();
+    samples[0] = samples[1] = (int16_t)mono;
+    cms_samples(samples);
 }

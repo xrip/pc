@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 // http://qzx.com/pc-gpe/gameblst.txt
 #include <stdint.h>
 
@@ -5,7 +6,7 @@
 // "Creative Music System / Game Blaster"
 //typedef struct cms_t {
 static int addrs[2] = { 0 };
-static uint8_t regs[2][32] = { 0 };
+static uint8_t cms_regs[2][32] = { 0 };
 static uint16_t latch[2][6] = { 0 };
 static int freq[2][6] = { 0 };
 static float count[2][6] = { 0 };
@@ -16,16 +17,14 @@ static uint16_t noisefreq[2][2] = { 0 };
 static int noisecount[2][2] = { 0 };
 static int noisetype[2][2] = { 0 };
 
-uint8_t latched_data;
+static uint8_t latched_data;
 
 //} cms_t;
-int32_t out_l = 0, out_r = 0;
+// static int16_t out_l = 0, out_r = 0;
 
-static inline void cms_update() {
+static INLINE void cms_samples(int16_t *output) {
     // may be in core #0 and in core #1
     int channel, d;
-    out_l = 0;
-    out_r = 0;
 
     for (channel = 0; channel < 4; channel++) {
         switch (noisetype[channel >> 1][channel & 1]) {
@@ -44,22 +43,22 @@ static inline void cms_update() {
         }
     }
     for (channel = 0; channel < 2; channel++) {
-        if (regs[channel][0x1C] & 1) {
+        if (cms_regs[channel][0x1C] & 1) {
             for (d = 0; d < 6; d++) {
-                if (regs[channel][0x14] & (1 << d)) {
+                if (cms_regs[channel][0x14] & (1 << d)) {
                     if (stat[channel][d]) {
-                        out_l += (vol[channel][d][0] << 6) + (vol[channel][d][0] << 5);
-                        out_r += (vol[channel][d][1] << 6) + (vol[channel][d][1] << 5);
+                        output[0] += (vol[channel][d][0] << 6) + (vol[channel][d][0] << 5);
+                        output[1] += (vol[channel][d][1] << 6) + (vol[channel][d][1] << 5);
                     }
                     count[channel][d] += freq[channel][d];
                     if (count[channel][d] >= 24000) {
                         count[channel][d] -= 24000;
                         stat[channel][d] ^= 1;
                     }
-                } else if (regs[channel][0x15] & (1 << d)) {
+                } else if (cms_regs[channel][0x15] & (1 << d)) {
                     if (noise[channel][d / 3] & 1) {
-                        out_l += ((vol[channel][d][0] << 6) + (vol[channel][d][0] << 5));
-                        out_r += ((vol[channel][d][1] << 6) + (vol[channel][d][1] << 5));
+                        output[0] += ((vol[channel][d][0] << 6) + (vol[channel][d][0] << 5));
+                        output[1] += ((vol[channel][d][1] << 6) + (vol[channel][d][1] << 5));
                     }
                 }
             }
@@ -76,14 +75,7 @@ static inline void cms_update() {
     }
 }
 
-void cms_samples(int32_t *output) {
-    // core #1
-    cms_update();
-    output[0] += out_l;
-    output[1] += out_r;
-}
-
-void cms_out(uint16_t addr, uint16_t value) {
+static INLINE void cms_out(uint16_t addr, uint16_t value) {
     // core #0
     int voice;
     int chip = (addr & 2) >> 1;
@@ -101,7 +93,7 @@ void cms_out(uint16_t addr, uint16_t value) {
         case 0:
         case 2:
             // cms_update();
-            regs[chip][addrs[chip] & 31] = value;
+            cms_regs[chip][addrs[chip] & 31] = value;
             switch (addrs[chip] & 31) {
                 case 0x00:
                 case 0x01:
@@ -148,7 +140,7 @@ void cms_out(uint16_t addr, uint16_t value) {
     }
 }
 
-uint8_t cms_in(uint16_t addr) {
+static INLINE uint8_t cms_in(uint16_t addr) {
     // core #0
     //printf("cms_read : addr %04X\n", addr & 0xf);
     switch (addr & 0xf) {

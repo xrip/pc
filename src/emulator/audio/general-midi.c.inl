@@ -1,3 +1,4 @@
+#pragma GCC optimize("Ofast")
 #pragma once
 #include "general-midi.h"
 #if !PICO_ON_DEVICE
@@ -76,7 +77,7 @@ static INLINE int32_t sin100sf_m_128_t(int32_t a) {
     return sin_m_128((a / SIN_STEP) & 4095);
 }
 
-int16_t __time_critical_func() midi_sample() {
+static INLINE int16_t __time_critical_func() midi_sample() {
     /*int32_t sample1 = 0;
     static unsigned int i = 0;
     static unsigned int note = 0;
