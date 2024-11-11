@@ -1,7 +1,7 @@
 #pragma once
 #include "general-midi.h"
 #if !PICO_ON_DEVICE
-#define DEBUG_MIDI
+//#define DEBUG_MIDI
 #endif
 // #define USE_SAMPLES
 #if defined(USE_SAMPLES)
@@ -15,7 +15,7 @@
 #define RELEASE_DURATION (SOUND_FREQUENCY / 8) // Duration for note release
 
 typedef struct midi_voice_s {
-    uint8_t voice_position;
+    uint8_t voice_slot;
     // uint8_t playing;
     uint8_t channel;
     uint8_t note;
@@ -169,7 +169,7 @@ int16_t __time_critical_func() midi_sample() {
                 *velocity -= *velocity >> 2;
             } else if (sample_position && sample_position == voice->release) {
                 // voice->playing = 0;
-                CLEAR_ACTIVE_VOICE(voice->voice_position);
+                CLEAR_ACTIVE_VOICE(voice->voice_slot);
             }
 
             sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
@@ -199,7 +199,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                     struct midi_voice_s *voice = &midi_voices[voice_number];
                     if (!IS_ACTIVE_VOICE(voice_number)) {
                         // voice->playing = 1;
-                        voice->voice_position = voice_number;
+                        voice->voice_slot = voice_number;
                         voice->sample_position = 0;
                         voice->release = 0;
                         voice->channel = channel;

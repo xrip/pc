@@ -504,12 +504,12 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
     uint32_t elapsed_frame_tics = 0;
     uint32_t last_dss_tick = 0;
     uint32_t last_sb_tick = 0;
-    uint32_t last_midi_tick = 0;
+    uint32_t last_cms_tick = 0;
     uint32_t last_sound_tick = 0;
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-    int16_t last_midi_sample = 0;
+    int32_t last_cms_samples[2];
 
     uint16_t old_timeconst = timeconst;
 
@@ -533,13 +533,6 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
             last_dss_tick = elapsedTime;
         }
 
-        // Disney Sound Source frequency ~7KHz
-        if (elapsedTime - last_midi_tick >= hostfreq / 22050) {
-            last_midi_sample = midi_sample();
-            //pcm_write(last_dss_sample);
-            last_midi_tick = elapsedTime;
-        }
-
         // Sound Blaster
         if (elapsedTime - last_sb_tick >= hostfreq / sb_samplerate) {
             last_sb_sample = blaster_sample();
@@ -548,8 +541,8 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         }
 
         if (elapsedTime - last_sound_tick >= hostfreq / SOUND_FREQUENCY) {
-            int16_t samples[2] = {0, 0};
-            OPL_calc_buffer_linear(emu8950_opl, (int32_t *) samples, 1);
+            int32_t samples[2] = {0, 0};
+            OPL_calc_buffer_linear(emu8950_opl, samples, 1);
 
             samples[0] += last_dss_sample;
 
@@ -568,13 +561,10 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
 
             samples[0] += midi_sample();
-            // samples[0] += last_midi_sample;
 
             samples[1] = samples[0];
 
-
             cms_samples(samples);
-
 
             audio_buffer[sample_index++] = (int16_t) samples[0];
             audio_buffer[sample_index++] = (int16_t) samples[1];
