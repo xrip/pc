@@ -324,6 +324,14 @@ int main() {
     keyboard_init();
 //    mouse_init();
     nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    sleep_ms(5);
+    nespad_read();
+
+    int mouse_available = 0;
+    if (nespad_state) {
+        mouse_init();
+        mouse_available = 1;
+    }
 
     i2s_config = i2s_get_default_config();
 
@@ -351,6 +359,13 @@ int main() {
 
     while (true) {
         exec86(32768);
+#if 1
+        if (!mouse_available) {
+#define MOUSE_SPEED 8
+            nespad_read();
+            sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
+        }
+#endif
         tight_loop_contents();
     }
     __unreachable();

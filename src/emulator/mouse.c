@@ -9,9 +9,14 @@ static struct sermouse_s {
 
 
 static inline void bufsermousedata(uint8_t value) {
-    if (sermouse.bufptr == 16 || sermouse.bufptr == 0) {
+    /*if (sermouse.bufptr == 16 || sermouse.bufptr == 0) {
         doirq(4);
         }
+    sermouse.buf[sermouse.bufptr++] = value;*/
+    if (sermouse.bufptr == 16)
+        return;
+    if (sermouse.bufptr == 0)
+        doirq(4);
     sermouse.buf[sermouse.bufptr++] = value;
 }
 
