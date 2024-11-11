@@ -67,11 +67,13 @@ static uint8_t text_buffer_height = 0;
 static uint16_t __aligned(4) txt_palette[16];
 
 //буфер 2К текстовой палитры для быстрой работы
-static uint16_t *txt_palette_fast = NULL;
-//static uint16_t txt_palette_fast[256*4];
+//static uint16_t *txt_palette_fast = NULL;
+static uint16_t __aligned(4) txt_palette_fast[256 * 4];
+static int txt_palette_init = 0;
 
 enum graphics_mode_t graphics_mode;
 
+extern uint8_t __aligned(4) DEBUG_VRAM[80*10];
 
 void __time_critical_func() dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
@@ -119,7 +121,32 @@ void __time_critical_func() dma_handler_VGA() {
 
     uint32_t * *output_buffer = &lines_pattern[2 + (screen_line & 1)];
     uint16_t *output_buffer_16bit = (uint16_t *) (*output_buffer) + shift_picture / 2;
+    if (screen_line >= 400) {
+        uint8_t y = screen_line - 400;
+        uint8_t y_div_8 = y / 8;
+        uint8_t glyph_line = y % 8;
 
+        const uint8_t colors[4] = { 0x0f, 0xf0, 10, 12 };
+        //указатель откуда начать считывать символы
+        uint8_t* text_buffer_line = &DEBUG_VRAM[__fast_mul(y_div_8, 80)];
+        for (uint8_t column = 80; column--;) {
+            const uint8_t character = *text_buffer_line++ ;
+            const uint8_t color = character >> 6;
+            uint8_t glyph_pixels = font_8x8[(32 + (character & 63)) * 8 + glyph_line];
+            //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
+            uint16_t* palette_color = &txt_palette_fast[4 * colors[color]] ;
+
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+            glyph_pixels >>= 2;
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+            glyph_pixels >>= 2;
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+            glyph_pixels >>= 2;
+            *output_buffer_16bit++ = palette_color[glyph_pixels & 3];
+        }
+        dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
+        return;
+    }
     switch (graphics_mode) {
         case TEXTMODE_40x25_COLOR:
         case TEXTMODE_40x25_BW: {
@@ -220,7 +247,7 @@ void __time_critical_func() dma_handler_VGA() {
 
     }
 
-    if (screen_line % 2) return;
+    if (screen_line % 2 && (graphics_mode != HERC_640x480x2_90 && graphics_mode != HERC_640x480x2)) return;
     uint32_t y = screen_line >> 1;
 
     if (screen_line >= 400) {
@@ -295,6 +322,7 @@ void __time_critical_func() dma_handler_VGA() {
         case COMPOSITE_160x200x16_force:
         case COMPOSITE_160x200x16:
         case TGA_160x200x16:
+            input_buffer_8bit = tga_offset + graphics_buffer + __fast_mul(y >> 1, 80) + ((y & 1) << 13);
             for (int x = 320 / 4; x--;) {
                 uint8_t cga_byte = *input_buffer_8bit++; // Fetch 8 pixels from TGA memory
                 uint8_t color1 = ((cga_byte >> 4) & 15);
@@ -409,7 +437,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
     graphics_mode = mode;
 
     // Если мы уже проиницилизированы - выходим
-    if (txt_palette_fast && lines_pattern_data) {
+    if (txt_palette_init && lines_pattern_data) {
         return;
     };
     uint8_t TMPL_VHS8 = 0;
@@ -432,8 +460,8 @@ void graphics_set_mode(enum graphics_mode_t mode) {
                 txt_palette[i] = txt_palette[i] & 0x3f | palette16_mask >> 8;
             }
 
-            if (!txt_palette_fast) {
-                txt_palette_fast = (uint16_t *) calloc(256 * 4, sizeof(uint16_t));
+            if (!txt_palette_init) {
+                //txt_palette_fast = (uint16_t *) calloc(256 * 4, sizeof(uint16_t));
                 for (int i = 0; i < 256; i++) {
                     const uint8_t c1 = txt_palette[i & 0xf];
                     const uint8_t c0 = txt_palette[i >> 4];
@@ -443,6 +471,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
                     txt_palette_fast[i * 4 + 2] = c0 | c1 << 8;
                     txt_palette_fast[i * 4 + 3] = c1 | c1 << 8;
                 }
+                txt_palette_init = true;
             }
         case CGA_640x200x2:
         case CGA_320x200x4:

@@ -19,7 +19,7 @@ static int noisetype[2][2] = { 0 };
 uint8_t latched_data;
 
 //} cms_t;
-int16_t out_l = 0, out_r = 0;
+int32_t out_l = 0, out_r = 0;
 
 static inline void cms_update() {
     // may be in core #0 and in core #1
@@ -76,11 +76,11 @@ static inline void cms_update() {
     }
 }
 
-void cms_samples(int16_t *output) {
+void cms_samples(int32_t *output) {
     // core #1
     cms_update();
-    *output++ += (out_l << 2);
-    *output += (out_r << 2);
+    output[0] += out_l;
+    output[1] += out_r;
 }
 
 void cms_out(uint16_t addr, uint16_t value) {
@@ -100,7 +100,7 @@ void cms_out(uint16_t addr, uint16_t value) {
 
         case 0:
         case 2:
-//            cms_update();
+            // cms_update();
             regs[chip][addrs[chip] & 31] = value;
             switch (addrs[chip] & 31) {
                 case 0x00:

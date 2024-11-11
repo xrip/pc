@@ -22,14 +22,14 @@ extern "C" {
 #define beginHDMI_PIN_data (HDMI_BASE_PIN+2)
 #define beginHDMI_PIN_clk (HDMI_BASE_PIN)
 
-#define TEXTMODE_COLS 53
-#define TEXTMODE_ROWS 30
+#define TEXTMODE_COLS (320/4)
+#define TEXTMODE_ROWS (240/6)
 
 #define RGB888(r, g, b) ((r<<16) | (g << 8 ) | b )
 
 // TODO: Сделать настраиваемо
 static const uint8_t textmode_palette[16] = {
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+    00, 01, 02, 03, 04, 05, 06, 07, 8, 9, 10, 11, 12, 13, 14, 15
 };
 
 

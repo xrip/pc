@@ -196,7 +196,7 @@ extern void cms_out(uint16_t portnum, uint16_t value);
 
 extern uint8_t cms_in(uint16_t addr);
 
-extern void cms_samples(int16_t *output);;
+extern void cms_samples(int32_t *output);
 
 #define XMS_FN_CS 0x0000
 #define XMS_FN_IP 0x03FF

@@ -1,8 +1,7 @@
 #pragma once
 
 #include "strings.h"
-#include "stdio.h"
-
+#include "stdint.h"
 #include <stdbool.h>
 
 #ifndef KBD_CLOCK_PIN
@@ -19,7 +18,7 @@
 
 extern uint8_t kbloop;
 
-void KeyboardHandler(); //uint /*gpio*/, uint32_t /*event_mask*/
+void KeyboardHandler(unsigned int gpio); //uint /*gpio*/, uint32_t /*event_mask*/
 
 
 void keyboard_init(void);

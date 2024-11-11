@@ -1,10 +1,14 @@
 #include "emulator.h"
-
 #define PIT_MODE_LATCHCOUNT  0
 #define PIT_MODE_LOBYTE 1
 #define PIT_MODE_HIBYTE 2
 #define PIT_MODE_TOGGLE 3
-
+#if PICO_ON_DEVICE
+#include <hardware/pwm.h>
+#include <hardware/structs/clocks.h>
+#include <hardware/clocks.h>
+pwm_config config;
+#endif
 struct i8253_s i8253 = { 0 };
 int speakerenabled = 0;
 int timer_period = 54925;
@@ -38,23 +42,29 @@ void out8253(uint16_t portnum, uint8_t value) {
 
             if (i8253.chandata[portnum] == 0) {
                 i8253.effectivedata[portnum] = 65536;
-                tandy_write(0, 0b10011111);
+#if I2S_SOUND || HARDWARE_SOUND || !PICO_ON_DEVICE
                 speakerenabled = 0;
+#else
+                pwm_set_gpio_level(PWM_BEEPER, 0);                      // set 0% (0) duty clcle ==> Sound output off
+#endif
             } else {
                 i8253.effectivedata[portnum] = i8253.chandata[portnum];
-
+#if I2S_SOUND || HARDWARE_SOUND || !PICO_ON_DEVICE
                 if (port61 & 2) {
-                    //uint16_t tone = (3579545 / (32 * 1193182 / i8253.effectivedata[portnum])) - 1;
-                    uint16_t tone = (111860 * i8253.effectivedata[portnum] >> 20) - 1;
-                    tandy_write(0, 0x80 | (tone & 0x0F));
-                    tandy_write(0, (tone >> 4) & 0x3F);
-
-                    tandy_write(0, 0b10010000);
                     speakerenabled = 1; // set 50% (127) duty cycle ==> Sound output on
                 } else {
-                    tandy_write(0, 0b10011111);
                     speakerenabled = 0; // set 0% (0) duty clcle ==> Sound output off
                 }
+#else
+                pwm_config_set_wrap(&config, i8253.effectivedata[portnum]);
+                pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &config, true);
+
+                if (port61 & 2) {
+                    pwm_set_gpio_level(PWM_BEEPER, 127);                    // set 50% (127) duty cycle ==> Sound output on
+                } else {
+                    pwm_set_gpio_level(PWM_BEEPER, 0);                      // set 0% (0) duty clcle ==> Sound output off
+                }
+#endif
             }
 
 
@@ -67,7 +77,11 @@ void out8253(uint16_t portnum, uint8_t value) {
 #if 1
             if (portnum == 0) {
                 // Timer freq 1,193,180
+#if PICO_ON_DEVICE
+                timer_period =  1000000 / i8253.chanfreq[portnum];
+#else
                 timer_period =  i8253.chanfreq[portnum];
+#endif
             }
 #endif
             break;

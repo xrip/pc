@@ -1,3 +1,4 @@
+#pragma once
 /******************************************************************************
 
 rp2040-psram
@@ -608,13 +609,20 @@ __force_inline static void psram_write_async_fast(psram_spi_inst_t* spi, uint32_
 
     pio_spi_write_async(spi, write_async_fast_command, 6 + count);
 };
-
-void init_psram();
-void psram_cleanup();
-void write8psram(uint32_t addr32, uint8_t v);
-void write16psram(uint32_t addr32, uint16_t v);
-uint8_t read8psram(uint32_t addr32);
-uint16_t read16psram(uint32_t addr32);
+extern psram_spi_inst_t psram_spi;
+static __always_inline bool init_psram() {
+    psram_spi = psram_spi_init_clkdiv(pio1,-1, 2.0f, false);
+    psram_write32(&psram_spi, 0x313373, 0xDEADBEEF);
+    bool PSRAM_AVAILABLE = 0xDEADBEEF == psram_read32(&psram_spi, 0x313373);
+    for (uint32_t addr32 = (0ul << 20); addr32 < (8ul << 20); addr32 += 4) {
+        psram_write32(&psram_spi, addr32, 0x00);
+    }
+    return PSRAM_AVAILABLE;
+}
+#define write8psram(addr32, v) psram_write8(&psram_spi, addr32, v)
+#define write16psram(addr32, v) psram_write16(&psram_spi, addr32, v)
+#define read8psram(addr32) psram_read8(&psram_spi, addr32)
+#define read16psram(addr32) psram_read16(&psram_spi, addr32)
 
 #ifdef __cplusplus
 }

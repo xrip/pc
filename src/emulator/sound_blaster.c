@@ -22,12 +22,14 @@
 	Emulation of the Sound Blaster 2.0
 */
 
-#include "emulator.h"
+// #define DEBUG_BLASTER
 
+#include "emulator.h"
+volatile int16_t sample;
 static struct sound_blaster_s {
     uint8_t dspenable;
-    int16_t sample;
-    uint8_t readbuf[16];
+
+
     uint8_t readlen;
     uint8_t readready;
     uint8_t writebuf;
@@ -43,15 +45,19 @@ static struct sound_blaster_s {
     uint8_t silencedsp;
     uint8_t dorecord;
     uint8_t dma_active;
+    uint8_t readbuf[32];
 } sb;
 //#define DEBUG_BLASTER
-uint8_t timeconst = 22;
+uint16_t timeconst = 22;
 uint64_t sb_samplerate = 22050;
+
+#define SB_irq 3
+#define SB_dmachan 1
 
 const int16_t cmd_E2_table[9] = { 0x01, -0x02, -0x04, 0x08, -0x10, 0x20, 0x40, -0x80, -106 };
 
 static INLINE void blaster_putreadbuf(uint8_t value) {
-    if (sb.readlen == 16) return;
+    if (sb.readlen == 32) return;
 
     sb.readbuf[sb.readlen++] = value;
 }
@@ -69,9 +75,6 @@ static INLINE uint8_t blaster_getreadbuf() {
 void blaster_reset() {
     memset(&sb, 0, sizeof(struct sound_blaster_s));
 
-    sb.irq = 5;
-    sb.dmachan = 1;
-
     blaster_putreadbuf(0xAA);
 }
 
@@ -80,13 +83,14 @@ static INLINE void blaster_writecmd(uint8_t value) {
 //    printf("SB command %x : %x        %d\r\n", sb.lastcmd, value, i++);
     switch (sb.lastcmd) {
         case 0x10: //direct DAC, 8-bit
-            sb.sample = value;
-            sb.sample -= 128;
-            sb.sample *= 256;
+            sample = value;
+            sample -= 128;
+            sample *= 256;
             sb.lastcmd = 0;
             return;
         case 0x14: //DMA DAC, 8-bit
         case 0x24:
+        case 0x91:
             if (sb.writehilo == 0) {
                 sb.dmalen = value;
                 sb.writehilo = 1;
@@ -100,12 +104,12 @@ static INLINE void blaster_writecmd(uint8_t value) {
                 sb.dorecord = (sb.lastcmd == 0x24) ? 1 : 0;
                 sb.dma_active = 1;
 #ifdef DEBUG_BLASTER
-                printf("[BLASTER] Begin DMA transfer mode with %lx  byte blocks\r\n", sb.dmalen);
+                printf("[BLASTER] Begin DMA transfer mode with 0x%04X  byte blocks\r\n", sb.dmalen);
 #endif
             }
             return;
         case 0x40: //set time constant
-            timeconst = value;
+            timeconst = (256 - value);
 //            sb_samplerate = value;
             sb_samplerate = 1000000 / (256 - value);
             //timing_updateIntervalFreq(timer, samplerate);
@@ -123,6 +127,9 @@ static INLINE void blaster_writecmd(uint8_t value) {
                 sb.dmalen++;
                 sb.lastcmd = 0;
             }
+#ifdef DEBUG_BLASTER
+            printf("[NOTICE] Sound Blaster DSP block transfer size set to %u\n", sb.dmalen);
+#endif
             return;
         case 0x80: //silence DAC
             if (sb.writehilo == 0) {
@@ -150,7 +157,7 @@ static INLINE void blaster_writecmd(uint8_t value) {
                 }
             }
             val += cmd_E2_table[8];
-            i8237_write(sb.dmachan, (uint8_t) val);
+            i8237_write(SB_dmachan, (uint8_t) val);
             sb.lastcmd = 0;
             return;
         }
@@ -175,7 +182,7 @@ static INLINE void blaster_writecmd(uint8_t value) {
             sb.dorecord = (value == 0x2C) ? 1 : 0;
             sb.dma_active = 1;
 #ifdef DEBUG_BLASTER
-            printf("[BLASTER] Begin auto-init DMA transfer mode with %lu byte blocks\r\n", dmalen);
+            printf("[BLASTER] Begin auto-init DMA transfer mode with %d byte blocks\r\n", sb.dmacount);
 #endif
             break;
         case 0x20: //direct DAC, 8-bit record
@@ -183,6 +190,7 @@ static INLINE void blaster_writecmd(uint8_t value) {
             break;
         case 0x40: //set time constant
             break;
+        case 0x91:
         case 0x48: //set DMA block size
             sb.writehilo = 0;
             break;
@@ -208,18 +216,20 @@ static INLINE void blaster_writecmd(uint8_t value) {
         case 0xE0: //DSP identification (returns bitwise NOT of data byte)
             break;
         case 0xE1: //DSP version (SB 2.0 is DSP 2.01)
+            sb.readlen = 0;
             blaster_putreadbuf(2);
-            blaster_putreadbuf(1);
+            blaster_putreadbuf(0);
             break;
         case 0xE2: //DMA identification write
             break;
         case 0xE4: //write test register
             break;
         case 0xE8: //read test register
+            sb.readlen = 0;
             blaster_putreadbuf(sb.testreg);
             break;
         case 0xF2: //trigger 8-bit IRQ
-            doirq(sb.irq);
+            doirq(SB_irq);
             break;
         case 0xF8: //Undocumented
             sb.readlen = 0;
@@ -275,26 +285,26 @@ int16_t blaster_sample() { //for DMA mode
     if (!sb.dma_active) return 0;
     if (sb.silencedsp == 0) {
         if (sb.dorecord == 0) {
-            sb.sample = i8237_read(sb.dmachan);
-            sb.sample -= 128;
-            sb.sample *= 256;
+            sample = i8237_read(SB_dmachan);
+            sample -= 128;
+            sample <<= 6;
         } else {
-            i8237_write(sb.dmachan, 128); //silence
+            i8237_write(SB_dmachan, 128); //silence
         }
     } else {
-        sb.sample = 0;
+        sample = 0;
     }
 
     if (++sb.dmacount == sb.dmalen) {
         sb.dmacount = 0;
-        doirq(sb.irq);
+        doirq(SB_irq);
         if (sb.autoinit == 0) {
             sb.dma_active = 0;
         }
     }
 
     if (sb.dspenable == 0) {
-        sb.sample = 0;
+        sample = 0;
     }
-    return sb.sample;
+    return sample;
 }

@@ -82,7 +82,7 @@ void __time_critical_func() second_core() {
 
 
     while (true) {
-        if (tick >= last_timer_tick + (1000000 / timer_period)) {
+        if (tick >= last_timer_tick + (timer_period)) {
             doirq(0);
             last_timer_tick = tick;
         }
@@ -200,27 +200,24 @@ void __time_critical_func() second_core() {
 }
 extern bool PSRAM_AVAILABLE;
 
-void _putchar(char character)
-{
+#if 1
+uint8_t __aligned(4) DEBUG_VRAM[80 * 10] = {0};
+
+INLINE void _putchar(char character) {
     static uint8_t color = 0xf;
-    static int x = 0, y = 25;
+    static int x = 0, y = 0;
 
-    if (videomode > 4) return;
-
-    if (y == 30) {
-        y = 29;
-        memmove(
-                (25 * 160) + VIDEORAM + 32768,
-                (26 * 160) + VIDEORAM + 32768,
-                160 * 4
-        );
-        memset((29 * 160) + VIDEORAM + 32768, 0, 160);
+    if (y == 10) {
+        y = 9;
+        memmove(DEBUG_VRAM, DEBUG_VRAM + 80, 80 * 9);
+        memset(DEBUG_VRAM + 80 * 9, 0, 80);
     }
-    uint8_t * vidramptr = VIDEORAM + 32768 + (y * 160) + x * 2;
+    uint8_t *vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
+
     if ((unsigned)character >= 32) {
-        *vidramptr++ = character & 0xFF;
-        *vidramptr = color;
-        if (x == 79) {
+        if (character >= 96) character -= 32; // uppercase
+        *vidramptr = ((character - 32) & 63) | 0 << 6;
+        if (x == 80) {
             x = 0;
             y++;
         } else
@@ -232,10 +229,10 @@ void _putchar(char character)
         x = 0;
     } else if (character == 8 && x > 0) {
         x--;
-        *vidramptr = 32;
+        *vidramptr = 0;
     }
-}
-
+    }
+#endif
 int main() {
 
 #if PICO_RP2350
@@ -244,7 +241,7 @@ int main() {
     vreg_set_voltage(VREG_VOLTAGE_1_50);
     sleep_ms(10);
     *qmi_m0_timing = 0x60007204;
-    set_sys_clock_hz(460000000, 0);
+    set_sys_clock_hz(444000000, 0);
     *qmi_m0_timing = 0x60007303;
 #else
     memcpy_wrapper_replace(NULL);
@@ -268,7 +265,7 @@ int main() {
 
     keyboard_init();
 //    mouse_init();
-    nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
+    nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 
     i2s_config = i2s_get_default_config();
 
@@ -281,7 +278,7 @@ int main() {
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
     init_psram();
-        if (!PSRAM_AVAILABLE) {
+        if (!1) {
         draw_text("No PSRAM detected.", 0, 0, 12, 0);
 //        while (1);
     }

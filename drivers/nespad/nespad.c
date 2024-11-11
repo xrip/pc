@@ -1,3 +1,5 @@
+#include <hardware/clocks.h>
+
 #include "hardware/pio.h"
 
 #define nespad_wrap_target 0
@@ -30,10 +32,10 @@ static inline pio_sm_config nespad_program_get_default_config(uint offset) {
 
 static PIO pio = pio1;
 static uint8_t sm = -1;
-uint32_t nespad_state  = 0;  // Joystick 1
+uint32_t nespad_state  = 0xFF;  // Joystick 1
 uint32_t nespad_state2 = 0;  // Joystick 2
 
-int nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,uint8_t latPin) {
+int nespad_begin(uint8_t clkPin, uint8_t dataPin,uint8_t latPin) {
   if (pio_can_add_program(pio, &nespad_program) &&
       ((sm = pio_claim_unused_sm(pio, true)) >= 0)) {
     uint offset = pio_add_program(pio, &nespad_program);
@@ -44,19 +46,19 @@ int nespad_begin(uint32_t cpu_khz, uint8_t clkPin, uint8_t dataPin,uint8_t latPi
     sm_config_set_set_pins(&c, latPin, 1);
     pio_gpio_init(pio, clkPin);
     pio_gpio_init(pio, dataPin);
-    pio_gpio_init(pio, dataPin+1);  // +1 Pin for Joystick2
+//    pio_gpio_init(pio, dataPin+1);  // +1 Pin for Joystick2
     pio_gpio_init(pio, latPin);
     gpio_set_pulls(dataPin, true, false); // Pull data high, 0xFF if unplugged
-    gpio_set_pulls(dataPin+1, true, false); // Pull data high, 0xFF if unplugged for Joystick2
+//    gpio_set_pulls(dataPin+1, true, false); // Pull data high, 0xFF if unplugged for Joystick2
 
     pio_sm_set_pindirs_with_mask(pio, sm,
                                  (1 << clkPin) | (1 << latPin), // Outputs
                                  (1 << clkPin) | (1 << latPin) | 
-                                 (1 << dataPin) | (1 << (dataPin+1))
+                                 (1 << dataPin) /*| (1 << (dataPin+1))*/
                                 ); // All pins
     sm_config_set_in_shift(&c, true, true, 32); // R shift, autopush @ 8 bits (@ 16 bits for 2 Joystick)
 
-    sm_config_set_clkdiv_int_frac(&c, cpu_khz / 1000, 0); // 1 MHz clock
+    sm_config_set_clkdiv_int_frac(&c, clock_get_hz(clk_sys) / 1000000, 0); // 1 MHz clock
 
 
 
@@ -90,7 +92,7 @@ void nespad_read()
   uint32_t temp=pio->rxf[sm]^ 0xFFFFFFFF;
   pio->txf[sm]=0;
   nespad_state  = temp & 0x555555;         //  Joy1
-  nespad_state2 = temp >> 1 & 0x555555;  //  Joy2
+//  nespad_state2 = temp >> 1 & 0x555555;  //  Joy2
 }
 
 

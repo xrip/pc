@@ -2,6 +2,17 @@
 int hdcount = 0, fdcount = 0;
 
 static uint8_t sectorbuffer[512];
+typedef struct _IO_FILE FILE;
+extern FILE *fopen(const char *pathname, const char *mode);
+extern int fclose(FILE *stream);
+extern size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+extern size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+extern int fseek(FILE *stream, long offset, int whence);
+extern long ftell(FILE *stream);
+
+#define SEEK_CUR    1
+#define SEEK_END    2
+#define SEEK_SET    0
 
 struct struct_drive {
     FILE *diskfile;
@@ -31,7 +42,7 @@ uint8_t insertdisk(uint8_t drivenum, const char *pathname) {
 
     FILE *file = fopen(pathname, "rb+");
     if (!file) {
-//        fprintf(stderr, "DISK: ERROR: cannot open disk file %s for drive %02Xh\n", pathname, drivenum);
+        printf( "DISK: ERROR: cannot open disk file %s for drive %02Xh\n", pathname, drivenum);
         return 0;
     }
 
