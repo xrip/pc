@@ -22,8 +22,8 @@ foreach (SRC_FILE IN LISTS SRC)
 endforeach ()
 message(STATUS "")
 
-#add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
-add_compile_options(-fms-extensions -O2)
+add_compile_options(-ffunction-sections -fdata-sections -fms-extensions -O2)
+#add_compile_options(-fms-extensions -O2)
 
 if (PICO_PLATFORM STREQUAL "host")
     add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
@@ -39,11 +39,11 @@ else ()
     pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 
     add_subdirectory(drivers/psram)
-    add_subdirectory(memops_opt)
-    target_link_libraries(${PROJECT_NAME} PRIVATE psram memops_opt)
+    target_link_libraries(${PROJECT_NAME} PRIVATE psram)
 
     if (PICO_PLATFORM STREQUAL "rp2040")
-        target_link_libraries(${PROJECT_NAME} PRIVATE memops_opt)
+        add_subdirectory(memops_opt)
+        target_link_libraries(${PROJECT_NAME} PRIVATE psram memops_opt)
         SET(BUILD_NAME "${BUILD_NAME}-RP2040")
         target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
     else ()
@@ -64,10 +64,7 @@ else ()
     add_subdirectory(drivers/hdmi)
     add_subdirectory(drivers/graphics)
     add_subdirectory(drivers/audio)
-    #    add_subdirectory(drivers/psram)
     add_subdirectory(drivers/nespad)
-
-    #    add_subdirectory(sparkfun_pico)
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
     target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
@@ -104,7 +101,7 @@ else ()
             RP2350_SPEED=444
             RP2040_SPEED=396
 
-            ONBOARD_PSRAM
+            #ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6
@@ -136,9 +133,9 @@ else ()
             CLOCK_PIN=17
             PCM_PIN=22
 
-           #I2S_SOUND
+           I2S_SOUND
 
-            PWM_SOUND
+            #PWM_SOUND
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
             PWM_BEEPER=28

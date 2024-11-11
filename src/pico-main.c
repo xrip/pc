@@ -113,11 +113,11 @@ bool handleScancode(uint32_t ps2scancode) {
 }
 
 int cursor_blink_state = 0;
-struct semaphore vga_start_semaphore;
+// struct semaphore vga_start_semaphore;
 
-#define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = {0};
-int active_buffer = 0;
+// #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
+// static int16_t __aligned(4) audio_buffer[2][AUDIO_BUFFER_LENGTH * 2] = {0};
+// int active_buffer = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
 extern pwm_config config;
@@ -126,24 +126,26 @@ extern pwm_config config;
 int mouse_available = false;
 
 void __time_critical_func() render_loop() {
+#if !HARDWARE_SOUND
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+#endif
+
     absolute_time_t now = get_absolute_time();
     absolute_time_t last_timer_tick = now,
             last_cursor_blink = now,
             last_sound_tick = now,
             last_frame_tick = now,
             last_dss_tick = now,
-            last_sb_tick = now,
-            last_midi_tick = now;
+            last_sb_tick = now;
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-    int16_t last_midi_sample = 0;
 
-    int sample_index = 0;
     while (true) {
         if (absolute_time_diff_us(last_timer_tick, now) >= timer_period) {
             doirq(0);
             last_timer_tick = now;
+
         }
 
         if (absolute_time_diff_us(last_cursor_blink, now) >= 333333) {
@@ -162,11 +164,11 @@ void __time_critical_func() render_loop() {
             last_dss_sample = dss_sample();
             last_dss_tick = now;
         }
-
         // Sound frequency 44100
         if (absolute_time_diff_us(last_sound_tick, now) >= (1000000 / SOUND_FREQUENCY)) {
+
 #if I2S_SOUND || PWM_SOUND
-            int16_t samples[2] = { 0, 0 };
+            int32_t samples[2] = { 0, 0 };
 #if !PICO_RP2040
             OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
 #endif
@@ -184,10 +186,13 @@ void __time_critical_func() render_loop() {
             cms_samples(samples);
 
 #if I2S_SOUND
-            audio_buffer[active_buffer][sample_index++] = samples[1];
-            audio_buffer[active_buffer][sample_index++] = samples[0];
+            // audio_buffer[active_buffer][sample_index++] = samples[1];
+            // audio_buffer[active_buffer][sample_index++] = samples[0];
 
-            i2s_write(&i2s_config, &samples[0], 1);
+            int16_t samples16[2] = { samples[0], samples[1] };
+
+            // i2s_write(&i2s_config, &samples[0], 1);
+            i2s_dma_write(&i2s_config, &samples16[0]);
             // if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
                 // sample_index = 0;
                 // i2s_dma_write(&i2s_config, audio_buffer[active_buffer]);
@@ -208,12 +213,6 @@ void __time_critical_func() render_loop() {
 
         if (absolute_time_diff_us(last_frame_tick, now) >= 16667) {
             static uint8_t old_video_mode;
-
-            if (!mouse_available) {
-#define MOUSE_SPEED 4
-                nespad_read();
-                sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
-            }
 
             if (old_video_mode != videomode) {
                 if (1) {
@@ -259,7 +258,8 @@ void __time_critical_func() render_loop() {
             }
             last_frame_tick = now;
         }
-        now = time_us_64();
+
+        now = get_absolute_time();
         tight_loop_contents();
     }
     __unreachable();
@@ -269,7 +269,7 @@ void second_core() {
 #if I2S_SOUND
     i2s_config = i2s_get_default_config();
     i2s_config.sample_freq = SOUND_FREQUENCY;
-    i2s_config.dma_trans_count = AUDIO_BUFFER_LENGTH;
+    i2s_config.dma_trans_count = 1;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
 #elif PWM_SOUND
@@ -298,9 +298,6 @@ void second_core() {
 #endif
 
 
-#if !HARDWARE_SOUND
-    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
-#endif
     blaster_reset();
 
     graphics_init();
@@ -314,7 +311,7 @@ void second_core() {
         graphics_set_palette(i, vga_palette[i]);
     }
 
-    sem_acquire_blocking(&vga_start_semaphore);
+    // sem_acquire_blocking(&vga_start_semaphore);
 
     render_loop();
 }
@@ -466,9 +463,9 @@ int main() {
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
     keyboard_init();
-    sem_init(&vga_start_semaphore, 0, 1);
+    // sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
-    sem_release(&vga_start_semaphore);
+    // sem_release(&vga_start_semaphore);
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
@@ -500,6 +497,13 @@ int main() {
 
     while (true) {
         exec86(32768);
+#if 1
+        if (!mouse_available) {
+#define MOUSE_SPEED 4
+            nespad_read();
+            sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
+        }
+#endif
         tight_loop_contents();
     }
     __unreachable();

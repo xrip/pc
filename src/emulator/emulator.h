@@ -24,9 +24,9 @@ extern "C" {
 #define RAM_SIZE (640 << 10)
 #endif
 #if PICO_RP2040
-#define SOUND_FREQUENCY (22050)
-#else
 #define SOUND_FREQUENCY (44100)
+#else
+#define SOUND_FREQUENCY (49716)
 #endif
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
@@ -203,7 +203,7 @@ extern void cms_out(uint16_t portnum, uint16_t value);
 
 extern uint8_t cms_in(uint16_t addr);
 
-extern void cms_samples(int16_t *output);;
+extern void cms_samples(int32_t *output);;
 
 #define XMS_FN_CS 0x0000
 #define XMS_FN_IP 0x03FF

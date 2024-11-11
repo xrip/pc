@@ -178,6 +178,7 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x221:
         case 0x222:
         case 0x223:
+            cms_write(portnum, value);
         case 0x224:
         case 0x225:
         case 0x226:
@@ -190,11 +191,7 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x22d:
         case 0x22e:
         case 0x22f:
-#if 1 || !PICO_RP2040
-            blaster_write(portnum, value);
-#endif
-            return cms_write(portnum, value);
-
+            return blaster_write(portnum, value);
         case 0x260:
         case 0x261:
         case 0x262:
@@ -392,11 +389,8 @@ uint16_t portin(uint16_t portnum) {
         case 0x22d:
         case 0x22e:
         case 0x22f:
-#if 1 || !PICO_RP2040
             return blaster_read(portnum);
-#else
-            return cms_in(portnum);
-#endif
+            // return cms_in(portnum);
         // RTC
         case 0x240:
         case 0x241:
