@@ -24,7 +24,7 @@ message(STATUS "")
 
 if (PICO_PLATFORM STREQUAL "host")
     add_compile_options(-fms-extensions)
-    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c )
+    add_executable(${PROJECT_NAME} ${SRC} src/win32-main.cpp src/WinMiniFB.c src/printf/printf.c)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
             USE_EMU8950_OPL
             EMU8950_SLOT_RENDER=1
@@ -57,7 +57,7 @@ else ()
     add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
 
     add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
-    target_include_directories(${PROJECT_NAME} PRIVATE src/printf)
+
     add_subdirectory(memops_opt)
 
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
@@ -192,6 +192,7 @@ else ()
 endif ()
 
 target_include_directories(${PROJECT_NAME} PRIVATE src src/emu8950)
+target_include_directories(${PROJECT_NAME} PRIVATE src/printf)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)

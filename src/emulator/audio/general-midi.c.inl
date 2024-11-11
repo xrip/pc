@@ -45,9 +45,9 @@ static midi_voice_t midi_voices[MAX_MIDI_VOICES] = {0};
 static midi_channel_t midi_channels[MIDI_CHANNELS] = {0};
 
 // Bitmask for active voices
-static uint32_t volatile active_voice_bitmask = 0;
+static uint32_t active_voice_bitmask = 0;
 // Bitmask for sustained channels
-static uint32_t volatile channels_sustain_bitmask = 0;
+static uint32_t channels_sustain_bitmask = 0;
 
 
 #define SET_ACTIVE_VOICE(idx) (active_voice_bitmask |= (1U << (idx)))

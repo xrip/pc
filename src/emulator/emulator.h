@@ -3,7 +3,7 @@
 #include "printf/printf.h"
 #include <pico.h>
 #else
-#include "printf/printf.h"
+
 #endif
 #include <stdint.h>
 #include "cpu.h"
@@ -20,13 +20,14 @@ extern "C" {
 #define RAM_SIZE (146 << 10)
 #endif
 #else
+#include "printf/printf.h"
 #define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
 #if PICO_RP2040
-#define SOUND_FREQUENCY (44100)
-#else
 #define SOUND_FREQUENCY (49716)
+#else
+#define SOUND_FREQUENCY (44100)
 #endif
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
@@ -50,7 +51,6 @@ extern "C" {
 #define BIOS_MEMORY_SIZE                0x413
 #define BIOS_TRUE_MEMORY_SIZE           0x415
 #define BIOS_CRTCPU_PAGE        0x48A
-
 extern uint8_t log_debug;
 
 extern uint8_t VIDEORAM[VIDEORAM_SIZE + 4];
@@ -183,13 +183,13 @@ extern void tandy_write(uint16_t reg, uint8_t value);
 extern void adlib_write_d(uint16_t reg, uint8_t value);
 extern void cms_write(uint16_t reg, uint8_t value);
 
-uint16_t dss_sample();
+int16_t dss_sample();
 
 extern void sn76489_reset();
 
-static int16_t sn76489_sample();
+// static int16_t sn76489_sample();
 
-static void cms_samples(int16_t *output);
+// extern void cms_samples(int16_t *output);
 
 #define XMS_FN_CS 0x0000
 #define XMS_FN_IP 0x03FF
@@ -244,6 +244,23 @@ extern int16_t covox_sample;
 #define ALING(x, y) y __attribute__((aligned(x)))
 #endif
 #endif
+    static INLINE int16_t speaker_sample() {
+        if (!speakerenabled) return 0;
+        static uint32_t speakerfullstep, speakerhalfstep, speakercurstep = 0;
+        int16_t speakervalue;
+        speakerfullstep = SOUND_FREQUENCY / i8253.chanfreq[2];
+        if (speakerfullstep < 2)
+            speakerfullstep = 2;
+        speakerhalfstep = speakerfullstep >> 1;
+        if (speakercurstep < speakerhalfstep) {
+            speakervalue = 4096;
+        } else {
+            speakervalue = -4096;
+        }
+        speakercurstep = (speakercurstep + 1) % speakerfullstep;
+        return speakervalue;
+    }
+    extern void get_sound_sample(int16_t other_sample, int16_t *samples);
 #ifdef __cplusplus
 }
 #endif
@@ -282,20 +299,3 @@ static INLINE uint16_t read16psram(uint32_t address) {
     return swap_read16(address);
 }
 #endif
-static INLINE int16_t speaker_sample() {
-    if (!speakerenabled) return 0;
-    static uint32_t speakerfullstep, speakerhalfstep, speakercurstep = 0;
-    int16_t speakervalue;
-    speakerfullstep = SOUND_FREQUENCY / i8253.chanfreq[2];
-    if (speakerfullstep < 2)
-        speakerfullstep = 2;
-    speakerhalfstep = speakerfullstep >> 1;
-    if (speakercurstep < speakerhalfstep) {
-        speakervalue = 4096;
-    } else {
-        speakervalue = -4096;
-    }
-    speakercurstep = (speakercurstep + 1) % speakerfullstep;
-    return speakervalue;
-}
-void get_sound_sample(int16_t dss_sample, int16_t sb_sample, int16_t *samples);

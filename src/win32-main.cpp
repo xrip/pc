@@ -15,7 +15,7 @@ uint8_t log_debug = 0;
 HANDLE hComm;
 DWORD bytesWritten;
 DCB dcb;
-OPL *emu8950_opl;
+extern OPL *emu8950_opl;
 
 #define AUDIO_BUFFER_LENGTH ((SOUND_FREQUENCY / 10))
 static int16_t audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {};
@@ -486,10 +486,7 @@ DWORD WINAPI SoundThread(LPVOID lpParam) {
     return 0;
 }
 
-static INLINE void pcm_write(int mode, int16_t sample);
 extern uint16_t timeconst;
-
-extern "C" int16_t midi_sample();
 DWORD WINAPI TicksThread(LPVOID lpParam) {
     LARGE_INTEGER start, current, queryperf;
 
@@ -509,9 +506,7 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
 
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-    int32_t last_cms_samples[2];
-
-    uint16_t old_timeconst = timeconst;
+    int16_t last_cms_samples[2];
 
 
     updateEvent = CreateEvent(NULL, 1, 1, NULL);
@@ -529,46 +524,18 @@ DWORD WINAPI TicksThread(LPVOID lpParam) {
         // Disney Sound Source frequency ~7KHz
         if (elapsedTime - last_dss_tick >= hostfreq / 7000) {
             last_dss_sample = dss_sample();
-            //pcm_write(last_dss_sample);
             last_dss_tick = elapsedTime;
         }
 
         // Sound Blaster
         if (elapsedTime - last_sb_tick >= hostfreq / sb_samplerate) {
             last_sb_sample = blaster_sample();
-            // if (last_sb_sample) pcm_write(1, last_sb_sample);
             last_sb_tick = elapsedTime;
         }
 
         if (elapsedTime - last_sound_tick >= hostfreq / SOUND_FREQUENCY) {
-            int32_t samples[2] = {0, 0};
-            OPL_calc_buffer_linear(emu8950_opl, samples, 1);
-
-            samples[0] += last_dss_sample;
-
-            if (speakerenabled) {
-                samples[0] += speaker_sample();
-                // pcm_write(samples[0]);
-            }
-
-            samples[0] += sn76489_sample();
-
-
-            samples[0] += last_sb_sample;
-
-
-            samples[0] += covox_sample;
-
-
-            samples[0] += midi_sample();
-
-            samples[1] = samples[0];
-
-            cms_samples(samples);
-
-            audio_buffer[sample_index++] = (int16_t) samples[0];
-            audio_buffer[sample_index++] = (int16_t) samples[1];
-
+            get_sound_sample(last_dss_sample + last_sb_sample, &audio_buffer[sample_index]);
+            sample_index+=2;
 
             if (sample_index >= AUDIO_BUFFER_LENGTH) {
                 SetEvent(updateEvent);
@@ -1025,6 +992,7 @@ DWORD WINAPI MessageHandler(LPVOID lpParam) {
     return 0;
 }
 
+#if 0
 extern "C" void tandy_write(uint16_t reg, uint8_t value) {
     if (reg != 0xff) sn76489_out(value);
     Enqueue(&queue, (value & 0xff) << 8 | 0);
@@ -1074,7 +1042,7 @@ extern "C" void cms_write(uint16_t reg, uint8_t val) {
             break;
     }
 }
-
+#endif
 extern "C" BOOL HanldeMenu(int menu_id, BOOL checked) {
     if (menu_id == 2) {
         static uint8_t old_vm;

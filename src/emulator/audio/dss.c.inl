@@ -9,7 +9,7 @@ static uint8_t fifo_length = 0;
 static uint8_t dss_data;
 
 int16_t covox_sample = 0;
-inline uint16_t dss_sample() {
+inline int16_t dss_sample() {
     register uint8_t sample = 0;
     if (fifo_length) {
         sample = *fifo_buffer;

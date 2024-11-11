@@ -5,6 +5,8 @@
 #include "nespad.h"
 #endif
 
+#include <emu8950.h>
+OPL *emu8950_opl;
 #include "audio/sn76489.c.inl"
 #include "audio/cms.c.inl"
 #include "audio/dss.c.inl"
@@ -121,10 +123,8 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x61:
             port61 = value;
             if ((value & 3) == 3) {
-                tandy_write(0, 0b10010000);
                 speakerenabled = 1;
             } else {
-                tandy_write(0, 0b10011111);
                 speakerenabled = 0;
             }
 
@@ -157,8 +157,7 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC5:
         case 0xC6:
         case 0xC7:
-            sn76489_out(value);
-            return tandy_write(portnum, value);
+            return sn76489_out(value);
 // Gamepad
         case 0x201:
             return joystick_out();
@@ -182,8 +181,7 @@ void portout(uint16_t portnum, uint16_t value) {
 #if !PICO_ON_DEVICE
             blaster_write(portnum, value);
 #endif
-            cms_out(portnum, value);
-            return cms_write(portnum, value);
+            return cms_out(portnum, value);
 
         case 0x260:
         case 0x261:
@@ -213,7 +211,7 @@ void portout(uint16_t portnum, uint16_t value) {
                     adlibregmem[4] = 0;
                 }
             }
-            return adlib_write_d(adlib_register, value);
+            return OPL_writeReg(emu8950_opl, adlib_register, value);
 // EGA/VGA
         case 0x3C0:
         case 0x3C4:
@@ -470,8 +468,10 @@ uint16_t portin16(uint16_t portnum) {
 }
 
 
-void get_sound_sample(int16_t dss_sample, int16_t sb_sample, int16_t *samples) {
-    int32_t mono = speaker_sample() + dss_sample + sb_sample + covox_sample + sn76489_sample() + midi_sample();
-    samples[0] = samples[1] = (int16_t)mono;
+void get_sound_sample(const int16_t other_sample, int16_t *samples) {
+    OPL_calc_buffer_linear(emu8950_opl, (int32_t *)samples, 1);
+
+    samples[1] = samples[0] += (int32_t)(speaker_sample() + other_sample + covox_sample + sn76489_sample() + midi_sample());
     cms_samples(samples);
+
 }

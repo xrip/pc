@@ -26,24 +26,9 @@
 #include "nespad.h"
 #include "emu8950.h"
 #include "ps2_mouse.h"
-
+extern OPL *emu8950_opl;
 FATFS fs;
 i2s_config_t i2s_config;
-OPL *emu8950_opl;
-void tandy_write(uint16_t reg, uint8_t value) {
-}
-
-extern void adlib_getsample(int16_t *sndptr, intptr_t numsamples);
-extern void adlib_init(uint32_t samplerate);
-extern void adlib_write(uintptr_t idx, uint8_t val);
-
-void adlib_write_d(uint16_t reg, uint8_t value) {
-    OPL_writeReg(emu8950_opl, reg, value);
-}
-
-void cms_write(uint16_t reg, uint8_t val) {
-
-}
 
 bool handleScancode(uint32_t ps2scancode) {
     port60 = ps2scancode;
@@ -86,10 +71,11 @@ void __time_critical_func() second_core() {
     uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
 
     uint64_t last_dss_tick = 0;
+    uint64_t last_cms_tick = 0;
     uint64_t last_sb_tick = 0;
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-
+    int16_t last_cms_samples[2];
 
     while (true) {
         if (tick >= last_timer_tick + (timer_period)) {
@@ -119,11 +105,8 @@ void __time_critical_func() second_core() {
 #endif
         // Sound frequency 44100
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
-            int16_t samples[2] = { 0, 0 };
-            OPL_calc_buffer_linear(emu8950_opl, (int32_t *)(samples), 1);
-
-            get_sound_sample(last_dss_sample, last_sb_sample, samples);
-
+            int16_t samples[2];
+            get_sound_sample(last_dss_sample + last_sb_sample, samples);
             i2s_dma_write(&i2s_config, samples);
             // audio_buffer[sample_index++] = samples[1];
             // audio_buffer[sample_index++] = samples[0];

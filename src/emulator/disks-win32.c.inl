@@ -1,3 +1,4 @@
+#pragma once
 #include "emulator.h"
 int hdcount = 0, fdcount = 0;
 
