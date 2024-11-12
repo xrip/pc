@@ -43,7 +43,7 @@ struct semaphore vga_start_semaphore;
 static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
-extern uint8_t timeconst;
+extern uint16_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
     i2s_config.sample_freq = SOUND_FREQUENCY;
@@ -95,7 +95,7 @@ void __time_critical_func() second_core() {
             last_dss_tick = tick;
         }
 
-#if !PICO_ON_DEVICE
+#if !PICO_RP2040
         // Sound Blaster
         if (tick > last_sb_tick + timeconst) {
             last_sb_sample = blaster_sample();
@@ -288,6 +288,12 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     hw_set_bits(&xip_ctrl_hw->ctrl, XIP_CTRL_WRITABLE_M1_BITS);
 }
 #endif
+
+#include <hardware/exception.h>
+void sigbus(void){
+    printf("SIGBUS exception caught...\n");
+    // reset_usb_boot(0, 0);
+}
 int main() {
 
 #if PICO_RP2350
@@ -308,9 +314,9 @@ int main() {
     psram_init(19);
     int psram = 1;
 #else
-    //int psram = init_psram();
+    int psram = init_psram();
 #endif
-
+    exception_set_exclusive_handler(HARDFAULT_EXCEPTION,sigbus);
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -343,7 +349,8 @@ int main() {
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
-        if (!init_psram()) {
+        // if (!init_psram()) {
+    if (0) {
         printf("No PSRAM detected.");
 //        while (1);
     }

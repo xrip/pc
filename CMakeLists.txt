@@ -91,6 +91,7 @@ else ()
             hardware_dma
             hardware_pio
             hardware_i2c
+            hardware_exception
             hardware_interp
             hardware_timer
             hardware_clocks

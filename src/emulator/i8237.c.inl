@@ -20,19 +20,10 @@ static struct dma_channel_s {
 
 static uint8_t flipflop, memtomem;
 
-void i8237_reset() {
-    memset(dma_channels, 0x00, sizeof(struct dma_channel_s) * 4);
-
-    dma_channels[0].masked = 1;
-    dma_channels[1].masked = 1;
-    dma_channels[2].masked = 1;
-    dma_channels[3].masked = 1;
-}
-
 static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
     uint8_t channel;
 #ifdef DEBUG_DMA
-//    printf("[DMA] Write port 0x%X: %X\n", portnum, value);
+    printf("[DMA] Write port 0x%X: %X\n", portnum, value);
 #endif
     portnum &= 0x0F;
     switch (portnum) {
@@ -83,6 +74,7 @@ static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
             break;
         case 0x0A: //DMA channel 0-3 mask register
             dma_channels[value & 3].masked = (value >> 2) & 1;
+            printf("channel %i masked %i\n", value & 3, (value >> 2) & 1);
             break;
         case 0x0B: //DMA channel 0-3 mode register
             dma_channels[value & 3].transfer_type = (value >> 2) & 3;
@@ -105,6 +97,15 @@ static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
             dma_channels[3].masked = (value >> 3) & 1;
             break;
     }
+}
+
+void i8237_reset() {
+    memset(dma_channels, 0x00, sizeof(struct dma_channel_s) * 4);
+
+    dma_channels[0].masked = 1;
+    dma_channels[1].masked = 1;
+    dma_channels[2].masked = 1;
+    dma_channels[3].masked = 1;
 }
 
 static INLINE void i8237_writepage(uint16_t portnum, uint8_t value) {
@@ -138,7 +139,7 @@ static INLINE void i8237_writepage(uint16_t portnum, uint8_t value) {
 static INLINE uint8_t i8237_readport(uint16_t portnum) {
     uint8_t channel, result = 0xFF;
 #ifdef DEBUG_DMA
-//    printf("[DMA] Read port 0x%X\n", portnum);
+    printf("[DMA] Read port 0x%X\n", portnum);
 #endif
 
     portnum &= 0x0F;
@@ -176,8 +177,9 @@ static INLINE uint8_t i8237_readport(uint16_t portnum) {
 
 static INLINE uint8_t i8237_readpage(uint16_t portnum) {
     register uint8_t channel;
+    printf("[DMA] Read port 0x%X\n", portnum);
 #ifdef DEBUG_DMA
-//    printf("[DMA] Read port 0x%X\n", portnum);
+    printf("[DMA] Read port 0x%X\n", portnum);
 #endif
     portnum &= 0x0F;
     switch (portnum) {
@@ -203,15 +205,28 @@ static INLINE void update_count(uint8_t channel) {
     dma_channels[channel].address += dma_channels[channel].address_increase;
     dma_channels[channel].count--;
 
-    if ((dma_channels[channel].count == 0xFFFF) && (dma_channels[channel].autoinit)) {
-        dma_channels[channel].count = dma_channels[channel].reload_count;
-        dma_channels[channel].address = dma_channels[channel].reload_address;
+    if ((dma_channels[channel].count == 0xFFFF)) {
+        if ((dma_channels[channel].autoinit)) {
+            dma_channels[channel].count = dma_channels[channel].reload_count;
+            dma_channels[channel].address = dma_channels[channel].reload_address & 0xFFFF;
+            //doirq(3);
+        } else {
+            printf("maskerd!\n");
+            dma_channels[channel].masked = 1;
+        }
+        }
+
     }
+
+uint8_t i8237_active(uint8_t c) {
+    return dma_channels[c].masked;
 }
 
 uint8_t i8237_read(uint8_t channel) {
-    register uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
+     if (dma_channels[channel].masked) return 0;
+    register uint32_t address = (dma_channels[channel].page + (dma_channels[channel].address & 0xFFFF));
     update_count(channel);
+    // if (tmp++< 8192)return 0;
 //    printf("Read from %06X %x\r\n", dma_channels[channel].page + dma_channels[channel].address, dma_channels[channel].count);
     return read86(address);
 }

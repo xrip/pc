@@ -218,7 +218,7 @@ static INLINE void blaster_writecmd(uint8_t value) {
         case 0xE1: //DSP version (SB 2.0 is DSP 2.01)
             sb.readlen = 0;
             blaster_putreadbuf(2);
-            blaster_putreadbuf(0);
+            blaster_putreadbuf(1);
             break;
         case 0xE2: //DMA identification write
             break;
@@ -280,9 +280,9 @@ uint8_t blaster_read(uint16_t portnum) {
 
     return result;
 }
-
+extern uint8_t i8237_active();
 int16_t blaster_sample() { //for DMA mode
-    if (!sb.dma_active) return 0;
+    if (i8237_active()) return 0;
     if (sb.silencedsp == 0) {
         if (sb.dorecord == 0) {
             sample = i8237_read(SB_dmachan);

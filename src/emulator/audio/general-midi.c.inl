@@ -1,17 +1,15 @@
 #pragma GCC optimize("Ofast")
 #pragma once
 #include "general-midi.h"
-#if !PICO_ON_DEVICE
 
 // #define DEBUG_MIDI
 
-#ifdef DEBUG_MIDI
+#if defined(DEBUG_MIDI)
 #define debug_log(...) printf(__VA_ARGS__)
 #else
 #define debug_log(...)
 #endif
 
-#endif
 // #define USE_SAMPLES
 #if defined(USE_SAMPLES)
 #include "emulator/drum/drum.h"

@@ -121,7 +121,7 @@ void __time_critical_func() dma_handler_VGA() {
 
     uint32_t * *output_buffer = &lines_pattern[2 + (screen_line & 1)];
     uint16_t *output_buffer_16bit = (uint16_t *) (*output_buffer) + shift_picture / 2;
-    if (0 && screen_line >= 400) {
+    if (1 && screen_line >= 400) {
         uint8_t y = screen_line - 400;
         uint8_t y_div_8 = y / 8;
         uint8_t glyph_line = y % 8;
