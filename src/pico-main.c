@@ -108,15 +108,6 @@ void __time_critical_func() second_core() {
             int16_t samples[2];
             get_sound_sample(last_dss_sample + last_sb_sample, samples);
             i2s_dma_write(&i2s_config, samples);
-            // audio_buffer[sample_index++] = samples[1];
-            // audio_buffer[sample_index++] = samples[0];
-
-
-            // if (sample_index >= AUDIO_BUFFER_LENGTH * 2) {
-                // sample_index = 0;
-                // i2s_dma_write(&i2s_config, audio_buffer);
-                // active_buffer ^= 1;
-            // }
 
             last_sound_tick = tick;
         }
