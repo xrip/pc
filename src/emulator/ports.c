@@ -11,6 +11,7 @@ OPL *emu8950_opl;
 #include "audio/cms.c.inl"
 #include "audio/dss.c.inl"
 #include "audio/mpu401.c.inl"
+#include "audio/sound_blaster.c.inl"
 #include "i8237.c.inl"
 
 uint8_t crt_controller_idx, crt_controller[32];
