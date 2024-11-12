@@ -60,12 +60,15 @@ extern uint8_t UMB[(UMB_END - UMB_START) + 4];
 extern uint8_t HMA[(HMA_END - HMA_START) + 4];
 extern uint8_t EMS[EMS_MEMORY_SIZE + 4];
 extern uint8_t XMS[XMS_SIZE + 4];
+
 extern union _bytewordregs_ {
     uint16_t wordregs[8];
     uint8_t byteregs[8];
 } regs;
+
 extern uint8_t cf, pf, af, zf, sf, tf, ifl, df, of;
 extern uint16_t segregs[4];
+
 // i8259
 extern struct i8259_s {
     uint8_t imr; //mask register
@@ -95,6 +98,7 @@ static inline uint8_t nextintr() {
 void out8259(uint16_t portnum, uint8_t value);
 
 uint8_t in8259(uint16_t portnum);
+
 // Video
 extern int videomode;
 #define CURSOR_X RAM[0x450]
@@ -105,8 +109,11 @@ extern uint32_t vga_palette[256];
 // TGA
 extern uint32_t tga_palette[16];
 extern uint8_t tga_palette_map[16];
+
 extern void tga_portout(uint16_t portnum, uint16_t value);
+
 extern void tga_draw_char(uint8_t ch, int x, int y, uint8_t color);
+
 extern void tga_draw_pixel(int x, int y, uint8_t color);
 
 // CGA
@@ -149,8 +156,10 @@ extern uint16_t portin16(uint16_t portnum);
 extern uint8_t port60, port61, port64, port3DA;
 extern uint32_t vram_offset;
 extern uint32_t tga_offset;
+
 // CPU
 extern void exec86(uint32_t execloops);
+
 extern void reset86();
 
 // i8253
@@ -181,6 +190,7 @@ extern void mouse_portout(uint16_t portnum, uint8_t value);
 extern void tandy_write(uint16_t reg, uint8_t value);
 
 extern void adlib_write_d(uint16_t reg, uint8_t value);
+
 extern void cms_write(uint16_t reg, uint8_t value);
 
 int16_t dss_sample();
@@ -201,20 +211,26 @@ extern uint8_t xms_handler();
 
 //uint8_t i8237_readport( uint16_t portnum);
 //uint8_t i8237_readpage( uint16_t portnum);
-uint8_t i8237_read( uint8_t channel);
+uint8_t i8237_read(uint8_t channel);
+
 void i8237_write(uint8_t channel, uint8_t value);
+
 void i8237_reset();
 
 void blaster_reset();
+
 // uint8_t blaster_read(uint16_t portnum);
 // void blaster_write(uint16_t portnum, uint8_t value);
 int16_t blaster_sample();
 
 void outadlib(uint16_t portnum, uint8_t value);
+
 uint8_t inadlib(uint16_t portnum);
+
 int16_t adlibgensample();
 
 extern void out_ems(uint16_t port, uint8_t data);
+
 extern int16_t covox_sample;
 
 #if !PICO_ON_DEVICE
@@ -244,23 +260,24 @@ extern int16_t covox_sample;
 #define ALING(x, y) y __attribute__((aligned(x)))
 #endif
 #endif
-    static INLINE int16_t speaker_sample() {
-        if (!speakerenabled) return 0;
-        static uint32_t speakerfullstep, speakerhalfstep, speakercurstep = 0;
-        int16_t speakervalue;
-        speakerfullstep = SOUND_FREQUENCY / i8253.chanfreq[2];
-        if (speakerfullstep < 2)
-            speakerfullstep = 2;
-        speakerhalfstep = speakerfullstep >> 1;
-        if (speakercurstep < speakerhalfstep) {
-            speakervalue = 4096;
-        } else {
-            speakervalue = -4096;
-        }
-        speakercurstep = (speakercurstep + 1) % speakerfullstep;
-        return speakervalue;
+static INLINE int16_t speaker_sample() {
+    if (!speakerenabled) return 0;
+    static uint32_t speakerfullstep, speakerhalfstep, speakercurstep = 0;
+    int16_t speakervalue;
+    speakerfullstep = SOUND_FREQUENCY / i8253.chanfreq[2];
+    if (speakerfullstep < 2)
+        speakerfullstep = 2;
+    speakerhalfstep = speakerfullstep >> 1;
+    if (speakercurstep < speakerhalfstep) {
+        speakervalue = 4096;
+    } else {
+        speakervalue = -4096;
     }
-    extern void get_sound_sample(int16_t other_sample, int16_t *samples);
+    speakercurstep = (speakercurstep + 1) % speakerfullstep;
+    return speakervalue;
+}
+
+extern void get_sound_sample(int16_t other_sample, int16_t *samples);
 #ifdef __cplusplus
 }
 #endif
@@ -270,19 +287,22 @@ extern int16_t covox_sample;
 #include "psram_spi.h"
 
 #else
-extern uint8_t * PSRAM_DATA;
+extern uint8_t *PSRAM_DATA;
 
-static INLINE void write8psram(uint32_t address, uint8_t value) {
+static INLINE void write8psram(const uint32_t address, const uint8_t value) {
     PSRAM_DATA[address] = value;
 }
-static INLINE void write16psram(uint32_t address, uint16_t value) {
-    *(uint16_t *)&PSRAM_DATA[address] = value;
+
+static INLINE void write16psram(const uint32_t address, const uint16_t value) {
+    *(uint16_t *) &PSRAM_DATA[address] = value;
 }
-static INLINE uint8_t read8psram(uint32_t address) {
+
+static INLINE uint8_t read8psram(const uint32_t address) {
     return PSRAM_DATA[address];
 }
-static INLINE uint16_t read16psram(uint32_t address) {
-    return *(uint16_t *)&PSRAM_DATA[address];
+
+static INLINE uint16_t read16psram(const uint32_t address) {
+    return *(uint16_t *) &PSRAM_DATA[address];
 }
 #endif
 #else
