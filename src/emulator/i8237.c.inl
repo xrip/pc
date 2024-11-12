@@ -23,7 +23,7 @@ typedef struct dma_channel_t {
     uint32_t address_increase;
     uint16_t count;
     uint16_t reload_count;
-    uint8_t autoinit;
+    uint8_t auto_init;
     uint8_t mode;
     uint8_t enable;
     uint8_t masked;
@@ -36,7 +36,7 @@ dma_channel_s dma_channels[DMA_CHANNELS] = {0};
 
 static uint8_t flipflop, memtomem;
 
-static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
+static INLINE void i8237_writeport(const uint16_t portnum, const uint8_t value) {
 #ifdef DEBUG_DMA
     printf("[DMA] Write port 0x%X: %X\n", portnum, value);
 #endif
@@ -84,7 +84,7 @@ static INLINE void i8237_writeport(uint16_t portnum, uint8_t value) {
             break;
         case DMA_MODE_REGISTER: //DMA channel 0-3 mode register
             dma_channels[value & 3].transfer_type = (value >> 2) & 3;
-            dma_channels[value & 3].autoinit = (value >> 4) & 1;
+            dma_channels[value & 3].auto_init = (value >> 4) & 1;
             dma_channels[value & 3].address_increase = (value & 0x20) ? 0xFFFFFFFF : 0x1; // bit 5
             dma_channels[value & 3].mode = (value >> 6) & 3;
             break;
@@ -114,13 +114,12 @@ inline void i8237_reset() {
     dma_channels[3].masked = 1;
 }
 
-static INLINE void i8237_writepage(uint16_t portnum, uint8_t value) {
+static INLINE void i8237_writepage(const uint16_t portnum, const uint8_t value) {
     uint8_t channel;
 #ifdef DEBUG_DMA
     //printf("[DMA] Write port 0x%X: %X\n", portnum, value);
 #endif
-    portnum &= 0x0F;
-    switch (portnum) {
+    switch (portnum & 0xF) {
         case 0x07:
             channel = 0;
             break;
@@ -206,12 +205,12 @@ static INLINE uint8_t i8237_readpage(const uint16_t portnum) {
     return (uint8_t) (dma_channels[channel].page >> 16);
 }
 
-static INLINE void update_count(uint8_t channel) {
+static INLINE void update_count(const uint8_t channel) {
     dma_channels[channel].address += dma_channels[channel].address_increase;
     dma_channels[channel].count--;
 
     if (dma_channels[channel].count == 0xFFFF) {
-        if (dma_channels[channel].autoinit) {
+        if (dma_channels[channel].auto_init) {
             dma_channels[channel].count = dma_channels[channel].reload_count;
             dma_channels[channel].address = dma_channels[channel].reload_address & 0xFFFF;
         } else {
@@ -220,18 +219,17 @@ static INLINE void update_count(uint8_t channel) {
     }
 }
 
-inline uint8_t i8237_read(const uint8_t channel) {
+INLINE uint8_t i8237_read(const uint8_t channel) {
     if (dma_channels[channel].masked) return 0;
 
     const uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
-    // printf("[DMA] Read from 0x%X\n", address);
     const uint8_t result = read86(address);
     update_count(channel);
 
     return result;
 }
 
-void i8237_write(uint8_t channel, uint8_t value) {
+INLINE void i8237_write(const uint8_t channel, const uint8_t value) {
     printf("Write to %06X %x value %x\r\n", dma_channels[channel].page + dma_channels[channel].address,
            dma_channels[channel].count, value);
     register uint32_t address = dma_channels[channel].page + dma_channels[channel].address;
