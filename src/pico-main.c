@@ -3,13 +3,14 @@
 #include "hardware/clocks.h"
 #include <pico/stdlib.h>
 #include <hardware/vreg.h>
+#include <hardware/pwm.h>
 #include <pico/multicore.h>
 
 
 #ifndef ONBOARD_PSRAM
 #include "psram_spi.h"
 #endif
-#if !PICO_RP2350
+#if PICO_RP2040
 #include "../../memops_opt/memops_opt.h"
 #else
 #include <hardware/structs/qmi.h>
@@ -22,13 +23,19 @@
 #include "graphics.h"
 #include "ps2.h"
 #include "ff.h"
-#include "psram_spi.h"
 #include "nespad.h"
 #include "emu8950.h"
 #include "ps2_mouse.h"
+
 extern OPL *emu8950_opl;
 FATFS fs;
+
+#if I2S_SOUND
 i2s_config_t i2s_config;
+#elif PWM_SOUND
+pwm_config pwm;
+#elif HARDWARE_SOUND
+#endif
 
 bool handleScancode(uint32_t ps2scancode) {
     port60 = ps2scancode;
@@ -36,24 +43,47 @@ bool handleScancode(uint32_t ps2scancode) {
     doirq(1);
     return true;
 }
+
 int cursor_blink_state = 0;
 struct semaphore vga_start_semaphore;
 
 #define AUDIO_BUFFER_LENGTH (SOUND_FREQUENCY /60 +1)
-static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = { 0 };
+static int16_t __aligned(4) audio_buffer[AUDIO_BUFFER_LENGTH * 2] = {0};
 static int sample_index = 0;
 extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
+#if !HARDWARE_SOUND
+    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+#endif
+
+#if I2S_SOUND
+    i2s_config = i2s_get_default_config();
     i2s_config.sample_freq = SOUND_FREQUENCY;
     i2s_config.dma_trans_count = 1;
     i2s_volume(&i2s_config, 0);
     i2s_init(&i2s_config);
     sleep_ms(100);
+#elif PWM_SOUND
+    pwm = pwm_get_default_config();
 
+    gpio_set_function(PWM_LEFT_CHANNEL, GPIO_FUNC_PWM);
+    gpio_set_function(PWM_RIGHT_CHANNEL, GPIO_FUNC_PWM);
 
-    emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
+    pwm_config_set_clkdiv(&pwm, 1.0f);
+    pwm_config_set_wrap(&pwm, (1 << 12) - 1); // MAX PWM value
+
+    pwm_init(pwm_gpio_to_slice_num(PWM_LEFT_CHANNEL), &pwm, true);
+    pwm_init(pwm_gpio_to_slice_num(PWM_RIGHT_CHANNEL), &pwm, true);
+
+    gpio_set_function(PWM_BEEPER, GPIO_FUNC_PWM);
+    //    pwm_config_set_clkdiv(&config, clock_get_hz(clk_sys) / (1.19318f * MHZ));
+    pwm_config_set_clkdiv(&pwm, 127);
+    pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &pwm, true);
+#elif HARDWARE_SOUND
+#endif
+
     graphics_init();
     graphics_set_buffer(VIDEORAM, 320, 200);
     graphics_set_textbuffer(VIDEORAM + 32768);
@@ -71,11 +101,8 @@ void __time_critical_func() second_core() {
     uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
 
     uint64_t last_dss_tick = 0;
-    uint64_t last_cms_tick = 0;
-    uint64_t last_sb_tick = 0;
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
-    int16_t last_cms_samples[2];
 
     while (true) {
         if (tick >= last_timer_tick + (timer_period)) {
@@ -107,7 +134,12 @@ void __time_critical_func() second_core() {
         if (tick > last_sound_tick + (1000000 / SOUND_FREQUENCY)) {
             int16_t samples[2];
             get_sound_sample(last_dss_sample + last_sb_sample, samples);
+#if I2S_SOUND
             i2s_dma_write(&i2s_config, samples);
+#elif PWM_SOUND
+            pwm_set_gpio_level(PWM_LEFT_CHANNEL, (uint16_t) ((int32_t) samples[0] + 0x8000L) >> 4);
+            pwm_set_gpio_level(PWM_RIGHT_CHANNEL, (uint16_t) ((int32_t) samples[1] + 0x8000L) >> 4);
+#endif
 
             last_sound_tick = tick;
         }
@@ -115,7 +147,6 @@ void __time_critical_func() second_core() {
         if (tick >= last_frame_tick + 16667) {
             static uint8_t old_video_mode;
             if (old_video_mode != videomode) {
-
                 if (1) {
                     switch (videomode) {
                         case TGA_160x200x16:
@@ -156,17 +187,15 @@ void __time_critical_func() second_core() {
                     graphics_set_mode(videomode);
                     old_video_mode = videomode;
                 }
-
-
             }
             last_frame_tick = tick;
         }
         tick = time_us_64();
         tight_loop_contents();
-
     }
     __unreachable();
 }
+
 extern bool PSRAM_AVAILABLE;
 
 #if 1
@@ -183,7 +212,7 @@ INLINE void _putchar(char character) {
     }
     uint8_t *vidramptr = DEBUG_VRAM + __fast_mul(y, 80) + x;
 
-    if ((unsigned)character >= 32) {
+    if ((unsigned) character >= 32) {
         if (character >= 96) character -= 32; // uppercase
         *vidramptr = ((character - 32) & 63) | 0 << 6;
         if (x == 80) {
@@ -200,7 +229,7 @@ INLINE void _putchar(char character) {
         x--;
         *vidramptr = 0;
     }
-    }
+}
 #endif
 
 #if PICO_RP2350
@@ -281,12 +310,13 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
 #endif
 
 #include <hardware/exception.h>
-void sigbus(void){
+
+void sigbus(void) {
     printf("SIGBUS exception caught...\n");
     // reset_usb_boot(0, 0);
 }
-int main() {
 
+int main() {
 #if PICO_RP2350
     volatile uint32_t *qmi_m0_timing=(uint32_t *)0x400d000c;
     vreg_disable_voltage_limit();
@@ -307,7 +337,7 @@ int main() {
 #else
     int psram = init_psram();
 #endif
-    exception_set_exclusive_handler(HARDFAULT_EXCEPTION,sigbus);
+    exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
@@ -319,7 +349,7 @@ int main() {
     }
 
     keyboard_init();
-//    mouse_init();
+    //    mouse_init();
     nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
     sleep_ms(5);
     nespad_read();
@@ -330,8 +360,6 @@ int main() {
         mouse_available = 1;
     }
 
-    i2s_config = i2s_get_default_config();
-
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
@@ -340,17 +368,17 @@ int main() {
 
     graphics_set_mode(TEXTMODE_80x25_COLOR);
 
-        // if (!init_psram()) {
+    // if (!init_psram()) {
     if (0) {
         printf("No PSRAM detected.");
-//        while (1);
+        //        while (1);
     }
 
     if (FR_OK != f_mount(&fs, "0", 1)) {
         printf("SD Card not inserted or SD Card error!");
         // while (1);
     }
-   // adlib_init(SOUND_FREQUENCY);
+    // adlib_init(SOUND_FREQUENCY);
 
     sn76489_reset();
     reset86();
@@ -361,11 +389,12 @@ int main() {
         if (!mouse_available) {
 #define MOUSE_SPEED 8
             nespad_read();
-            sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B)!= 0) << 1, nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0, nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
+            sermouseevent(nespad_state & DPAD_A | ((nespad_state & DPAD_B) != 0) << 1,
+                          nespad_state & DPAD_LEFT ? -MOUSE_SPEED : nespad_state & DPAD_RIGHT ? MOUSE_SPEED : 0,
+                          nespad_state & DPAD_DOWN ? MOUSE_SPEED : nespad_state & DPAD_UP ? -MOUSE_SPEED : 0);
         }
 #endif
         tight_loop_contents();
     }
     __unreachable();
-
 }
