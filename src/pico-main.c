@@ -35,6 +35,8 @@ i2s_config_t i2s_config;
 #elif PWM_SOUND
 pwm_config pwm;
 #elif HARDWARE_SOUND
+pwm_config pwm;
+#include "74hc595/74hc595.h"
 #endif
 
 bool handleScancode(uint32_t ps2scancode) {
@@ -82,6 +84,12 @@ void __time_critical_func() second_core() {
     pwm_config_set_clkdiv(&pwm, 127);
     pwm_init(pwm_gpio_to_slice_num(PWM_BEEPER), &pwm, true);
 #elif HARDWARE_SOUND
+    init_74hc595();
+    pwm = pwm_get_default_config();
+    gpio_set_function(PCM_PIN, GPIO_FUNC_PWM);
+    pwm_config_set_clkdiv(&pwm, 1.0f);
+    pwm_config_set_wrap(&pwm, (1 << 12) - 1); // MAX PWM value
+    pwm_init(pwm_gpio_to_slice_num(PCM_PIN), &pwm, true);
 #endif
 
     graphics_init();

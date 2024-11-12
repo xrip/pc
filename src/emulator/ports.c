@@ -1,8 +1,10 @@
 #pragma GCC optimize("Ofast")
+#include <74hc595.h>
 #include <time.h>
 #include "emulator.h"
 #if PICO_ON_DEVICE
 #include <hardware/pwm.h>
+extern int16_t keyboard_send(uint8_t data);
 #include "nespad.h"
 #endif
 
@@ -20,7 +22,7 @@ uint8_t port60, port61, port64;
 uint8_t cursor_start = 12, cursor_end = 13;
 uint32_t vram_offset = 0x0;
 
-
+int sound_chips_clock = 0;
 
 static uint16_t adlibregmem[5], adlib_register = 0;
 static uint8_t adlibstatus = 0;
@@ -167,7 +169,15 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0xC5:
         case 0xC6:
         case 0xC7:
-            return sn76489_out(value);
+#if HARDWARE_SOUND
+        if (!sound_chips_clock) {
+            clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
+            sound_chips_clock = 1;
+        }
+        SN76489_write(value);
+#else
+        return sn76489_out(value);
+#endif
 // Gamepad
         case 0x201:
             return joystick_out();
@@ -191,8 +201,29 @@ void portout(uint16_t portnum, uint16_t value) {
 #if !PICO_RP2040
             blaster_write(portnum, value);
 #endif
+#if HARDWARE_SOUND
+        if (sound_chips_clock) {
+            clock_init(CLOCK_PIN, CLOCK_FREQUENCY * 2);
+            sound_chips_clock = 0;
+        }
+        switch (portnum & 3) {
+            case 0:
+                SAA1099_write(0, 0, value);
+            break;
+            case 1:
+                SAA1099_write(1, 0, value);
+            break;
+            case 2:
+                SAA1099_write(0, 1, value);
+            break;
+            case 3:
+                SAA1099_write(1, 1, value);
+            break;
+        }
+        return;
+#else
             return cms_out(portnum, value);
-
+#endif
         case 0x260:
         case 0x261:
         case 0x262:
@@ -221,7 +252,20 @@ void portout(uint16_t portnum, uint16_t value) {
                     adlibregmem[4] = 0;
                 }
             }
+#if HARDWARE_SOUND
+        if (!sound_chips_clock) {
+            clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
+            sound_chips_clock = 1;
+        }
+        if (adlib_register & 1) {
+            OPL2_write_byte(1, 0, value & 0xff);
+        } else {
+            OPL2_write_byte(0, 0, value & 0xff);
+        }
+        return;
+#else
             return OPL_writeReg(emu8950_opl, adlib_register, value);
+#endif
 // EGA/VGA
         case 0x3C0:
         case 0x3C4:
@@ -479,9 +523,14 @@ uint16_t portin16(uint16_t portnum) {
 
 
 void get_sound_sample(const int16_t other_sample, int16_t *samples) {
+#if HARDWARE_SOUND
+    const int32_t sample = (speaker_sample() + other_sample + covox_sample + midi_sample());
+    pwm_set_gpio_level(PCM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
+#else
     OPL_calc_buffer_linear(emu8950_opl, (int32_t *)samples, 1);
 
     samples[1] = samples[0] += (int32_t)(speaker_sample() + other_sample + covox_sample + sn76489_sample() + midi_sample());
     cms_samples(samples);
+#endif
 
 }

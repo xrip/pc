@@ -32,8 +32,8 @@ else ()
 
     add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
 
-    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c)
-
+    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
+    target_include_directories(${PROJECT_NAME} PRIVATE src/74hc595)
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
 
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${BUILD_NAME}")
@@ -135,13 +135,13 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-            #HARDWARE_SOUND
+            HARDWARE_SOUND
             CLOCK_PIN=17
             PCM_PIN=22
 
             #I2S_SOUND
 
-            PWM_SOUND
+            #PWM_SOUND
             PWM_BEEPER=28
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27
