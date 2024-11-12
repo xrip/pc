@@ -282,7 +282,7 @@ uint8_t blaster_read(uint16_t portnum) {
 }
 extern uint8_t i8237_active();
 int16_t blaster_sample() { //for DMA mode
-    if (i8237_active()) return 0;
+    if (!sb.dma_active) return sample;
     if (sb.silencedsp == 0) {
         if (sb.dorecord == 0) {
             sample = i8237_read(SB_dmachan);
