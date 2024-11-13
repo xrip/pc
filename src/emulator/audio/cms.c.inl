@@ -125,7 +125,7 @@ static INLINE void cms_out(const uint16_t addr, const uint16_t value) {
     }
 }
 
-static INLINE uint8_t cms_in(uint16_t addr) {
+static INLINE uint8_t cms_in(const uint16_t addr) {
     switch (addr & 0xf) {
         case 0x1: return addrs[0];
         case 0x3: return addrs[1];

@@ -1,8 +1,8 @@
 #pragma GCC optimize("Ofast")
-#include <74hc595.h>
 #include <time.h>
 #include "emulator.h"
 #if PICO_ON_DEVICE
+#include <74hc595.h>
 #include <hardware/pwm.h>
 extern int16_t keyboard_send(uint8_t data);
 #include "nespad.h"
@@ -174,7 +174,7 @@ void portout(uint16_t portnum, uint16_t value) {
             clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
             sound_chips_clock = 1;
         }
-        SN76489_write(value);
+        return SN76489_write(value);
 #else
         return sn76489_out(value);
 #endif
