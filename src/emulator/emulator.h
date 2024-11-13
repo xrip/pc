@@ -25,7 +25,7 @@ extern "C" {
 #define RAM_SIZE (640 << 10)
 #endif
 #ifdef HARDWARE_SOUND
-#define SOUND_FREQUENCY (22050)
+#define SOUND_FREQUENCY (44100)
 #else
     #if PICO_RP2040
 #define SOUND_FREQUENCY (49716)
