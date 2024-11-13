@@ -231,7 +231,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
 
             debug_log("[MIDI] Channel %i program %i\n", message->command & 0xf, message->note);
             break;
-        case 0xE:
+        case 0xE: {
             const int pitch_bend = (message->velocity * 128 + message->note);
             const int cents = pitch_pows[pitch_bend];
             midi_channels[channel].pitch = cents;
@@ -240,9 +240,10 @@ static INLINE void parse_midi(const midi_command_t *message) {
             for (int voice_slot = 0; voice_slot < MAX_MIDI_VOICES; ++voice_slot)
                 if (midi_voices[voice_slot].channel == channel) {
                     midi_voices[voice_slot].frequency_m100 = apply_pitch(
-                        midi_voices[voice_slot].frequency_m100, cents);
+                            midi_voices[voice_slot].frequency_m100, cents);
                 }
             break;
+        }
         default:
             debug_log("[MIDI] Unknown channel %i command %x message %04x \n", channel, message->command >> 4,
                       midi_command);

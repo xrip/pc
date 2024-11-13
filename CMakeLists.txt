@@ -32,7 +32,7 @@ else ()
 
     add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
 
-    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c)
+    add_executable(${PROJECT_NAME} ${SRC} src/pico-main.c src/printf/printf.c src/74hc595/74hc595.c src/hid_app.c)
     target_include_directories(${PROJECT_NAME} PRIVATE src/74hc595)
     target_sources(${PROJECT_NAME} PRIVATE src/emu8950/slot_render_pico.S )
 
@@ -66,17 +66,19 @@ else ()
     add_subdirectory(drivers/audio)
     add_subdirectory(drivers/psram)
     add_subdirectory(drivers/nespad)
+#[[
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
     target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
     SET(BUILD_NAME "${BUILD_NAME}-VGA")
 
-#[[
+#]]
+# [[
     add_subdirectory(drivers/hdmi)
     target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
     target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
     SET(BUILD_NAME "${BUILD_NAME}-HDMI")
-]]
+#]]
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
@@ -97,6 +99,8 @@ else ()
             hardware_clocks
             hardware_pwm
             hardware_flash
+
+            tinyusb_host tinyusb_board
     )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -105,7 +109,7 @@ else ()
             EMU8950_ASM=1
 
             PICO_FLASH_SIZE_BYTES=16777216
-            ONBOARD_PSRAM
+            #ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6

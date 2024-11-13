@@ -11,6 +11,7 @@
 #include "psram_spi.h"
 #endif
 #if PICO_RP2040
+#include <bsp/board_api.h>
 #include "../../memops_opt/memops_opt.h"
 #else
 #include <hardware/structs/qmi.h>
@@ -37,6 +38,8 @@ pwm_config pwm;
 #elif HARDWARE_SOUND
 pwm_config pwm;
 #include "74hc595/74hc595.h"
+#include "tusb_config.h"
+
 #endif
 
 bool handleScancode(uint32_t ps2scancode) {
@@ -338,7 +341,7 @@ int main() {
     memcpy_wrapper_replace(NULL);
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     sleep_ms(33);
-    set_sys_clock_khz(396 * 1000, true);
+    set_sys_clock_khz(378 * 1000, true);
 #endif
 #ifdef ONBOARD_PSRAM
     psram_init(19);
@@ -350,6 +353,7 @@ int main() {
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
+    tuh_init(BOARD_TUH_RHPORT);
     for (int i = 0; i < 6; i++) {
         sleep_ms(23);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
