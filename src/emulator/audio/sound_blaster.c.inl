@@ -1,5 +1,6 @@
 // https://the.earth.li/~tfm/oldpage/sb_dsp.html
 // http://qzx.com/pc-gpe/sbdsp.txt
+// https://github.com/joncampbell123/dosbox-x/wiki/Hardware:Sound-Blaster:DSP-commands
 /*
   XTulator: A portable, open-source 80186 PC emulator.
   Copyright (C)2020 Mike Chambers
