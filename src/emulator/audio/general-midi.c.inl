@@ -95,8 +95,62 @@ static INLINE int16_t __time_critical_func() midi_sample() {
         } else if (sample_position && sample_position == voice->release) {
             CLEAR_ACTIVE_VOICE(voice->voice_slot);
         }
-
+        if (voice->channel == 9) {
+            const int8_t* smpl;
+            switch (voice->note) {
+                case 35: smpl = _35_wav; break;
+                case 36: smpl = _36_wav; break;
+                case 37: smpl = _37_wav; break;
+                case 38: smpl = _38_wav; break;
+                case 39: smpl = _39_wav; break;
+                case 40: smpl = _40_wav; break;
+                case 41: smpl = _41_wav; break;
+                case 42: smpl = _42_wav; break;
+                case 43: smpl = _43_wav; break;
+                case 44: smpl = _44_wav; break;
+                case 45: smpl = _45_wav; break;
+                case 46: smpl = _46_wav; break;
+                case 47: smpl = _47_wav; break;
+                case 48: smpl = _48_wav; break;
+                case 49: smpl = _49_wav; break;
+                    //case 50: smpl = _50_wav; break;
+                case 51: smpl = _51_wav; break;
+                case 52: smpl = _52_wav; break;
+                case 53: smpl = _53_wav; break;
+                case 54: smpl = _54_wav; break;
+                case 55: smpl = _55_wav; break;
+                case 56: smpl = _56_wav; break;
+                case 57: smpl = _57_wav; break;
+                case 58: smpl = _58_wav; break;
+                case 59: smpl = _59_wav; break;
+                case 60: smpl = _60_wav; break;
+                case 61: smpl = _61_wav; break;
+                case 62: smpl = _62_wav; break;
+                case 63: smpl = _63_wav; break;
+                case 64: smpl = _64_wav; break;
+                case 65: smpl = _65_wav; break;
+                case 66: smpl = _66_wav; break;
+                case 67: smpl = _67_wav; break;
+                case 68: smpl = _68_wav; break;
+                case 69: smpl = _69_wav; break;
+                case 70: smpl = _70_wav; break;
+                case 71: smpl = _71_wav; break;
+                case 72: smpl = _72_wav; break;
+                case 73: smpl = _73_wav; break;
+                case 74: smpl = _74_wav; break;
+                case 75: smpl = _75_wav; break;
+                case 76: smpl = _76_wav; break;
+                case 77: smpl = _77_wav; break;
+                case 78: smpl = _78_wav; break;
+                case 79: smpl = _79_wav; break;
+                case 80: smpl = _80_wav; break;
+                case 81: smpl = _81_wav; break;
+                default: smpl = _ZZ_Default_wav; break;
+            }
+            sample += __fast_mul(voice->velocity, smpl[voice->sample_position++]); // TODO: sz
+        } else {
         sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
+        }
         // sample += (*velocity / 127.0) * sin(2 * PI * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
     }
 
