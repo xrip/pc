@@ -24,10 +24,14 @@ extern "C" {
 #define VIDEORAM_SIZE (64 << 10)
 #define RAM_SIZE (640 << 10)
 #endif
-#if PICO_RP2040
+#ifdef HARDWARE_SOUND
+#define SOUND_FREQUENCY (22050)
+#else
+    #if PICO_RP2040
 #define SOUND_FREQUENCY (49716)
 #else
 #define SOUND_FREQUENCY (44100)
+#endif
 #endif
 #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 

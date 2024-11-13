@@ -109,6 +109,7 @@ void __time_critical_func() second_core() {
     uint64_t last_timer_tick = tick, last_cursor_blink = tick, last_sound_tick = tick, last_frame_tick = tick;
 
     uint64_t last_dss_tick = 0;
+    uint64_t last_sb_tick = 0;
     int16_t last_dss_sample = 0;
     int16_t last_sb_sample = 0;
 

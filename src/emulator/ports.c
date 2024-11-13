@@ -186,6 +186,28 @@ void portout(uint16_t portnum, uint16_t value) {
         case 0x221:
         case 0x222:
         case 0x223:
+#if HARDWARE_SOUND
+if (sound_chips_clock) {
+    clock_init(CLOCK_PIN, CLOCK_FREQUENCY * 2);
+    sound_chips_clock = 0;
+}
+        switch (portnum & 3) {
+            case 0:
+                SAA1099_write(0, 0, value);
+            break;
+            case 1:
+                SAA1099_write(1, 0, value);
+            break;
+            case 2:
+                SAA1099_write(0, 1, value);
+            break;
+            case 3:
+                SAA1099_write(1, 1, value);
+            break;
+        }
+#else
+        cms_out(portnum, value);
+#endif
         case 0x224:
         case 0x225:
         case 0x226:
@@ -201,29 +223,7 @@ void portout(uint16_t portnum, uint16_t value) {
 #if !PICO_RP2040
             blaster_write(portnum, value);
 #endif
-#if HARDWARE_SOUND
-        if (sound_chips_clock) {
-            clock_init(CLOCK_PIN, CLOCK_FREQUENCY * 2);
-            sound_chips_clock = 0;
-        }
-        switch (portnum & 3) {
-            case 0:
-                SAA1099_write(0, 0, value);
-            break;
-            case 1:
-                SAA1099_write(1, 0, value);
-            break;
-            case 2:
-                SAA1099_write(0, 1, value);
-            break;
-            case 3:
-                SAA1099_write(1, 1, value);
-            break;
-        }
         return;
-#else
-            return cms_out(portnum, value);
-#endif
         case 0x260:
         case 0x261:
         case 0x262:
@@ -257,11 +257,8 @@ void portout(uint16_t portnum, uint16_t value) {
             clock_init(CLOCK_PIN, CLOCK_FREQUENCY);
             sound_chips_clock = 1;
         }
-        if (adlib_register & 1) {
+            OPL2_write_byte(0, 0, adlib_register & 0xff);
             OPL2_write_byte(1, 0, value & 0xff);
-        } else {
-            OPL2_write_byte(0, 0, value & 0xff);
-        }
         return;
 #else
             return OPL_writeReg(emu8950_opl, adlib_register, value);
