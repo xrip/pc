@@ -24,6 +24,7 @@ static int midi_insysex;
 #if defined(EMULATED_MIDI)
 #include <emulator/audio/general-midi.c.inl>
 #else
+#include "windows.h"
 static int midi_id = 0;
 static HMIDIOUT midi_out_device = NULL;
 

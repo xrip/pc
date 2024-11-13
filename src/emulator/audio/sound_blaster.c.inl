@@ -115,7 +115,7 @@ static INLINE uint8_t blaster_read_buffer() {
 
 INLINE void blaster_reset() {
     memset(&blaster, 0, sizeof(sound_blaster_s));
-
+    blaster.sample = 0;
     blaster_write_buffer(0xAA);
 }
 
@@ -123,7 +123,7 @@ static INLINE void blaster_command(uint8_t value) {
     //    printf("SB command %x : %x        %d\r\n", sb.lastcmd, value, i++);
     switch (blaster.command) {
         case DSP_DIRECT_DAC: //direct DAC, 8-bit
-            blaster.sample = (value - 128) << 8;
+            blaster.sample = (value - 128) << 6;
             blaster.command = 0;
             return;
         case DSP_DMA_SINGLE: //DMA DAC, 8-bit
@@ -310,15 +310,14 @@ static INLINE uint8_t blaster_read(const uint16_t portnum) {
 }
 
 inline int16_t blaster_sample() { //for DMA mode
-    if (!blaster.dma_enabled) return blaster.sample;
+    int16_t sample = 0;
+    if (!blaster.dma_enabled) return blaster.speaker_enabled ? blaster.sample : 0;
     if (blaster.silencedsp == 0) {
         if (blaster.recording_audio == 0) {
-            blaster.sample = (i8237_read(SB_DMA_CHANNEL) - 128) << 6;
+            sample = (i8237_read(SB_DMA_CHANNEL) - 128) << 6;
         } else {
             i8237_write(SB_DMA_CHANNEL, 128); //silence
         }
-    } else {
-        blaster.sample = 0;
     }
 
     if (++blaster.dma_counter == blaster.dma_length) {
@@ -327,5 +326,5 @@ inline int16_t blaster_sample() { //for DMA mode
         blaster.dma_enabled = blaster.dma_auto_init;
     }
 
-    return blaster.speaker_enabled ? blaster.sample : 0;
+    return blaster.speaker_enabled ? sample : 0;
 }
