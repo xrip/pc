@@ -123,7 +123,7 @@ static INLINE void blaster_command(uint8_t value) {
     //    printf("SB command %x : %x        %d\r\n", sb.lastcmd, value, i++);
     switch (blaster.command) {
         case DSP_DIRECT_DAC: //direct DAC, 8-bit
-            blaster.sample = (value - 128) << 8;
+            blaster.sample = (value - 128) << 6;
             blaster.command = 0;
             return;
         case DSP_DMA_SINGLE: //DMA DAC, 8-bit

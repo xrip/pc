@@ -95,6 +95,7 @@ static INLINE int16_t __time_critical_func() midi_sample() {
         } else if (sample_position && sample_position == voice->release) {
             CLEAR_ACTIVE_VOICE(voice->voice_slot);
         }
+#if defined(USE_SAMPLES)
         if (voice->channel == 9) {
             const int8_t* smpl;
             switch (voice->note) {
@@ -148,8 +149,10 @@ static INLINE int16_t __time_critical_func() midi_sample() {
                 default: smpl = _ZZ_Default_wav; break;
             }
             sample += __fast_mul(voice->velocity, smpl[voice->sample_position++]); // TODO: sz
-        } else {
-        sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
+        } else
+#endif
+        {
+            sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
         }
         // sample += (*velocity / 127.0) * sin(2 * PI * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
     }
