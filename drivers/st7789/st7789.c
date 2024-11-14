@@ -25,11 +25,11 @@
 #endif
 
 #ifndef SCREEN_HEIGHT
-#define SCREEN_HEIGHT 200
+#define SCREEN_HEIGHT 240
 #endif
 
 // 126MHz SPI
-#define SERIAL_CLK_DIV 3.0f
+#define SERIAL_CLK_DIV 2.5f
 #define MADCTL_BGR_PIXEL_ORDER (1<<3)
 #define MADCTL_ROW_COLUMN_EXCHANGE (1<<5)
 #define MADCTL_COLUMN_ADDRESS_ORDER_SWAP (1<<6)
@@ -178,6 +178,13 @@ void graphics_init() {
     }
 
     create_dma_channel();
+    // lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, SCREEN_WIDTH, SCREEN_HEIGHT);
+    uint32_t i = SCREEN_WIDTH * SCREEN_HEIGHT;
+    while (i--)
+        st7789_lcd_put_pixel(pio, sm, 0x0);
+
+    lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
+                   graphics_buffer_height);
 }
 
 void inline graphics_set_mode(const enum graphics_mode_t mode) {
@@ -199,23 +206,21 @@ void graphics_set_offset(const int x, const int y) {
     graphics_buffer_shift_y = y;
 }
 
-void st7789_dma_pixels(const uint16_t *pixels, const uint num_pixels) {
+static INLINE void st7789_dma_pixels(const uint16_t *pixels, const uint num_pixels) {
     // Ensure any previous transfer is finished.
     dma_channel_wait_for_finish_blocking(st7789_chan);
 
     dma_channel_hw_addr(st7789_chan)->read_addr = (uintptr_t) pixels;
     dma_channel_hw_addr(st7789_chan)->transfer_count = num_pixels;
-    const uint ctrl = dma_channel_hw_addr(st7789_chan)->ctrl_trig;
-    dma_channel_hw_addr(st7789_chan)->ctrl_trig = ctrl | DMA_CH0_CTRL_TRIG_INCR_READ_BITS;
+    // const uint ctrl = dma_channel_hw_addr(st7789_chan)->ctrl_trig;
+    dma_channel_hw_addr(st7789_chan)->ctrl_trig |= DMA_CH0_CTRL_TRIG_INCR_READ_BITS;
 }
 
-void __inline __time_critical_func() refresh_lcd() {
+INLINE void __time_critical_func() refresh_lcd() {
+    uint16_t line_buffer[320];
     const uint8_t *input_buffer_8bit = graphics_buffer;
-    port3DA = 0;
 
-    lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
-                   graphics_buffer_height);
-    start_pixels();
+    // start_pixels();
     switch (graphics_mode) {
         case TGA_320x200x16: {
             //4bit buf
@@ -231,17 +236,15 @@ void __inline __time_critical_func() refresh_lcd() {
             break;
         }
         case VGA_320x200x256: {
-            uint32_t i = graphics_buffer_width * graphics_buffer_height;
-            while (--i) {
+            uint32_t i = 320 * 200;
+            while (i--)
                 st7789_lcd_put_pixel(pio, sm, palette[*input_buffer_8bit++]);
-            }
             break;
         }
         default:
         case TEXTMODE_80x25_COLOR:
             for (int y = 0; y < SCREEN_HEIGHT; y++) {
                 // TODO add auto adjustable padding?
-
                 for (int x = 0; x < TEXTMODE_COLS; x++) {
                     const uint16_t offset = (y / 8) * (80 * 2) + x * 2;
                     const uint8_t c = text_buffer[offset];
@@ -259,23 +262,10 @@ void __inline __time_critical_func() refresh_lcd() {
             }
             break;
     }
-    stop_pixels();
-    port3DA = 8;
+    // stop_pixels();
     // st7789_lcd_wait_idle(pio, sm);
 }
-#include <stdint.h>
-
-static inline uint16_t rgb24_to_16(uint32_t rgb888) {
-    // Extract 8-bit red, green, and blue components from the 24-bit color.
-    uint8_t r = (rgb888 >> 16) & 0xFF; // Red is the highest 8 bits
-    uint8_t g = (rgb888 >> 8) & 0xFF;  // Green is the middle 8 bits
-    uint8_t b = rgb888 & 0xFF;         // Blue is the lowest 8 bits
-
-    // Combine into a single 16-bit RGB565 value.
-    return rgb(b,g,r);
-}
-
 
 void graphics_set_palette(const uint8_t i, const uint32_t color) {
-    palette[i] = rgb24_to_16(color);
+    palette[i] = rgb888(color >> 16, color >> 8 & 0xff, color & 0xff);
 }

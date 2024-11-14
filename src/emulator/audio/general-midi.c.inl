@@ -10,7 +10,7 @@
 #define debug_log(...)
 #endif
 
-#define USE_SAMPLES
+// #define USE_SAMPLES
 #if defined(USE_SAMPLES)
 #include "emulator/drum/drum.h"
 #include "emulator/acoustic/acoustic.h"

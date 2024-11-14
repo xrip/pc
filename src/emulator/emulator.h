@@ -28,12 +28,12 @@ extern "C" {
 #define SOUND_FREQUENCY (44100)
 #else
     #if PICO_RP2040
-#define SOUND_FREQUENCY (49716)
+#define SOUND_FREQUENCY (22050)
 #else
 #define SOUND_FREQUENCY (44100)
 #endif
 #endif
-// #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
+#define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 #define VIDEORAM_START (0xA0000)
 #define VIDEORAM_END (0xC0000)
@@ -157,7 +157,8 @@ extern uint16_t portin(uint16_t portnum);
 extern uint16_t portin16(uint16_t portnum);
 
 // Ports
-extern uint8_t port60, port61, port64, port3DA;
+extern uint8_t port60, port61, port64;
+extern volatile uint8_t port3DA;
 extern uint32_t vram_offset;
 extern uint32_t tga_offset;
 
