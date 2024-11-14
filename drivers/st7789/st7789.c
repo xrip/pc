@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <emulator/emulator.h>
 
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
@@ -14,8 +15,6 @@
 
 #include "graphics.h"
 
-#include <string.h>
-#include <emulator/emulator.h>
 #include <pico/multicore.h>
 
 #include "st7789.pio.h"
@@ -26,11 +25,11 @@
 #endif
 
 #ifndef SCREEN_HEIGHT
-#define SCREEN_HEIGHT 240
+#define SCREEN_HEIGHT 200
 #endif
 
 // 126MHz SPI
-#define SERIAL_CLK_DIV 4.0f
+#define SERIAL_CLK_DIV 3.0f
 #define MADCTL_BGR_PIXEL_ORDER (1<<3)
 #define MADCTL_ROW_COLUMN_EXCHANGE (1<<5)
 #define MADCTL_COLUMN_ADDRESS_ORDER_SWAP (1<<6)
@@ -44,8 +43,8 @@ static uint st7789_chan;
 
 uint16_t palette[256];
 
-uint8_t* text_buffer = NULL;
-static uint8_t* graphics_buffer = NULL;
+uint8_t *text_buffer = NULL;
+static uint8_t *graphics_buffer = NULL;
 
 static uint graphics_buffer_width = 0;
 static uint graphics_buffer_height = 0;
@@ -81,7 +80,7 @@ static inline void lcd_set_dc_cs(const bool dc, const bool cs) {
     sleep_us(5);
 }
 
-static inline void lcd_write_cmd(const uint8_t* cmd, size_t count) {
+static inline void lcd_write_cmd(const uint8_t *cmd, size_t count) {
     st7789_lcd_wait_idle(pio, sm);
     lcd_set_dc_cs(0, 0);
     st7789_lcd_put(pio, sm, *cmd++);
@@ -99,8 +98,8 @@ static inline void lcd_set_window(const uint16_t x,
                                   const uint16_t y,
                                   const uint16_t width,
                                   const uint16_t height) {
-    static uint8_t screen_width_cmd[] = { 0x2a, 0x00, 0x00, SCREEN_WIDTH >> 8, SCREEN_WIDTH & 0xff };
-    static uint8_t screen_height_command[] = { 0x2b, 0x00, 0x00, SCREEN_HEIGHT >> 8, SCREEN_HEIGHT & 0xff };
+    static uint8_t screen_width_cmd[] = {0x2a, 0x00, 0x00, SCREEN_WIDTH >> 8, SCREEN_WIDTH & 0xff};
+    static uint8_t screen_height_command[] = {0x2b, 0x00, 0x00, SCREEN_HEIGHT >> 8, SCREEN_HEIGHT & 0xff};
     screen_width_cmd[2] = x;
     screen_width_cmd[4] = x + width - 1;
 
@@ -110,8 +109,8 @@ static inline void lcd_set_window(const uint16_t x,
     lcd_write_cmd(screen_height_command, 5);
 }
 
-static inline void lcd_init(const uint8_t* init_seq) {
-    const uint8_t* cmd = init_seq;
+static inline void lcd_init(const uint8_t *init_seq) {
+    const uint8_t *cmd = init_seq;
     while (*cmd) {
         lcd_write_cmd(cmd + 2, *cmd);
         sleep_ms(*(cmd + 1) * 5);
@@ -182,16 +181,16 @@ void graphics_init() {
 }
 
 void inline graphics_set_mode(const enum graphics_mode_t mode) {
-    // graphics_mode = mode;
+    graphics_mode = mode;
 }
 
-void graphics_set_buffer(uint8_t* buffer, const uint16_t width, const uint16_t height) {
+void graphics_set_buffer(uint8_t *buffer, const uint16_t width, const uint16_t height) {
     graphics_buffer = buffer;
     graphics_buffer_width = width;
     graphics_buffer_height = height;
 }
 
-void graphics_set_textbuffer(uint8_t* buffer) {
+void graphics_set_textbuffer(uint8_t *buffer) {
     text_buffer = buffer;
 }
 
@@ -200,95 +199,88 @@ void graphics_set_offset(const int x, const int y) {
     graphics_buffer_shift_y = y;
 }
 
-void clrScr(const uint8_t color) {
-    memset(&graphics_buffer[0], 0, graphics_buffer_height * graphics_buffer_width);
-    lcd_set_window(0, 0,SCREEN_WIDTH,SCREEN_HEIGHT);
-    uint32_t i = SCREEN_WIDTH * SCREEN_HEIGHT;
-    start_pixels();
-    while (--i) {
-        st7789_lcd_put_pixel(pio, sm, 0x0000);
-    }
-    stop_pixels();
-}
-
-void st7789_dma_pixels(const uint16_t* pixels, const uint num_pixels) {
+void st7789_dma_pixels(const uint16_t *pixels, const uint num_pixels) {
     // Ensure any previous transfer is finished.
     dma_channel_wait_for_finish_blocking(st7789_chan);
 
-    dma_channel_hw_addr(st7789_chan)->read_addr = (uintptr_t)pixels;
+    dma_channel_hw_addr(st7789_chan)->read_addr = (uintptr_t) pixels;
     dma_channel_hw_addr(st7789_chan)->transfer_count = num_pixels;
     const uint ctrl = dma_channel_hw_addr(st7789_chan)->ctrl_trig;
     dma_channel_hw_addr(st7789_chan)->ctrl_trig = ctrl | DMA_CH0_CTRL_TRIG_INCR_READ_BITS;
 }
 
-void __time_critical_func() refresh_lcd() {
-    lcd_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+void __inline __time_critical_func() refresh_lcd() {
+    const uint8_t *input_buffer_8bit = graphics_buffer;
+    port3DA = 0;
+
+    lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
+                   graphics_buffer_height);
     start_pixels();
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-        // TODO add auto adjustable padding?
-
-        for (int x = 0; x < TEXTMODE_COLS; x++) {
-            const uint16_t offset = (y / 6) * (TEXTMODE_COLS * 2) + x * 2;
-            const uint8_t c = text_buffer[offset];
-            const uint8_t colorIndex = text_buffer[offset + 1];
-            const uint8_t glyph_row = font_4x6[c * 6 + y % 6];
-
-            for (uint8_t bit = 0; bit < 4; bit++) {
-                st7789_lcd_put_pixel(pio, sm, textmode_palette[(c && CHECK_BIT(glyph_row, bit))
-                                                                   ? colorIndex & 0x0F
-                                                                   : colorIndex >> 4 & 0x0F]);
-
-                // st7789_lcd_put_pixel(pio,sm, CHECK_BIT(glyph_row, bit) ? 0xFFFF00 + bit * 4 : 0);
-            }
-        }
-    }
-    stop_pixels();
-}
-void __inline __time_critical_func() refresh_lcd1() {
     switch (graphics_mode) {
-         case VGA_320x200x256:
-            {
-
-            const uint8_t* bitmap = graphics_buffer;
-            lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
-                           graphics_buffer_height);
-            uint32_t i = graphics_buffer_width * graphics_buffer_height;
-            start_pixels();
-            // st7789_dma_pixels(graphics_buffer, i);
-            while (--i) {
-               st7789_lcd_put_pixel(pio, sm, palette[*bitmap++]);
+        case TGA_320x200x16: {
+            //4bit buf
+            //+ (y & 3) * 8192 + __fast_mul(y >> 2, 160);
+            for (int y = 0; y < graphics_buffer_height; y++) {
+                input_buffer_8bit = tga_offset + graphics_buffer + (y & 3) * 8192 + __fast_mul(y >> 2, 160);
+                for (int x = 320 / 2; x--;) {
+                    st7789_lcd_put_pixel(pio, sm, palette[*input_buffer_8bit >> 4 & 15]);
+                    st7789_lcd_put_pixel(pio, sm, palette[*input_buffer_8bit & 15]);
+                    input_buffer_8bit++;
                 }
-
-            stop_pixels();
+            }
+            break;
+        }
+        case VGA_320x200x256: {
+            uint32_t i = graphics_buffer_width * graphics_buffer_height;
+            while (--i) {
+                st7789_lcd_put_pixel(pio, sm, palette[*input_buffer_8bit++]);
+            }
+            break;
         }
         default:
-            case TEXTMODE_80x25_COLOR:
-    lcd_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-        start_pixels();
-        for (int y = 0; y < SCREEN_HEIGHT; y++) {
-            // TODO add auto adjustable padding?
+        case TEXTMODE_80x25_COLOR:
+            for (int y = 0; y < SCREEN_HEIGHT; y++) {
+                // TODO add auto adjustable padding?
 
-            for (int x = 0; x < TEXTMODE_COLS; x++) {
-                const uint16_t offset = (y / 6) * (TEXTMODE_COLS * 2) + x * 2;
-                const uint8_t c = text_buffer[offset];
-                const uint8_t colorIndex = text_buffer[offset + 1];
-                const uint8_t glyph_row = font_4x6[c * 6 + y % 6];
+                for (int x = 0; x < TEXTMODE_COLS; x++) {
+                    const uint16_t offset = (y / 8) * (80 * 2) + x * 2;
+                    const uint8_t c = text_buffer[offset];
+                    const uint8_t colorIndex = text_buffer[offset + 1];
+                    const uint8_t glyph_row = font_8x8[c * 8 + y % 8];
 
-                for (uint8_t bit = 0; bit < 4; bit++) {
-                    st7789_lcd_put_pixel(pio, sm, textmode_palette[(c && CHECK_BIT(glyph_row, bit))
-                                                                       ? colorIndex & 0x0F
-                                                                       : colorIndex >> 4 & 0x0F]);
+                    for (uint8_t bit = 0; bit < 8; bit++) {
+                        st7789_lcd_put_pixel(pio, sm, textmode_palette[(c && CHECK_BIT(glyph_row, bit))
+                                                                           ? colorIndex & 0x0F
+                                                                           : colorIndex >> 4 & 0x0F]);
+
+                        // st7789_lcd_put_pixel(pio,sm, CHECK_BIT(glyph_row, bit) ? 0xFFFF00 + bit * 4 : 0);
+                    }
                 }
             }
-        }
-        stop_pixels();
-        break;
+            break;
     }
-
+    stop_pixels();
+    port3DA = 8;
     // st7789_lcd_wait_idle(pio, sm);
+}
+#include <stdint.h>
+
+static inline uint16_t rgb24_to_16(uint32_t rgb888) {
+    // Extract 8-bit red, green, and blue components from the 24-bit color.
+    uint8_t r = (rgb888 >> 16) & 0xFF; // Red is the highest 8 bits
+    uint8_t g = (rgb888 >> 8) & 0xFF;  // Green is the middle 8 bits
+    uint8_t b = rgb888 & 0xFF;         // Blue is the lowest 8 bits
+
+    // Convert each component to 5/6/5 bits for RGB565
+    uint16_t red   = (r >> 3) & 0x1F;  // 5 bits for red
+    uint16_t green = (g >> 2) & 0x3F;  // 6 bits for green
+    uint16_t blue  = (b >> 3) & 0x1F;  // 5 bits for blue
+
+    // Combine into a single 16-bit RGB565 value.
+    return (red << 11) | (green << 5) | blue;
 }
 
 
 void graphics_set_palette(const uint8_t i, const uint32_t color) {
-    palette[i] = (uint16_t)color;
+    palette[i] = rgb24_to_16(color);
 }

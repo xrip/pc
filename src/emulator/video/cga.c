@@ -2,7 +2,7 @@
 
 uint8_t cga_intensity = 0, cga_colorset = 0, cga_foreground_color = 15, cga_blinking = 0xFF, cga_hires = 0;
 static uint8_t hercules_mode = 0, hercules_enable = 0;
-uint8_t port3DA;
+uint8_t port3DA = 8;
 
 const uint32_t cga_palette[16] = {
         //R, G, B
@@ -171,7 +171,7 @@ void cga_portout(uint16_t portnum, uint16_t value) {
 
 uint16_t cga_portin(uint16_t portnum) {
      port3DA ^= 1;
-     if (!(port3DA & 1)) port3DA ^= 8;
-    // return hercules_mode ? 0xFF : port3DA;
-    return port3DA;
+     // if (!(port3DA & 1)) port3DA ^= 8;
+     return port3DA;
+     // return hercules_mode ? 0xFF : port3DA;
 }

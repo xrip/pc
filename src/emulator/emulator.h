@@ -33,7 +33,7 @@ extern "C" {
 #define SOUND_FREQUENCY (44100)
 #endif
 #endif
-#define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
+// #define rgb(r, g, b) (((r)<<16) | ((g) << 8 ) | (b) )
 
 #define VIDEORAM_START (0xA0000)
 #define VIDEORAM_END (0xC0000)
