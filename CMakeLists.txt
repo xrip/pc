@@ -66,17 +66,24 @@ else ()
     add_subdirectory(drivers/audio)
     add_subdirectory(drivers/psram)
     add_subdirectory(drivers/nespad)
-
+# [[
+    add_subdirectory(drivers/st7789)
+    target_link_libraries(${PROJECT_NAME} PRIVATE st7789)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TFT)
+    SET(BUILD_NAME "${BUILD_NAME}-TFT")
+#]]
+#[[
     target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
     target_link_libraries(${PROJECT_NAME} PRIVATE vga-nextgen)
     SET(BUILD_NAME "${BUILD_NAME}-VGA")
+#]]
 
 #[[
     add_subdirectory(drivers/hdmi)
     target_link_libraries(${PROJECT_NAME} PRIVATE hdmi)
     target_compile_definitions(${PROJECT_NAME} PRIVATE HDMI)
     SET(BUILD_NAME "${BUILD_NAME}-HDMI")
-]]
+#]]
     target_link_libraries(${PROJECT_NAME} PRIVATE
             ps2
             sdcard
@@ -105,13 +112,21 @@ else ()
             EMU8950_ASM=1
 
             PICO_FLASH_SIZE_BYTES=16777216
-            ONBOARD_PSRAM
+            #ONBOARD_PSRAM
 
             # VGA 8 pins starts from pin:
             VGA_BASE_PIN=6
 
             # HDMI 8 pins starts from pin:
             HDMI_BASE_PIN=6
+
+            # TFT
+            TFT_CS_PIN=6
+            TFT_RST_PIN=8
+            TFT_LED_PIN=9
+            TFT_DC_PIN=10
+            TFT_DATA_PIN=12
+            TFT_CLK_PIN=13
 
             # SDCARD
             SDCARD_PIN_SPI0_CS=5
@@ -135,13 +150,13 @@ else ()
             NES_GPIO_DATA=16
             NES_GPIO_LAT=15
 
-            #HARDWARE_SOUND
+            HARDWARE_SOUND
             CLOCK_PIN=17
             PCM_PIN=22
 
             #I2S_SOUND
 
-            PWM_SOUND
+            #PWM_SOUND
             PWM_BEEPER=28
             PWM_LEFT_CHANNEL=26
             PWM_RIGHT_CHANNEL=27

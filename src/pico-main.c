@@ -56,6 +56,17 @@ extern uint64_t sb_samplerate;
 extern uint16_t timeconst;
 /* Renderer loop on Pico's second core */
 void __time_critical_func() second_core() {
+    graphics_init();
+    graphics_set_buffer(VIDEORAM, 320, 200);
+    graphics_set_textbuffer(VIDEORAM + 32768);
+    graphics_set_bgcolor(0);
+    graphics_set_offset(0, 0);
+    graphics_set_flashmode(true, true);
+
+    for (uint8_t i = 0; i < 255; i++) {
+        graphics_set_palette(i, vga_palette[i]);
+    }
+
 #if !HARDWARE_SOUND
     emu8950_opl = OPL_new(3579552, SOUND_FREQUENCY);
 #endif
@@ -92,16 +103,7 @@ void __time_critical_func() second_core() {
     pwm_init(pwm_gpio_to_slice_num(PCM_PIN), &pwm, true);
 #endif
 
-    graphics_init();
-    graphics_set_buffer(VIDEORAM, 320, 200);
-    graphics_set_textbuffer(VIDEORAM + 32768);
-    graphics_set_bgcolor(0);
-    graphics_set_offset(0, 0);
-    graphics_set_flashmode(true, true);
 
-    for (uint8_t i = 0; i < 255; i++) {
-        graphics_set_palette(i, vga_palette[i]);
-    }
 
     sem_acquire_blocking(&vga_start_semaphore);
 
@@ -197,6 +199,9 @@ void __time_critical_func() second_core() {
                     old_video_mode = videomode;
                 }
             }
+#if defined(TFT)
+            refresh_lcd();
+#endif
             last_frame_tick = tick;
         }
         tick = time_us_64();
@@ -357,6 +362,9 @@ int main() {
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
 
+
+    sleep_ms(50);
+    // while (1) draw_text("HELLO WORLD", 1,1, 14, 0);
     keyboard_init();
     //    mouse_init();
     nespad_begin(NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
@@ -369,13 +377,11 @@ int main() {
         mouse_available = 1;
     }
 
+
+
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(second_core);
     sem_release(&vga_start_semaphore);
-
-    sleep_ms(50);
-
-    graphics_set_mode(TEXTMODE_80x25_COLOR);
 
     // if (!init_psram()) {
     if (0) {
@@ -394,6 +400,7 @@ int main() {
 
     while (true) {
         exec86(32768);
+
 #if 1
         if (!mouse_available) {
 #define MOUSE_SPEED 8
