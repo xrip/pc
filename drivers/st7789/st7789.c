@@ -38,7 +38,7 @@
 #define CHECK_BIT(var, pos) (((var)>>(pos)) & 1)
 
 static uint sm = 0;
-static PIO pio = pio1;
+static PIO pio = pio0;
 static uint st7789_chan;
 
 uint16_t palette[256];
@@ -271,13 +271,8 @@ static inline uint16_t rgb24_to_16(uint32_t rgb888) {
     uint8_t g = (rgb888 >> 8) & 0xFF;  // Green is the middle 8 bits
     uint8_t b = rgb888 & 0xFF;         // Blue is the lowest 8 bits
 
-    // Convert each component to 5/6/5 bits for RGB565
-    uint16_t red   = (r >> 3) & 0x1F;  // 5 bits for red
-    uint16_t green = (g >> 2) & 0x3F;  // 6 bits for green
-    uint16_t blue  = (b >> 3) & 0x1F;  // 5 bits for blue
-
     // Combine into a single 16-bit RGB565 value.
-    return (red << 11) | (green << 5) | blue;
+    return rgb(b,g,r);
 }
 
 
