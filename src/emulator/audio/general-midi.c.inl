@@ -10,7 +10,7 @@
 #define debug_log(...)
 #endif
 
-// #define USE_SAMPLES
+#define USE_SAMPLES
 #if defined(USE_SAMPLES)
 #include "emulator/drum/drum.h"
 #include "emulator/acoustic/acoustic.h"
@@ -29,6 +29,7 @@ typedef struct midi_voice_s {
     uint8_t velocity;
     uint8_t velocity_base;
 
+    uint8_t * sample;
     int32_t frequency_m100;
     uint16_t sample_position;
     uint16_t release;
@@ -96,59 +97,8 @@ static INLINE int16_t __time_critical_func() midi_sample() {
             CLEAR_ACTIVE_VOICE(voice->voice_slot);
         }
 #if defined(USE_SAMPLES)
-        if (voice->channel == 9) {
-            const int8_t* smpl;
-            switch (voice->note) {
-                case 35: smpl = _35_wav; break;
-                case 36: smpl = _36_wav; break;
-                case 37: smpl = _37_wav; break;
-                case 38: smpl = _38_wav; break;
-                case 39: smpl = _39_wav; break;
-                case 40: smpl = _40_wav; break;
-                case 41: smpl = _41_wav; break;
-                case 42: smpl = _42_wav; break;
-                case 43: smpl = _43_wav; break;
-                case 44: smpl = _44_wav; break;
-                case 45: smpl = _45_wav; break;
-                case 46: smpl = _46_wav; break;
-                case 47: smpl = _47_wav; break;
-                case 48: smpl = _48_wav; break;
-                case 49: smpl = _49_wav; break;
-                    //case 50: smpl = _50_wav; break;
-                case 51: smpl = _51_wav; break;
-                case 52: smpl = _52_wav; break;
-                case 53: smpl = _53_wav; break;
-                case 54: smpl = _54_wav; break;
-                case 55: smpl = _55_wav; break;
-                case 56: smpl = _56_wav; break;
-                case 57: smpl = _57_wav; break;
-                case 58: smpl = _58_wav; break;
-                case 59: smpl = _59_wav; break;
-                case 60: smpl = _60_wav; break;
-                case 61: smpl = _61_wav; break;
-                case 62: smpl = _62_wav; break;
-                case 63: smpl = _63_wav; break;
-                case 64: smpl = _64_wav; break;
-                case 65: smpl = _65_wav; break;
-                case 66: smpl = _66_wav; break;
-                case 67: smpl = _67_wav; break;
-                case 68: smpl = _68_wav; break;
-                case 69: smpl = _69_wav; break;
-                case 70: smpl = _70_wav; break;
-                case 71: smpl = _71_wav; break;
-                case 72: smpl = _72_wav; break;
-                case 73: smpl = _73_wav; break;
-                case 74: smpl = _74_wav; break;
-                case 75: smpl = _75_wav; break;
-                case 76: smpl = _76_wav; break;
-                case 77: smpl = _77_wav; break;
-                case 78: smpl = _78_wav; break;
-                case 79: smpl = _79_wav; break;
-                case 80: smpl = _80_wav; break;
-                case 81: smpl = _81_wav; break;
-                default: smpl = _ZZ_Default_wav; break;
-            }
-            sample += __fast_mul(voice->velocity, smpl[voice->sample_position++]); // TODO: sz
+        if (voice->sample) {
+            sample += __fast_mul(*velocity, voice->sample[sample_position >> 2]);
         } else
 #endif
         {
@@ -190,6 +140,63 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         voice->velocity = midi_channels[voice->channel].volume
                                               ? midi_channels[channel].volume * message->velocity >> 7
                                               : message->velocity;
+
+#if defined(USE_SAMPLES)
+        if (voice->channel == 9) {
+            switch (voice->note) {
+                case 35: voice->sample = __35_raw; break;
+                case 36: voice->sample = __36_raw; break;
+                case 37: voice->sample = __37_raw; break;
+                case 38: voice->sample = __38_raw; break;
+                case 39: voice->sample = __39_raw; break;
+                case 40: voice->sample = __40_raw; break;
+                case 41: voice->sample = __41_raw; break;
+                case 42: voice->sample = __42_raw; break;
+                case 43: voice->sample = __43_raw; break;
+                case 44: voice->sample = __44_raw; break;
+                case 45: voice->sample = __45_raw; break;
+                case 46: voice->sample = __46_raw; break;
+                case 47: voice->sample = __47_raw; break;
+                case 48: voice->sample = __48_raw; break;
+                case 49: voice->sample = __49_raw; break;
+                case 50: voice->sample = __50_raw; break;
+                case 51: voice->sample = __51_raw; break;
+                case 52: voice->sample = __52_raw; break;
+                case 53: voice->sample = __53_raw; break;
+                case 54: voice->sample = __54_raw; break;
+                case 55: voice->sample = __55_raw; break;
+                case 56: voice->sample = __56_raw; break;
+                case 57: voice->sample = __57_raw; break;
+                case 58: voice->sample = __58_raw; break;
+                case 59: voice->sample = __59_raw; break;
+                case 60: voice->sample = __60_raw; break;
+                case 61: voice->sample = __61_raw; break;
+                case 62: voice->sample = __62_raw; break;
+                case 63: voice->sample = __63_raw; break;
+                case 64: voice->sample = __64_raw; break;
+                case 65: voice->sample = __65_raw; break;
+                case 66: voice->sample = __66_raw; break;
+                case 67: voice->sample = __67_raw; break;
+                case 68: voice->sample = __68_raw; break;
+                case 69: voice->sample = __69_raw; break;
+                case 70: voice->sample = __70_raw; break;
+                case 71: voice->sample = __71_raw; break;
+                case 72: voice->sample = __72_raw; break;
+                case 73: voice->sample = __73_raw; break;
+                case 74: voice->sample = __74_raw; break;
+                case 75: voice->sample = __75_raw; break;
+                case 76: voice->sample = __76_raw; break;
+                case 77: voice->sample = __77_raw; break;
+                case 78: voice->sample = __78_raw; break;
+                case 79: voice->sample = __79_raw; break;
+                case 80: voice->sample = __80_raw; break;
+                case 81: voice->sample = __81_raw; break;
+                default: voice->sample = __35_raw; break;
+            }
+        } else {
+            voice->sample = NULL;
+        }
+#endif
 
                         SET_ACTIVE_VOICE(voice_slot);
                         return;
