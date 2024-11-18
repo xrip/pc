@@ -69,7 +69,9 @@ else ()
 # [[
     add_subdirectory(drivers/st7789)
     target_link_libraries(${PROJECT_NAME} PRIVATE st7789)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE TFT)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TFT
+#            ILI9341
+    )
     SET(BUILD_NAME "${BUILD_NAME}-TFT")
 #]]
 #[[

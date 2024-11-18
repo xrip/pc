@@ -29,7 +29,7 @@
 #endif
 
 // 126MHz SPI
-#define SERIAL_CLK_DIV 2.5f
+#define SERIAL_CLK_DIV 3.0f
 #define MADCTL_BGR_PIXEL_ORDER (1<<3)
 #define MADCTL_ROW_COLUMN_EXCHANGE (1<<5)
 #define MADCTL_COLUMN_ADDRESS_ORDER_SWAP (1<<6)
@@ -57,7 +57,7 @@ static const uint8_t init_seq[] = {
     1, 20, 0x01, // Software reset
     1, 10, 0x11, // Exit sleep mode
     2, 2, 0x3a, 0x55, // Set colour mode to 16 bit
-#ifdef ILI9341
+#if defined(ILI9341)
     // ILI9341
     2, 0, 0x36, MADCTL_ROW_COLUMN_EXCHANGE | MADCTL_BGR_PIXEL_ORDER, // Set MADCTL
 #else
@@ -150,6 +150,9 @@ void create_dma_channel() {
         0, // Number of transfers - set later
         false // Don't start yet
     );
+
+    // irq_set_exclusive_handler(DMA_IRQ_0, refresh_lcd);
+    // dma_channel_set_irq0_enabled(st7789_chan, true);
 }
 
 void graphics_init() {
@@ -178,13 +181,15 @@ void graphics_init() {
     }
 
     create_dma_channel();
-    // lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, SCREEN_WIDTH, SCREEN_HEIGHT);
+    lcd_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     uint32_t i = SCREEN_WIDTH * SCREEN_HEIGHT;
+
+    start_pixels();
     while (i--)
         st7789_lcd_put_pixel(pio, sm, 0x0);
+    stop_pixels();
 
-    lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
-                   graphics_buffer_height);
+    lcd_set_window(0, 0, graphics_buffer_width, graphics_buffer_height);
 }
 
 void inline graphics_set_mode(const enum graphics_mode_t mode) {
@@ -220,7 +225,8 @@ INLINE void __time_critical_func() refresh_lcd() {
     uint16_t line_buffer[320];
     const uint8_t *input_buffer_8bit = graphics_buffer;
 
-    // start_pixels();
+    start_pixels();
+
     switch (graphics_mode) {
         case TGA_320x200x16: {
             //4bit buf
@@ -243,7 +249,7 @@ INLINE void __time_critical_func() refresh_lcd() {
         }
         default:
         case TEXTMODE_80x25_COLOR:
-            for (int y = 0; y < SCREEN_HEIGHT; y++) {
+            for (int y = 0; y < 200; y++) {
                 // TODO add auto adjustable padding?
                 for (int x = 0; x < TEXTMODE_COLS; x++) {
                     const uint16_t offset = (y / 8) * (80 * 2) + x * 2;
@@ -262,10 +268,12 @@ INLINE void __time_critical_func() refresh_lcd() {
             }
             break;
     }
-    // stop_pixels();
+    stop_pixels();
+
+    // lcd_set_dc_cs(1, 1);
     // st7789_lcd_wait_idle(pio, sm);
 }
 
-void graphics_set_palette(const uint8_t i, const uint32_t color) {
+inline void graphics_set_palette(const uint8_t i, const uint32_t color) {
     palette[i] = rgb888(color >> 16, color >> 8 & 0xff, color & 0xff);
 }

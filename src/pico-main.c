@@ -201,10 +201,10 @@ void __time_critical_func() second_core() {
             }
 #if defined(TFT)
             // port3DA = 1;
-            // port3DA = 0;
+            port3DA = 0;
                 refresh_lcd();
             port3DA = 8;
-            port3DA |= 1;
+            // port3DA |= 1;
 #endif
             last_frame_tick = tick;
         }
