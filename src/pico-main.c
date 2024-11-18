@@ -375,10 +375,9 @@ int main() {
     sleep_ms(5);
     nespad_read();
 
-    int mouse_available = 0;
-    if (nespad_state) {
+    const int mouse_available = !nespad_state;
+    if (mouse_available) {
         mouse_init();
-        mouse_available = 1;
     }
 
 
