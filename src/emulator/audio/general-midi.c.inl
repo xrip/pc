@@ -29,10 +29,10 @@ typedef struct midi_voice_s {
     uint8_t velocity;
     uint8_t velocity_base;
 
-    uint8_t * sample;
+    uint8_t *sample;
     int32_t frequency_m100;
     uint16_t sample_position;
-    uint16_t release;
+    uint16_t release_position;
 } midi_voice_t;
 
 typedef struct midi_channel_s {
@@ -65,46 +65,43 @@ static uint32_t channels_sustain_bitmask = 0;
 #define CLEAR_CHANNEL_SUSTAIN(idx) (channels_sustain_bitmask &= ~(1U << (idx)))
 #define IS_CHANNEL_SUSTAIN(idx) ((channels_sustain_bitmask & (1U << (idx))) != 0)
 
-static INLINE int8_t sin_m_128(size_t idx) {
-    size_t mod_idx = idx & 4095;
-    return (mod_idx < 2048)
-               ? sin_m128[mod_idx < 1024 ? mod_idx : 2047 - mod_idx]
-               : -sin_m128[mod_idx < 3072 ? mod_idx - 2048 : 4095 - mod_idx];
-}
-
 
 #define SIN_STEP (SOUND_FREQUENCY * 100 / 4096)
-
-static INLINE int32_t sin100sf_m_128_t(int32_t a) {
-    return sin_m_128((a / SIN_STEP) & 4095);
+static INLINE int32_t sine_lookup(const uint32_t angle) {
+    const uint16_t index = angle / SIN_STEP % 4096; // TODO: Should it be & 4095???
+    return index < 2048
+               ? sin_m128[index < 1024 ? index : 2047 - index]
+               : -sin_m128[index < 3072 ? index - 2048 : 4095 - index];
 }
 
 static INLINE int16_t __time_critical_func() midi_sample() {
     if (!active_voice_bitmask) return 0;
 
-    volatile int32_t sample = 0;
-    volatile uint32_t active_voices = active_voice_bitmask;
+    int32_t sample = 0;
+    uint32_t active_voices = active_voice_bitmask;
 
     for (struct midi_voice_s *voice = midi_voices; active_voices; voice++, active_voices >>= 1) {
-        if (!(active_voices & 1)) continue;
+        if (active_voices & 1) {
+            const uint16_t sample_position = voice->sample_position++;
 
-        const uint16_t sample_position = voice->sample_position++;
-        uint8_t *velocity = &voice->velocity;
-
-        if (sample_position == SOUND_FREQUENCY / 2) { // Sustain state
-            *velocity -= *velocity >> 2;
-        } else if (sample_position && sample_position == voice->release) {
-            CLEAR_ACTIVE_VOICE(voice->voice_slot);
-        }
+            // Poor man's ADSR
+            if (sample_position == SOUND_FREQUENCY / 2) {
+                // Sustain state
+                voice->velocity -= voice->velocity >> 2;
+            } else if (sample_position && sample_position == voice->release_position) {
+                // Release state
+                CLEAR_ACTIVE_VOICE(voice->voice_slot);
+            }
 #if defined(USE_SAMPLES)
-        if (voice->sample) {
-            sample += __fast_mul(*velocity, voice->sample[sample_position >> 2]);
-        } else
+            if (voice->sample) {
+                sample += __fast_mul(voice->velocity, voice->sample[sample_position >> 2]);
+            } else
 #endif
-        {
-            sample += __fast_mul(*velocity, sin100sf_m_128_t(__fast_mul(voice->frequency_m100, sample_position)));
+            {
+                sample += __fast_mul(voice->velocity, sine_lookup(__fast_mul(voice->frequency_m100, sample_position)));
+            }
+            // sample += (*velocity / 127.0) * sin(2 * PI * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
         }
-        // sample += (*velocity / 127.0) * sin(2 * PI * note_frequencies[voice->note] * (sample_position / SOUND_FREQUENCY));
     }
 
     return (int32_t) (sample >> 2); // todo add pass filter
@@ -116,8 +113,6 @@ static INLINE int32_t apply_pitch(const int32_t base_frequency, const int cents)
 }
 
 static INLINE void parse_midi(const midi_command_t *message) {
-    // todo last free/last used -- instead of for loop lookup
-    // const midi_command_t *message = (midi_command_t *) &midi_command;
     const uint8_t channel = message->command & 0xf;
 
     switch (message->command >> 4) {
@@ -129,7 +124,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         // voice->playing = 1;
                         voice->voice_slot = voice_slot;
                         voice->sample_position = 0;
-                        voice->release = 0;
+                        voice->release_position = 0;
                         voice->channel = channel;
                         voice->note = message->note;
 
@@ -217,7 +212,7 @@ static INLINE void parse_midi(const midi_command_t *message) {
                             CLEAR_ACTIVE_VOICE(voice_slot);
                         } else {
                             midi_voices[voice_slot].velocity /= 2;
-                            midi_voices[voice_slot].release =
+                            midi_voices[voice_slot].release_position =
                                     midi_voices[voice_slot].sample_position + RELEASE_DURATION;
                         }
                         return;
@@ -251,16 +246,12 @@ static INLINE void parse_midi(const midi_command_t *message) {
                         for (int voice_slot = 0; voice_slot < MAX_MIDI_VOICES; ++voice_slot)
                             if (midi_voices[voice_slot].channel == channel) {
                                 if (channel == 9) {
-                                    // midi_voices[voice_number].playing = 0;
                                     CLEAR_ACTIVE_VOICE(voice_slot);
                                 } else {
                                     midi_voices[voice_slot].velocity /= 2;
-                                    midi_voices[voice_slot].release =
+                                    midi_voices[voice_slot].release_position =
                                             midi_voices[voice_slot].sample_position + RELEASE_DURATION;
                                 }
-                                // midi_voices[voice_number].playing = 0;
-                                // CLEAR_ACTIVE_VOICE(voice_number);
-                                // midi_voices[voice_number].release = 11025; // 1/4 seconds
                             }
                     }
                     debug_log("[MIDI] Channel %i sustain %i\n", channel, message->velocity);
